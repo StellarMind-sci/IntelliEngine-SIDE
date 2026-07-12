@@ -1,0 +1,4 @@
+interface:
+  display_name: "模块实现器"
+  short_description: "实现一个边界清晰的模块 Issue"
+  default_prompt: "使用 $module-implementer 实现这个已限定范围的模块 Issue 并完成验证。"

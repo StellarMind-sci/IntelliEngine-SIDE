@@ -1,0 +1,4 @@
+interface:
+  display_name: "集成审查器"
+  short_description: "验证跨模块集成"
+  default_prompt: "使用 $integration-reviewer 验证这批已完成模块的跨模块集成。"

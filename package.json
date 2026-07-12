@@ -1,0 +1,17 @@
+{
+  "name": "cognitive-engineering-ide",
+  "private": true,
+  "version": "0.0.0",
+  "description": "认知工程 IDE 的治理优先单仓库",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "verify": "python scripts/verify_governance.py",
+    "lint": "python scripts/verify_governance.py",
+    "test": "python scripts/verify_governance.py"
+  }
+}

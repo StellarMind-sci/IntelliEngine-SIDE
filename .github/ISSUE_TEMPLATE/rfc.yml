@@ -1,0 +1,27 @@
+name: 架构 RFC
+description: 为未确定、跨模块的产品或架构决定创建提案。
+title: "[RFC] "
+labels: ["rfc"]
+body:
+  - type: markdown
+    attributes:
+      value: 请从 docs/rfc/0000-template.md 创建 RFC，并在下方链接。
+  - type: input
+    id: rfc
+    attributes:
+      label: RFC 路径或 Pull Request
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: 需要做出的决定
+      description: 说明未确定的选择，以及谁需要批准它。
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 受影响模块与公共契约
+    validations:
+      required: true
