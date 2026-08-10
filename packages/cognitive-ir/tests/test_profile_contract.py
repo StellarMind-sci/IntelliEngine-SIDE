@@ -14,6 +14,7 @@ sys.dont_write_bytecode = True
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = PACKAGE_ROOT.parents[1]
 CONTRACT_ROOT = PACKAGE_ROOT / "contracts"
 VERIFIER = CONTRACT_ROOT / "tools" / "verify_profile.py"
 PROFILE = Path("profile/1.0.0/profile.json")
@@ -70,6 +71,46 @@ class PortableProfileContractTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "portable profile 1.0.0 verified\n")
+
+    def test_git_checkout_policy_preserves_contract_bytes(self) -> None:
+        paths = [
+            "packages/cognitive-ir/contracts/profile/1.0.0/profile.json",
+            "packages/cognitive-ir/contracts/profile/1.0.0/fixtures/raw/invalid-utf8.raw",
+            "packages/cognitive-ir/contracts/tools/verify_profile.py",
+        ]
+        result = subprocess.run(
+            ["git", "check-attr", "text", "eol", "--", *paths],
+            cwd=REPO_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            [
+                f"{paths[0]}: text: set",
+                f"{paths[0]}: eol: lf",
+                f"{paths[1]}: text: unset",
+                f"{paths[1]}: eol: unspecified",
+                f"{paths[2]}: text: set",
+                f"{paths[2]}: eol: lf",
+            ],
+        )
+
+    def test_contract_json_and_python_worktree_bytes_are_lf_only(self) -> None:
+        candidates = sorted(CONTRACT_ROOT.rglob("*.json")) + sorted(
+            CONTRACT_ROOT.rglob("*.py")
+        )
+        carriage_returns = [
+            path.relative_to(CONTRACT_ROOT).as_posix()
+            for path in candidates
+            if b"\r" in path.read_bytes()
+        ]
+
+        self.assertEqual(carriage_returns, [])
 
     def test_missing_profile_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
