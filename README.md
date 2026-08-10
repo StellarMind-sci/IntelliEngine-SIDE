@@ -10,6 +10,9 @@
 - [产品愿景](docs/product/vision.md)
 - [系统架构](docs/architecture/system-context.md)
 - [项目里程碑](docs/roadmap/milestones.md)
+- [完整开发流程](docs/runbooks/development.md)
+- [面向 Codex 的开发指导](docs/runbooks/codex-development-guide.md)
+- [大阶段完成日志](docs/roadmap/stage-log.md)
 - [贡献与开发流程](CONTRIBUTING.md)
 - [给 Codex 的仓库规则](AGENTS.md)
 
