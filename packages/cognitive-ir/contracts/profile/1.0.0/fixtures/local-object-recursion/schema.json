@@ -1,0 +1,1 @@
+{"$defs":{"node":{"properties":{"child":{"$ref":"#/$defs/node"}},"type":"object"}},"$ref":"#/$defs/node","$schema":"https://json-schema.org/draft/2020-12/schema"}

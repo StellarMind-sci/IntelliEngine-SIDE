@@ -1,0 +1,11 @@
+{
+  "diagnostics": [
+    {"code": "conformance.fixture_invalid", "phase": "fixture", "severity": "error"},
+    {"code": "conformance.digest_mismatch", "phase": "fixture", "severity": "error"},
+    {"code": "conformance.consumer_crashed", "phase": "consumer", "severity": "error"},
+    {"code": "conformance.result_mismatch", "phase": "differential", "severity": "error"},
+    {"code": "conformance.generated_drift", "phase": "generated", "severity": "error"},
+    {"code": "conformance.network_or_file_access", "phase": "security", "severity": "error"}
+  ],
+  "profile_version": "1.0.0"
+}

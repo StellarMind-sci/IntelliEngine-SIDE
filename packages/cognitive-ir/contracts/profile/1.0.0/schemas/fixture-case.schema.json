@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "nullablePath": {"anyOf": [{"pattern": "^profile/1\\.0\\.0/[A-Za-z0-9._/-]+$", "type": "string"}, {"type": "null"}]},
+    "path": {"pattern": "^profile/1\\.0\\.0/[A-Za-z0-9._/-]+$", "type": "string"},
+    "pointer": {"pattern": "^(/([^/~]|~0|~1)*)*$", "type": "string"}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "oneOf": [
+        {"additionalProperties": false, "properties": {"kind": {"enum": ["parse-negative", "schema-admission", "semantic-validation", "transport", "verify-profile", "verify-reference-graph"]}}, "required": ["kind"], "type": "object"},
+        {"additionalProperties": false, "properties": {"kind": {"const": "remove"}, "path": {"$ref": "#/$defs/path"}}, "required": ["kind", "path"], "type": "object"},
+        {"additionalProperties": false, "properties": {"kind": {"const": "replace"}, "path": {"$ref": "#/$defs/path"}, "pointer": {"$ref": "#/$defs/pointer"}, "value": {}}, "required": ["kind", "path", "pointer", "value"], "type": "object"},
+        {"additionalProperties": false, "properties": {"kind": {"const": "tamper"}, "operation": {"const": "reverse-array"}, "path": {"$ref": "#/$defs/path"}, "pointer": {"$ref": "#/$defs/pointer"}}, "required": ["kind", "operation", "path", "pointer"], "type": "object"},
+        {"additionalProperties": false, "properties": {"entry": {"additionalProperties": false, "properties": {"digest_kind": {"const": "jcs_sha256"}, "path": {"$ref": "#/$defs/path"}, "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}}, "required": ["digest_kind", "path", "sha256"], "type": "object"}, "kind": {"const": "append-lock-entry"}, "path": {"$ref": "#/$defs/path"}}, "required": ["entry", "kind", "path"], "type": "object"},
+        {"additionalProperties": false, "properties": {"kind": {"const": "work-unit-boundary"}, "limit": {"minimum": 1, "type": "integer"}, "next_action_units": {"minimum": 1, "type": "integer"}, "phase": {"enum": ["admission", "semantic"]}, "preconsumed": {"minimum": 0, "type": "integer"}}, "required": ["kind", "limit", "next_action_units", "phase", "preconsumed"], "type": "object"}
+      ]
+    },
+    "assertions": {"type": "object"},
+    "boundary": {"type": "string"},
+    "case_id": {"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "type": "string"},
+    "category": {"enum": ["annotation", "lock", "parser", "profile", "recursion", "reference-dag", "regex", "sorting", "work-unit"]},
+    "expected": {"$ref": "urn:intelliengine:schema:sha256:3a5010c67293977ee7da9a10c87b2b8e96d2fb3256215a91c8df1a4f8ee2287a"},
+    "input": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle": {"items": {"$ref": "#/$defs/path"}, "type": "array"},
+        "instance": {"$ref": "#/$defs/nullablePath"},
+        "primary": {"$ref": "#/$defs/nullablePath"},
+        "schema": {"$ref": "#/$defs/nullablePath"}
+      },
+      "required": ["bundle", "instance", "primary", "schema"],
+      "type": "object"
+    },
+    "phase": {"enum": ["profile", "schema_admission", "semantic_validation", "transport", "lock"]},
+    "profile_version": {"const": "1.0.0"},
+    "purpose": {"type": "string"},
+    "resources": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "claimed_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "path": {"$ref": "#/$defs/path"},
+          "refs": {"items": {"type": "string"}, "type": "array"},
+          "uri": {"type": "string"}
+        },
+        "required": ["refs", "uri"],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": ["action", "assertions", "boundary", "case_id", "category", "expected", "input", "phase", "profile_version", "purpose", "resources"],
+  "type": "object"
+}

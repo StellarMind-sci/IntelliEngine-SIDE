@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "additionalProperties": false,
+        "allOf": [
+          {"if": {"properties": {"digest_kind": {"const": "jcs_sha256"}}, "required": ["digest_kind"]}, "then": {"properties": {"path": {"pattern": "^profile/1\\.0\\.0/.+\\.json$"}}}},
+          {"if": {"properties": {"digest_kind": {"const": "raw_sha256"}}, "required": ["digest_kind"]}, "then": {"properties": {"path": {"pattern": "^profile/1\\.0\\.0/fixtures/raw/[^/]+\\.raw$"}}}}
+        ],
+        "properties": {
+          "digest_kind": {"enum": ["jcs_sha256", "raw_sha256"]},
+          "path": {"pattern": "^profile/1\\.0\\.0/[A-Za-z0-9._/-]+$", "type": "string"},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+        },
+        "required": ["digest_kind", "path", "sha256"],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "profile_version": {"const": "1.0.0"},
+    "self_digest": {"const": "excluded"}
+  },
+  "required": ["entries", "profile_version", "self_digest"],
+  "type": "object"
+}

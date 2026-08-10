@@ -1,0 +1,608 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "keywordRule": {
+      "additionalProperties": false,
+      "properties": {
+        "admission_steps": {
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "annotation_rule": {
+          "enum": [
+            "none",
+            "collect-on-success",
+            "propagate-success-only",
+            "discard-always",
+            "evaluated-properties",
+            "evaluated-items-on-count-success",
+            "propagate-selected-success"
+          ]
+        },
+        "evaluated_set_rule": {
+          "enum": [
+            "none",
+            "properties-on-success",
+            "items-on-success"
+          ]
+        },
+        "semantic_steps": {
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "admission_steps",
+        "annotation_rule",
+        "evaluated_set_rule",
+        "semantic_steps"
+      ],
+      "type": "object"
+    },
+    "step": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "oneOf": [
+            {
+              "enum": [
+                "graph_edge",
+                "graph_vertex",
+                "json_array_base",
+                "json_array_element",
+                "json_object_base",
+                "json_object_member",
+                "json_scalar_or_null",
+                "ref_resolution",
+                "schema_array_element",
+                "schema_keyword_visit",
+                "schema_location_entry",
+                "schema_map_member",
+                "single_schema_descent",
+                "applicator_branch_entry",
+                "evaluated_set_new_marker",
+                "keyword_visit",
+                "map_member_visit",
+                "numeric_assertion",
+                "object_member_or_array_element_visit",
+                "property_presence_or_membership_check",
+                "required_name_presence_check",
+                "schema_instance_pair"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "condition": {
+          "enum": [
+            "always",
+            "keyword-value-present",
+            "keyword-value-is-array",
+            "each-schema-value",
+            "keyword-value-is-map",
+            "each-map-key",
+            "grammar-accepted",
+            "keyword-selects-schema",
+            "keyword-value-is-string",
+            "keyword-applicable",
+            "each-selected-subschema",
+            "each-declared-property",
+            "declared-property-present",
+            "subschema-succeeded-new-marker",
+            "each-declared-pattern",
+            "each-actual-member",
+            "each-actual-member-times-each-pattern",
+            "pattern-matched",
+            "each-dependent-declaration",
+            "trigger-property",
+            "trigger-present",
+            "trigger-present-each-dependency",
+            "each-property-name",
+            "property-name-instance",
+            "each-actual-array-element",
+            "contains-count-succeeded-new-marker",
+            "each-enum-candidate",
+            "each-enum-candidate-full-scan",
+            "evaluate-if-schema",
+            "branch-selected-by-if",
+            "selected-branch",
+            "each-required-name",
+            "instance-string",
+            "classify-additional-member",
+            "member-is-additional",
+            "evaluated-property-membership",
+            "member-not-evaluated",
+            "prefix-index-covered",
+            "post-prefix-item",
+            "item-not-evaluated",
+            "evaluated-item-membership",
+            "subschema-succeeded"
+          ]
+        },
+        "formula": {
+          "oneOf": [
+            {
+              "enum": [
+                "regex_ast",
+                "regex_compact_counter",
+                "regex_grammar_parse",
+                "resource_digest",
+                "const_or_enum_jcs_compare",
+                "regex_attempt",
+                "unique_item_digest",
+                "json-value-cost"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "iteration": {
+          "enum": [
+            "once",
+            "schema-array-elements",
+            "map-values",
+            "map-keys",
+            "ast-nodes",
+            "pattern-scalars",
+            "declared-map-members",
+            "actual-object-members",
+            "actual-members-x-declared-patterns",
+            "dependency-array-elements",
+            "actual-array-elements",
+            "matched-array-elements",
+            "enum-candidates",
+            "selected-conditional",
+            "required-array-elements",
+            "affected-array-elements",
+            "applicator-branches",
+            "all-array-items"
+          ]
+        },
+        "order": {
+          "enum": [
+            "keyword-ordinal",
+            "schema-array-order",
+            "unsigned-utf8-bytes",
+            "construction-order",
+            "scalar-order",
+            "member-then-pattern-utf8",
+            "array-index",
+            "if-then-else",
+            "index-ascending"
+          ]
+        }
+      },
+      "required": [
+        "action",
+        "condition",
+        "formula",
+        "iteration",
+        "order"
+      ],
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "canonical_json": {
+      "type": "object"
+    },
+    "compatibility": {
+      "type": "object"
+    },
+    "conformance": {
+      "type": "object"
+    },
+    "diagnostics": {
+      "type": "object"
+    },
+    "implementation_roles": {
+      "type": "object"
+    },
+    "normative_artifacts": {
+      "type": "object"
+    },
+    "portable_limits": {
+      "type": "object"
+    },
+    "profile_id": {
+      "const": "org.intelliengine.conformance"
+    },
+    "profile_version": {
+      "const": "1.0.0"
+    },
+    "publication": {
+      "type": "object"
+    },
+    "references": {
+      "type": "object"
+    },
+    "regex_profile": {
+      "additionalProperties": false,
+      "properties": {
+        "ast_nodes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "case_sensitive": {
+          "const": true
+        },
+        "forbidden": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "matching": {
+          "const": "unanchored-search"
+        },
+        "maximum_repeat": {
+          "const": 10000
+        },
+        "productions": {
+          "items": {
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "quantifier_constraints": {
+          "type": "object"
+        },
+        "terminals": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lexeme": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "machine_predicate": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "enum": [
+                          "unicode-scalar-excluding",
+                          "escape-literal-catalog",
+                          "bounded-repeat"
+                        ]
+                      },
+                      "values": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "values"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "token_kind": {
+                "enum": [
+                  "scalar",
+                  "escaped-scalar",
+                  "punctuation",
+                  "quantifier"
+                ]
+              }
+            },
+            "required": [
+              "lexeme",
+              "machine_predicate",
+              "name",
+              "token_kind"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "unicode_domain": {
+          "const": "scalar-values"
+        }
+      },
+      "required": [
+        "ast_nodes",
+        "case_sensitive",
+        "forbidden",
+        "matching",
+        "maximum_repeat",
+        "productions",
+        "quantifier_constraints",
+        "terminals",
+        "unicode_domain"
+      ],
+      "type": "object"
+    },
+    "schema_draft": {
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "schema_profile": {
+      "type": "object"
+    },
+    "work_units": {
+      "additionalProperties": true,
+      "properties": {
+        "keyword_rules": {
+          "additionalProperties": false,
+          "properties": {
+            "$schema": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "$ref": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "$defs": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "$comment": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "allOf": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "anyOf": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "oneOf": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "not": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "if": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "then": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "else": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "dependentSchemas": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "prefixItems": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "items": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "contains": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "minContains": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "maxContains": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "properties": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "patternProperties": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "additionalProperties": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "propertyNames": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "type": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "enum": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "const": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "multipleOf": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "maximum": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "exclusiveMaximum": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "minimum": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "exclusiveMinimum": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "maxLength": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "minLength": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "pattern": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "maxItems": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "minItems": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "uniqueItems": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "maxProperties": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "minProperties": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "required": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "dependentRequired": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "title": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "description": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "default": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "deprecated": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "readOnly": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "writeOnly": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "examples": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "format": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "contentEncoding": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "contentMediaType": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "contentSchema": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "x-*": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "unevaluatedItems": {
+              "$ref": "#/$defs/keywordRule"
+            },
+            "unevaluatedProperties": {
+              "$ref": "#/$defs/keywordRule"
+            }
+          },
+          "required": [
+            "$schema",
+            "$ref",
+            "$defs",
+            "$comment",
+            "allOf",
+            "anyOf",
+            "oneOf",
+            "not",
+            "if",
+            "then",
+            "else",
+            "dependentSchemas",
+            "prefixItems",
+            "items",
+            "contains",
+            "minContains",
+            "maxContains",
+            "properties",
+            "patternProperties",
+            "additionalProperties",
+            "propertyNames",
+            "type",
+            "enum",
+            "const",
+            "multipleOf",
+            "maximum",
+            "exclusiveMaximum",
+            "minimum",
+            "exclusiveMinimum",
+            "maxLength",
+            "minLength",
+            "pattern",
+            "maxItems",
+            "minItems",
+            "uniqueItems",
+            "maxProperties",
+            "minProperties",
+            "required",
+            "dependentRequired",
+            "title",
+            "description",
+            "default",
+            "deprecated",
+            "readOnly",
+            "writeOnly",
+            "examples",
+            "format",
+            "contentEncoding",
+            "contentMediaType",
+            "contentSchema",
+            "x-*",
+            "unevaluatedItems",
+            "unevaluatedProperties"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "keyword_rules"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "canonical_json",
+    "compatibility",
+    "conformance",
+    "diagnostics",
+    "implementation_roles",
+    "normative_artifacts",
+    "portable_limits",
+    "profile_id",
+    "profile_version",
+    "publication",
+    "references",
+    "regex_profile",
+    "schema_draft",
+    "schema_profile",
+    "work_units"
+  ],
+  "type": "object"
+}
