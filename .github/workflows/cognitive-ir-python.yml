@@ -1,0 +1,37 @@
+name: Cognitive IR Python conformance
+
+on:
+  pull_request:
+    paths:
+      - "packages/cognitive-ir/**"
+      - ".github/workflows/cognitive-ir-python.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/cognitive-ir/**"
+      - ".github/workflows/cognitive-ir-python.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run independent consumer tests
+        run: python -B -m unittest discover -s packages/cognitive-ir/tests/conformance_python -p "test_*.py" -v
+      - name: Run all conformance fixtures
+        env:
+          PYTHONPATH: packages/cognitive-ir/python
+        run: python -B -m intelliengine_conformance.cli --profile-root packages/cognitive-ir/contracts/profile/1.0.0
