@@ -88,12 +88,17 @@
     {
       "digest_kind": "jcs_sha256",
       "path": "profile/1.0.0/fixtures/lock-digest-tamper/case.json",
-      "sha256": "96f621bffeae7865af8f49a65d2c3677ff4d19e7c7f307fac265dba1365add24"
+      "sha256": "80fd3fdb30d62d440efdbf33402c9617718d3ee5ea1f58e698402e4035be0624"
     },
     {
       "digest_kind": "jcs_sha256",
       "path": "profile/1.0.0/fixtures/lock-self-inclusion/case.json",
-      "sha256": "364646bf09d2785a564f34f4542ad3fd0652eb63581dc594326ee0a5acfdc3ee"
+      "sha256": "0e715182ba466ce327c0188fa48df9b6faf1472dfe004874a966af6609c8c0fb"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/lock-self-inclusion/input-lock.json",
+      "sha256": "36cb3d19aa07b7349fb0135717ea8e9db26124b9aa95f97ec251c0208eded189"
     },
     {
       "digest_kind": "jcs_sha256",

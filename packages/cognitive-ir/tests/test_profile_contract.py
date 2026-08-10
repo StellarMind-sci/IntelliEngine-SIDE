@@ -139,11 +139,11 @@ class PortableProfileContractTests(unittest.TestCase):
     def test_digest_tampering_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             copied = self.copy_contracts(Path(directory))
-            diagnostics_path = copied / DIAGNOSTICS
-            if diagnostics_path.exists():
-                diagnostics = json.loads(diagnostics_path.read_text(encoding="utf-8"))
-                diagnostics["diagnostics"].reverse()
-                write_json(diagnostics_path, diagnostics)
+            case_path = copied / PROFILE_ROOT / "fixtures" / "parser-bom" / "case.json"
+            if case_path.exists():
+                case = json.loads(case_path.read_text(encoding="utf-8"))
+                case["purpose"] += " Tampered after lock creation."
+                write_json(case_path, case)
 
             result = self.run_verifier(copied)
 
@@ -167,6 +167,107 @@ class PortableProfileContractTests(unittest.TestCase):
             result = self.run_verifier(copied)
 
         self.assert_rejected(result, "lock.self_inclusion")
+
+    def test_lock_mutation_cases_validate_primary_raw_before_action(self) -> None:
+        case_ids = ("lock-digest-tamper", "lock-self-inclusion")
+        for case_id in case_ids:
+            with self.subTest(case_id=case_id), tempfile.TemporaryDirectory() as directory:
+                copied = self.copy_contracts(Path(directory))
+                case_relative = PROFILE_ROOT / "fixtures" / case_id / "case.json"
+                case_path = copied / case_relative
+                case = json.loads(case_path.read_text(encoding="utf-8"))
+                case["expected"]["raw_sha256"] = "0" * 64
+                write_json(case_path, case)
+
+                verifier = load_verifier_module()
+                case_digest = __import__("hashlib").sha256(
+                    verifier.jcs_bytes(case)
+                ).hexdigest()
+                lock_path = copied / LOCK
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                lock_entry = next(
+                    entry
+                    for entry in lock["entries"]
+                    if entry["path"] == case_relative.as_posix()
+                )
+                lock_entry["sha256"] = case_digest
+                write_json(lock_path, lock)
+
+                result = self.run_verifier(copied)
+
+            self.assert_rejected(result, "fixture.invalid_expected")
+
+    def test_tamper_action_target_must_equal_primary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = self.copy_contracts(Path(directory))
+            case_relative = PROFILE_ROOT / "fixtures" / "lock-digest-tamper" / "case.json"
+            case_path = copied / case_relative
+            case = json.loads(case_path.read_text(encoding="utf-8"))
+            separate_primary = copied / PROFILE
+            case["input"]["primary"] = PROFILE.as_posix()
+            case["expected"]["raw_sha256"] = __import__("hashlib").sha256(
+                separate_primary.read_bytes()
+            ).hexdigest()
+            write_json(case_path, case)
+
+            verifier = load_verifier_module()
+            lock_path = copied / LOCK
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock_entry = next(
+                entry
+                for entry in lock["entries"]
+                if entry["path"] == case_relative.as_posix()
+            )
+            lock_entry["sha256"] = __import__("hashlib").sha256(
+                verifier.jcs_bytes(case)
+            ).hexdigest()
+            write_json(lock_path, lock)
+
+            result = self.run_verifier(copied)
+
+        self.assert_rejected(result, "fixture.invalid_action")
+
+    def test_append_lock_entry_validates_complete_candidate_schema(self) -> None:
+        invalid_values = {
+            "profile_version": "2.0.0",
+            "self_digest": "included",
+        }
+        for field, value in invalid_values.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                copied = self.copy_contracts(Path(directory))
+                candidate_relative = (
+                    PROFILE_ROOT / "fixtures" / "lock-self-inclusion" / "input-lock.json"
+                )
+                candidate_path = copied / candidate_relative
+                candidate = json.loads(candidate_path.read_text(encoding="utf-8"))
+                candidate[field] = value
+                write_json(candidate_path, candidate)
+
+                case_relative = PROFILE_ROOT / "fixtures" / "lock-self-inclusion" / "case.json"
+                case_path = copied / case_relative
+                case = json.loads(case_path.read_text(encoding="utf-8"))
+                case["expected"]["raw_sha256"] = __import__("hashlib").sha256(
+                    candidate_path.read_bytes()
+                ).hexdigest()
+                write_json(case_path, case)
+
+                verifier = load_verifier_module()
+                lock_path = copied / LOCK
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                values = {
+                    candidate_relative.as_posix(): candidate,
+                    case_relative.as_posix(): case,
+                }
+                for entry in lock["entries"]:
+                    if entry["path"] in values:
+                        entry["sha256"] = __import__("hashlib").sha256(
+                            verifier.jcs_bytes(values[entry["path"]])
+                        ).hexdigest()
+                write_json(lock_path, lock)
+
+                result = self.run_verifier(copied)
+
+            self.assert_rejected(result, "profile.machine_schema_validation")
 
     def test_cross_resource_cycle_cannot_be_declared_valid(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
