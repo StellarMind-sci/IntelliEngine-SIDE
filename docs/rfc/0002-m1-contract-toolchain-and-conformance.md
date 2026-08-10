@@ -1,8 +1,9 @@
 # RFC-002：M1 公共契约工具链与跨语言一致性基线
 
-- 状态：待决定
+- 状态：已接受
 - 负责人：StellarMind-sci（Issue #7 assignee）
 - 创建日期：2026-08-10
+- 决定日期：2026-08-10
 - 关联 Issues：[GitHub Issue #7](https://github.com/StellarMind-sci/IntelliEngine-SIDE/issues/7)
 - 依赖：[ADR-0003：先稳定契约，再并行实现使用方](../adr/0003-contract-first-parallelism.md)、[ADR-0005：CognitiveNode 与学科扩展契约](../adr/0005-cognitive-node-and-domain-extension-contract.md)
 
@@ -704,9 +705,10 @@ resource bucket 记录计数；另记录 work-unit 分布、差异 case ID、旧
 后续 ProvenanceRecord、ControlPolicy、ModelProvider 等契约继续各自建立 RFC/ADR/schema/fixtures
 Issue；不能把它们合并进上述基础设施 PR。
 
-## 产品负责人待决事项
+## 产品负责人决策（已全部接受）
 
-建议一次性决定下表，避免实现期间逐项临时选择：
+产品负责人于 2026-08-10 明确接受下表第 1～9 项全部推荐值；真实替代方案均未采用。
+下表继续保留替代方案和主要影响，作为决定依据与后续审查基线：
 
 | # | 决策 | 推荐值 | 真实替代 | 主要影响 |
 |---:|---|---|---|---|
@@ -720,9 +722,16 @@ Issue；不能把它们合并进上述基础设施 PR。
 | 8 | 发布 | shadow → 双消费者全绿 → 显式版本写入 | 首实现完成即发布 | 推荐值上线更慢，但可回滚且不污染持久化格式 |
 | 9 | 兼容 | major 显式绑定，旧 major 至少一周期只读 | 总是升级到最新；永久支持所有版本 | 推荐值避免静默升级，也限制长期维护成本 |
 
-若第 3～6 项任一推荐值被改变，应先修改本 RFC 的 profile/预算章节再接受；不得留给实现 Issue。
+若未来改变第 3～6 项任一已接受值，必须先通过新的 RFC/ADR 替代本决定；不得留给实现 Issue
+临时选择，也不得静默改写已接受历史。
 
 ## 决定
 
-待产品负责人决定。接受后应创建 ADR，并以独立 Issue 固化机器契约；在此之前不得实现或宣称
-portable semantic conformance。
+- 决定者：产品负责人。
+- 决定日期：2026-08-10。
+- 决定：接受“产品负责人决策（已全部接受）”表中第 1～9 项的全部推荐值，不修改其技术含义，
+  不新增第 10 项决定。
+- 未采用方案：表中全部真实替代方案均未采用；保留它们用于记录权衡和未来替代 ADR 的背景。
+- 后续边界：创建对应 ADR 后，以独立 Issue 固化语言无关机器契约；机器契约、TypeScript/Python
+  consumers、差分 CI 和 CognitiveNode schema 仍须分别通过实现、测试、独立审查与合并门禁。
+  在这些门禁完成前，不得宣称 portable semantic conformance 已实现。
