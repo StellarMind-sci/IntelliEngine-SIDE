@@ -758,8 +758,6 @@ def _validate_action(root: Path, case_id: str, case: dict[str, object], expected
         value = input_value.get(field)
         if value is None:
             paths[field] = None
-        elif field == "primary" and value == LOCK_PATH.as_posix() and kind in {"tamper", "append-lock-entry"}:
-            _, paths[field] = safe_relative_path(root, value)
         else:
             paths[field] = _locked_fixture_path(root, value, locked)
     primary = paths["primary"]
@@ -778,10 +776,10 @@ def _validate_action(root: Path, case_id: str, case: dict[str, object], expected
         reject("fixture.invalid_case", f"parser-negative input unexpectedly parsed: {case_id}")
 
     mutation_kinds = {"remove", "tamper", "append-lock-entry"}
+    raw = primary.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != expected["raw_sha256"]:
+        reject("fixture.invalid_expected", f"raw digest differs from input: {case_id}")
     if kind not in mutation_kinds:
-        raw = primary.read_bytes()
-        if hashlib.sha256(raw).hexdigest() != expected["raw_sha256"]:
-            reject("fixture.invalid_expected", f"raw digest differs from input: {case_id}")
         parsed = parse_json_bytes(raw, primary)
         if expected.get("jcs_sha256") != hashlib.sha256(jcs_bytes(parsed)).hexdigest():
             reject("fixture.invalid_expected", f"JCS digest differs from input: {case_id}")
@@ -822,6 +820,8 @@ def _validate_action(root: Path, case_id: str, case: dict[str, object], expected
         if action.get("operation") != "reverse-array":
             reject("fixture.invalid_action", f"unknown tamper operation: {case_id}")
         target = _locked_fixture_path(root, action.get("path"), locked)
+        if target != primary:
+            reject("fixture.invalid_action", f"tamper target differs from primary: {case_id}")
         document = copy.deepcopy(load_json(target))
         container, key = pointer_target(document, action.get("pointer"))
         selected = container.get(key) if isinstance(container, dict) else container[key] if isinstance(container, list) and isinstance(key, int) and key < len(container) else None
@@ -838,8 +838,19 @@ def _validate_action(root: Path, case_id: str, case: dict[str, object], expected
         return
     if kind == "append-lock-entry":
         require_exact_keys(action, {"entry", "kind", "path"}, "fixture.invalid_action", f"action is not closed: {case_id}")
-        relative, target = safe_relative_path(root, action.get("path"))
-        if relative != LOCK_PATH.as_posix() or target != (root / LOCK_PATH).resolve() or "lock.self_inclusion" not in _issue_codes(expected):
+        target = _locked_fixture_path(root, action.get("path"), locked)
+        relative = target.relative_to(root).as_posix()
+        entry = require_object(action.get("entry"), "fixture.invalid_action", f"lock entry must be object: {case_id}")
+        require_exact_keys(entry, {"digest_kind", "path", "sha256"}, "fixture.invalid_action", f"lock entry is not closed: {case_id}")
+        entry_relative, entry_target = safe_relative_path(root, entry.get("path"))
+        document = copy.deepcopy(require_object(load_json(target), "lock.invalid_manifest", f"lock input must be object: {case_id}"))
+        require_exact_keys(document, {"entries", "profile_version", "self_digest"}, "lock.invalid_manifest", f"lock input is not closed: {case_id}")
+        entries = require_list(document.get("entries"), "lock.invalid_manifest", f"lock entries must be array: {case_id}")
+        entries.append(copy.deepcopy(entry))
+        lock_schema_path = _locked_fixture_path(root, (SCHEMA_DIRECTORY / "lock.schema.json").as_posix(), locked)
+        lock_schema = require_object(load_json(lock_schema_path), "profile.invalid_schema", "lock schema must be object")
+        _assert_machine_schema(document, lock_schema, {}, f"{case_id}/candidate-lock")
+        if target != primary or entry_relative != relative or entry_target != target or not any(isinstance(item, dict) and item.get("path") == relative for item in entries) or "lock.self_inclusion" not in _issue_codes(expected):
             reject("fixture.invalid_action", f"self-inclusion action differs: {case_id}")
         return
     if kind == "work-unit-boundary":
