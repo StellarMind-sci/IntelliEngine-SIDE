@@ -27,7 +27,9 @@ REQUIRED_FILES = [
     "docs/rfc/0000-template.md",
     "docs/adr/0000-template.md",
     "docs/roadmap/milestones.md",
+    "docs/roadmap/stage-log.md",
     "docs/runbooks/development.md",
+    "docs/runbooks/codex-development-guide.md",
     "docs/runbooks/github-setup.md",
     "docs/runbooks/automation.md",
 ]
