@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "diagnostics": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {"pattern": "^conformance\\.[a-z_]+$", "type": "string"},
+          "phase": {"enum": ["fixture", "consumer", "differential", "generated", "security"]},
+          "severity": {"const": "error"}
+        },
+        "required": ["code", "phase", "severity"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "profile_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"}
+  },
+  "required": ["diagnostics", "profile_version"],
+  "type": "object"
+}

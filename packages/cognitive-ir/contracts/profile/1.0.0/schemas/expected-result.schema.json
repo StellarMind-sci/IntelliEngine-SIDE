@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "oneOf": [
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "invalid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "opaque"}, "operation_outcome": {"enum": ["succeeded", "indeterminate", "policy_denied"]}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"enum": ["resource_exhausted", "indeterminate"]}}}
+      ]
+    }
+  ],
+  "properties": {
+    "contract_id": {"type": "string"},
+    "contract_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"},
+    "issues": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {"type": "string"},
+          "path": {"type": "string"},
+          "severity": {"enum": ["error", "warning", "info"]}
+        },
+        "required": ["code", "path", "severity"],
+        "type": "object"
+      },
+      "maxItems": 100,
+      "type": "array"
+    },
+    "jcs_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "mode": {"enum": ["profile", "schema_admission", "semantic_validation", "transport"]},
+    "object_result": {"enum": ["valid", "invalid", "opaque", "not_evaluated"]},
+    "operation_outcome": {"enum": ["succeeded", "resource_exhausted", "indeterminate", "policy_denied"]},
+    "profile_version": {"const": "1.0.0"},
+    "raw_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "work_units_consumed": {"minimum": 0, "type": "integer"}
+  },
+  "required": ["contract_id", "contract_version", "issues", "mode", "object_result", "operation_outcome", "profile_version", "raw_sha256", "work_units_consumed"],
+  "type": "object"
+}

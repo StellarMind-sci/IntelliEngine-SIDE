@@ -1,0 +1,261 @@
+{
+  "entries": [
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/diagnostics/conformance.json",
+      "sha256": "9c2fdb9e2888b9cf81205f900da95633450eb4ca905ae5af73a2977d26828b50"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/annotation-propagation/case.json",
+      "sha256": "00cf7bbefdbe7720705ca628479f0de055ddafeb05830c3cb1e1ff2a9305e7c6"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/annotation-propagation/instance.json",
+      "sha256": "a1dc39abc83572e468fc473955717e2669073f5244bf98673ea0f046637306b4"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/annotation-propagation/schema.json",
+      "sha256": "10d8f2f9ddfaf4424215bf375dc6ebedd17edee086611307810e245faab4b27c"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/cross-resource-cycle-attempt/case.json",
+      "sha256": "646d4b7af1b7b05b33d7ccfef97b8f70e505c3dd65ce90ec86c4395c2bd9762e"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/cross-resource-cycle-attempt/resource-a.json",
+      "sha256": "b75a440a8dffb9fee5c6f171a373ef58e67b8cc6d2cbdd35155852b175618912"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/cross-resource-cycle-attempt/resource-b.json",
+      "sha256": "78030d0d35b89cbb7211d7d45831b8e542cdd34af7b8fdb3e2ef959e4ba2f08c"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/cross-resource-dag/case.json",
+      "sha256": "9d2e034911c9f669ebb55ea168055ad95a1bc02907f0548f0c4cc57b4d53a8de"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/cross-resource-dag/leaf.json",
+      "sha256": "612c3c87bf6797405b741d516ad1866d9395ec1d20276a5baf58fc676aabff2f"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/cross-resource-dag/root.json",
+      "sha256": "4c45acd692f793aeea096c198a819aae766c62b619b57c26dfdc2ab30e031429"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/keyword-ordinal-duplicate/case.json",
+      "sha256": "161145935fd7288f9e39dbfe9734300c78debb3ab5635af39eac441af8901113"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/local-array-recursion/case.json",
+      "sha256": "dadf48c61b990bddbdd9a0451432ae1eab776682f2196cf2ad4cc95ce6eb1a88"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/local-array-recursion/schema.json",
+      "sha256": "adbbda43e596c8cec95c4a295ca688c76fa1944fc44e7cbd48480241aab04fad"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/local-nonproductive-cycle/case.json",
+      "sha256": "5e1be6686cc620e1f5be190c8a170ecb63e58951619a27c6d0659b881bb57a8d"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/local-nonproductive-cycle/schema.json",
+      "sha256": "06e762fd02cc54adc95632ca702af6b607a9be02124eee5db08ed4361213bddb"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/local-object-recursion/case.json",
+      "sha256": "5fe9b89f60b914ba070374c62e9226ea8ea3464d6d6dfd3498958ea716a56d03"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/local-object-recursion/schema.json",
+      "sha256": "98b776592caba761769d3b3089112c58740fc15327dba8c99f1a70246120458a"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/lock-digest-tamper/case.json",
+      "sha256": "96f621bffeae7865af8f49a65d2c3677ff4d19e7c7f307fac265dba1365add24"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/lock-self-inclusion/case.json",
+      "sha256": "364646bf09d2785a564f34f4542ad3fd0652eb63581dc594326ee0a5acfdc3ee"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/manifest.json",
+      "sha256": "e7ae0d9a044064fe6ed9b1f5ea5b903aacd23403db90f4148991823eee6d71ca"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/parser-bom/case.json",
+      "sha256": "0cd4af61e37003ce0da071fa52fd9f2916cfac1ede115108ca5509b7408a3833"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/parser-duplicate-key/case.json",
+      "sha256": "db87b1f6b7848bbfb6c68768f5328ed2fa19a986e11aeda0270ffea64fdf947e"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/parser-invalid-escape/case.json",
+      "sha256": "ed782ab8597c26e6fd385fb960e1016f07b086b5026d638de926f0e4fb4cf826"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/parser-invalid-utf8/case.json",
+      "sha256": "61160e83566802ac3bad9c8732d6ac1b6f17981d82b977bc396c0aa945dc5238"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/parser-unpaired-surrogate/case.json",
+      "sha256": "573ef04be217f661b50a7e1d5d8c11e84b81bfcbd22ee7a05b72814bf6be172a"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/profile-baseline-valid/case.json",
+      "sha256": "6fcfa5245083fbd958af23acbab58c0fc82a1541aabc6b2df08aceeb88570c1a"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/profile-missing/case.json",
+      "sha256": "49eef4423b2e7af423e7575961b7e4d849975e597f54c6526023645335fcf2a5"
+    },
+    {
+      "digest_kind": "raw_sha256",
+      "path": "profile/1.0.0/fixtures/raw/bom.raw",
+      "sha256": "aa25e978046d680ef8740d837e6de5bc1e2a2dc6089dbda1012544b538d53f65"
+    },
+    {
+      "digest_kind": "raw_sha256",
+      "path": "profile/1.0.0/fixtures/raw/duplicate-key.raw",
+      "sha256": "1c53ee0df7b12fd4d65b976120c7fa6b847dc41dffd7f0331c3237a1ceab1756"
+    },
+    {
+      "digest_kind": "raw_sha256",
+      "path": "profile/1.0.0/fixtures/raw/invalid-escape.raw",
+      "sha256": "a3e11777af1caa9ff6e2f749660786d85680827ccd6615cb5ae92c746d223322"
+    },
+    {
+      "digest_kind": "raw_sha256",
+      "path": "profile/1.0.0/fixtures/raw/invalid-utf8.raw",
+      "sha256": "a38ed3d7237a1d133f9afc64b26571d75396dbc5b1d7f8083a17753785aa21ec"
+    },
+    {
+      "digest_kind": "raw_sha256",
+      "path": "profile/1.0.0/fixtures/raw/unpaired-surrogate.raw",
+      "sha256": "89f8ca88ea20e6cd48ed0ab6b731b66377cab0c8fb9a7187ea96ac6813ed24e4"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/regex-grammar-boundary/case.json",
+      "sha256": "f9ee9ef6359b1cdc3ed458c907ed2859ec8cc0c376595b004e817ed018a5f0f9"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/regex-grammar-boundary/schema.json",
+      "sha256": "05b69553e46082886488f8fe52fe305ca96632973306c730927818eb5848aa99"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/sorting-utf16-vs-utf8/case.json",
+      "sha256": "0a7214b12bffe9fc59b81040059aec11bbe889206138808afa996b38cc6d2003"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/sorting-utf16-vs-utf8/input.json",
+      "sha256": "28c95d1bbb2209223307e62f489020e8f9e0cfa16adf2daf6d88127a1e8dd22a"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-admission-limit/case.json",
+      "sha256": "ebc5860edd745605f56bc635905c3e28d884283946ff3730e69c8cff7acbfedf"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-admission-limit-minus-one/case.json",
+      "sha256": "bcaf6a07848fca77e4ae80ca15e48ec6da3667280d5f4a91050a76a8f9963b91"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-admission-limit-plus-one/case.json",
+      "sha256": "748782896c2ef32d948c90be9018f2e0a952562455ca199f751614067c522d57"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-boundaries/instance.json",
+      "sha256": "49c987621f206f09e5fbe23b516b55a36f838cb14867961f1d84a554d3a35b6b"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-boundaries/schema.json",
+      "sha256": "011d667ce4dc9b128886f99763211270afab72df6d9c5f6004b4856c0c28494e"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-semantic-limit/case.json",
+      "sha256": "3c54d9b480c75598f285b73c78b72d1cc400139f0edc90ff4fb94999aba62690"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-semantic-limit-minus-one/case.json",
+      "sha256": "ee294e643c1bd9c0ccc0305daea55834e0b0287d1768b15b0c84fc03679ee266"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/fixtures/work-unit-semantic-limit-plus-one/case.json",
+      "sha256": "6090c2fde5e0a090e677270aeb1adbdeb81e274bdb21126b6e6ec830a695a6ca"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/profile.json",
+      "sha256": "cbaad5c17a1e1315131b773c72be52834ed1f72a121323f68781970e8d6c413a"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/schemas/diagnostics.schema.json",
+      "sha256": "b16c172534366f3e38358c86e1e5fb08f2de20eab226d0bd3f7f4e1843bc5761"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/schemas/expected-result.schema.json",
+      "sha256": "3a5010c67293977ee7da9a10c87b2b8e96d2fb3256215a91c8df1a4f8ee2287a"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/schemas/fixture-case.schema.json",
+      "sha256": "a7c7129d6dae58b72a6f9d9fd4eb18af6a2eef71c06614fcfee04bb5da1f7256"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/schemas/fixture-manifest.schema.json",
+      "sha256": "44ede7e87a07bd817286a5d6786236a93ed8710fdf2a2fa3225ccdc60c4c1c88"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/schemas/lock.schema.json",
+      "sha256": "61a235b325af6380aca34676a1234bfbfa8af217ad517899dab6c9b4a7b6276b"
+    },
+    {
+      "digest_kind": "jcs_sha256",
+      "path": "profile/1.0.0/schemas/profile.schema.json",
+      "sha256": "123701293e969670dc8593263d1fb8e44e1ce4253e7bd4882c415c5da8e7095d"
+    }
+  ],
+  "profile_version": "1.0.0",
+  "self_digest": "excluded"
+}

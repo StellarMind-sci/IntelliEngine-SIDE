@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cases": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {"pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "type": "string"},
+          "category": {"enum": ["annotation", "lock", "parser", "profile", "recursion", "reference-dag", "regex", "sorting", "work-unit"]},
+          "path": {"pattern": "^[a-z0-9]+(-[a-z0-9]+)*/case\\.json$", "type": "string"}
+        },
+        "required": ["case_id", "category", "path"],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "fixture_set_version": {"const": "1.0.0"},
+    "profile_version": {"const": "1.0.0"},
+    "schema": {"const": "schemas/fixture-manifest.schema.json"}
+  },
+  "required": ["cases", "fixture_set_version", "profile_version", "schema"],
+  "type": "object"
+}

@@ -1,0 +1,2845 @@
+{
+  "canonical_json": {
+    "digest": "sha-256-lowercase-hex",
+    "format": "RFC-8785-JCS",
+    "integer_maximum": 9007199254740991,
+    "integer_minimum": -9007199254740991,
+    "jcs_key_order": "unsigned-utf16-code-units",
+    "normalization": "none",
+    "raw_input_requirements": [
+      "utf8-without-bom",
+      "no-duplicate-members",
+      "unicode-scalars-only",
+      "finite-binary64-numbers"
+    ],
+    "validator_order": "unsigned-utf8-bytes"
+  },
+  "compatibility": {
+    "contract_profile_binding": "explicit-major",
+    "minor_upgrade": "explicit-lock-change",
+    "old_major_minimum_release_cycles": 1,
+    "old_major_mode": "read-only"
+  },
+  "conformance": {
+    "comparison": "exact-normative-projection",
+    "consumer_count": 2,
+    "expected_result_required": true,
+    "primary_consumer_priority_on_mismatch": false
+  },
+  "diagnostics": {
+    "catalog": "diagnostics/conformance.json",
+    "maximum_per_phase": 100,
+    "sort_order": [
+      "path-utf8",
+      "severity",
+      "code-utf8",
+      "details-jcs"
+    ]
+  },
+  "implementation_roles": {
+    "normative_implementation": "none",
+    "primary": "typescript",
+    "secondary": "python-independent",
+    "shared_validator": "forbidden"
+  },
+  "normative_artifacts": {
+    "categories": [
+      "profile",
+      "schemas",
+      "diagnostics",
+      "fixtures",
+      "lock"
+    ],
+    "priority": [
+      "accepted-adr",
+      "machine-artifacts",
+      "conforming-implementations",
+      "documentation"
+    ]
+  },
+  "portable_limits": {
+    "bundle_resources": 128,
+    "cognitive_node_jcs_bytes": 1048576,
+    "diagnostics_per_phase": 100,
+    "json_depth": 64,
+    "json_members_and_elements": 100000,
+    "ref_chain": 64,
+    "regex_unicode_scalars": 1024,
+    "schema_admission_work_units": 250000,
+    "semantic_validation_work_units": 1000000,
+    "single_array_items": 10000,
+    "single_string_utf8_bytes": 262144,
+    "type_definition_bundle_jcs_bytes": 2097152
+  },
+  "profile_id": "org.intelliengine.conformance",
+  "profile_version": "1.0.0",
+  "publication": {
+    "compatibility": "major-explicit-minor-opt-in",
+    "mode": "shadow-until-two-consumers-conform",
+    "old_major_read_only_minimum_release_cycles": 1
+  },
+  "references": {
+    "cross_resource": "digest-uri-dag-only",
+    "digest_uri_prefix": "urn:intelliengine:schema:sha256:",
+    "external_fallback": "forbidden",
+    "local_fragment_recursion": "instance-location-must-descend",
+    "non_productive_local_cycle": "reject-at-admission"
+  },
+  "regex_profile": {
+    "ast_nodes": [
+      "literal",
+      "dot",
+      "anchor",
+      "class",
+      "class-range",
+      "concatenation",
+      "alternation",
+      "group",
+      "quantifier"
+    ],
+    "case_sensitive": true,
+    "forbidden": [
+      "backreference",
+      "lookaround",
+      "named-group",
+      "atomic-group",
+      "conditional-group",
+      "inline-flag",
+      "lazy-quantifier",
+      "possessive-quantifier",
+      "implementation-private-escape",
+      "unicode-property-escape",
+      "quantified-group-containing-quantifier-or-alternation"
+    ],
+    "matching": "unanchored-search",
+    "maximum_repeat": 10000,
+    "productions": [
+      {
+        "alternatives": [
+          [
+            {
+              "name": "alternation",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "pattern"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "concatenation",
+              "repeat": "once"
+            },
+            {
+              "name": "alternation-tail",
+              "repeat": "zero-or-more"
+            }
+          ]
+        ],
+        "name": "alternation"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "pipe",
+              "repeat": "once"
+            },
+            {
+              "name": "concatenation",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "alternation-tail"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "quantified-atom",
+              "repeat": "zero-or-more"
+            }
+          ]
+        ],
+        "name": "concatenation"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "atom",
+              "repeat": "once"
+            },
+            {
+              "name": "quantifier",
+              "repeat": "optional"
+            }
+          ]
+        ],
+        "name": "quantified-atom"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "literal",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "escape",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "dot",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "start-anchor",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "end-anchor",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "character-class",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "group",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "atom"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "class-open",
+              "repeat": "once"
+            },
+            {
+              "name": "negation",
+              "repeat": "optional"
+            },
+            {
+              "name": "class-item",
+              "repeat": "zero-or-more"
+            },
+            {
+              "name": "class-close",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "character-class"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "literal",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "escape",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "range",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "class-item"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "literal",
+              "repeat": "once"
+            },
+            {
+              "name": "range-separator",
+              "repeat": "once"
+            },
+            {
+              "name": "literal",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "range"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "group-open",
+              "repeat": "once"
+            },
+            {
+              "name": "alternation",
+              "repeat": "once"
+            },
+            {
+              "name": "group-close",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "group"
+      },
+      {
+        "alternatives": [
+          [
+            {
+              "name": "star",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "plus",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "question",
+              "repeat": "once"
+            }
+          ],
+          [
+            {
+              "name": "bounded-repeat",
+              "repeat": "once"
+            }
+          ]
+        ],
+        "name": "quantifier"
+      }
+    ],
+    "quantifier_constraints": {
+      "greedy_only": true,
+      "group_with_alternation_or_quantifier_may_be_quantified": false,
+      "maximum": 10000,
+      "minimum": 0
+    },
+    "terminals": [
+      {
+        "lexeme": null,
+        "machine_predicate": {
+          "kind": "unicode-scalar-excluding",
+          "values": [
+            "\\",
+            ".",
+            "^",
+            "$",
+            "[",
+            "]",
+            "(",
+            ")",
+            "|",
+            "*",
+            "+",
+            "?",
+            "{",
+            "}"
+          ]
+        },
+        "name": "literal",
+        "token_kind": "scalar"
+      },
+      {
+        "lexeme": "\\",
+        "machine_predicate": {
+          "kind": "escape-literal-catalog",
+          "values": [
+            ".",
+            "*",
+            "+",
+            "?",
+            "[",
+            "]",
+            "(",
+            ")",
+            "{",
+            "}",
+            "|",
+            "^",
+            "$",
+            "\\"
+          ]
+        },
+        "name": "escape",
+        "token_kind": "escaped-scalar"
+      },
+      {
+        "lexeme": ".",
+        "machine_predicate": null,
+        "name": "dot",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "^",
+        "machine_predicate": null,
+        "name": "start-anchor",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "$",
+        "machine_predicate": null,
+        "name": "end-anchor",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "[",
+        "machine_predicate": null,
+        "name": "class-open",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "]",
+        "machine_predicate": null,
+        "name": "class-close",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "^",
+        "machine_predicate": null,
+        "name": "negation",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "-",
+        "machine_predicate": null,
+        "name": "range-separator",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "|",
+        "machine_predicate": null,
+        "name": "pipe",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "(",
+        "machine_predicate": null,
+        "name": "group-open",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": ")",
+        "machine_predicate": null,
+        "name": "group-close",
+        "token_kind": "punctuation"
+      },
+      {
+        "lexeme": "*",
+        "machine_predicate": null,
+        "name": "star",
+        "token_kind": "quantifier"
+      },
+      {
+        "lexeme": "+",
+        "machine_predicate": null,
+        "name": "plus",
+        "token_kind": "quantifier"
+      },
+      {
+        "lexeme": "?",
+        "machine_predicate": null,
+        "name": "question",
+        "token_kind": "quantifier"
+      },
+      {
+        "lexeme": "{m}|{m,n}",
+        "machine_predicate": {
+          "kind": "bounded-repeat",
+          "values": [
+            "{m}",
+            "{m,n}",
+            "0<=m<=n<=10000"
+          ]
+        },
+        "name": "bounded-repeat",
+        "token_kind": "quantifier"
+      }
+    ],
+    "unicode_domain": "scalar-values"
+  },
+  "schema_draft": "https://json-schema.org/draft/2020-12/schema",
+  "schema_profile": {
+    "allowed_keywords": [
+      "$schema",
+      "$ref",
+      "$defs",
+      "$comment",
+      "allOf",
+      "anyOf",
+      "oneOf",
+      "not",
+      "if",
+      "then",
+      "else",
+      "dependentSchemas",
+      "prefixItems",
+      "items",
+      "contains",
+      "minContains",
+      "maxContains",
+      "properties",
+      "patternProperties",
+      "additionalProperties",
+      "propertyNames",
+      "type",
+      "enum",
+      "const",
+      "multipleOf",
+      "maximum",
+      "exclusiveMaximum",
+      "minimum",
+      "exclusiveMinimum",
+      "maxLength",
+      "minLength",
+      "pattern",
+      "maxItems",
+      "minItems",
+      "uniqueItems",
+      "maxProperties",
+      "minProperties",
+      "required",
+      "dependentRequired",
+      "title",
+      "description",
+      "default",
+      "deprecated",
+      "readOnly",
+      "writeOnly",
+      "examples",
+      "format",
+      "contentEncoding",
+      "contentMediaType",
+      "contentSchema",
+      "x-*",
+      "unevaluatedItems",
+      "unevaluatedProperties"
+    ],
+    "annotation_only_keywords": [
+      "title",
+      "description",
+      "default",
+      "deprecated",
+      "readOnly",
+      "writeOnly",
+      "examples",
+      "format",
+      "contentEncoding",
+      "contentMediaType",
+      "contentSchema",
+      "x-*"
+    ],
+    "evaluation_rules": {
+      "allOf": "evaluate-all-propagate-only-if-all-succeed",
+      "anyOf": "evaluate-all-propagate-all-successful-branches",
+      "contains": "evaluate-all-propagate-indexes-only-if-count-succeeds",
+      "failed_schema_annotations": "discard",
+      "if_then_else": "evaluate-if-and-selected-branch-only",
+      "not": "always-discard-subschema-annotations",
+      "oneOf": "evaluate-all-propagate-only-the-sole-successful-branch",
+      "ref_siblings": "evaluate-by-ordinal",
+      "unevaluated": "evaluate-last-after-successful-annotation-merge"
+    },
+    "forbidden_keywords": [
+      "$id",
+      "$anchor",
+      "$dynamicRef",
+      "$dynamicAnchor",
+      "$vocabulary"
+    ],
+    "keyword_ordinals": {
+      "$comment": 30,
+      "$defs": 20,
+      "$ref": 10,
+      "$schema": 0,
+      "additionalProperties": 210,
+      "allOf": 100,
+      "anyOf": 110,
+      "const": 320,
+      "contains": 180,
+      "contentEncoding": 780,
+      "contentMediaType": 790,
+      "contentSchema": 800,
+      "default": 720,
+      "dependentRequired": 630,
+      "dependentSchemas": 150,
+      "deprecated": 730,
+      "description": 710,
+      "else": 142,
+      "enum": 310,
+      "examples": 760,
+      "exclusiveMaximum": 350,
+      "exclusiveMinimum": 370,
+      "format": 770,
+      "if": 140,
+      "items": 170,
+      "maxContains": 182,
+      "maxItems": 500,
+      "maxLength": 400,
+      "maxProperties": 600,
+      "maximum": 340,
+      "minContains": 181,
+      "minItems": 510,
+      "minLength": 410,
+      "minProperties": 610,
+      "minimum": 360,
+      "multipleOf": 330,
+      "not": 130,
+      "oneOf": 120,
+      "pattern": 420,
+      "patternProperties": 200,
+      "prefixItems": 160,
+      "properties": 190,
+      "propertyNames": 220,
+      "readOnly": 740,
+      "required": 620,
+      "then": 141,
+      "title": 700,
+      "type": 300,
+      "unevaluatedItems": 900,
+      "unevaluatedProperties": 910,
+      "uniqueItems": 520,
+      "writeOnly": 750,
+      "x-*": 850
+    },
+    "unknown_x_annotation": "preserve-without-schema-scan"
+  },
+  "work_units": {
+    "admission_actions": {
+      "graph_edge": 1,
+      "graph_vertex": 1,
+      "json_array_base": 1,
+      "json_array_element": 1,
+      "json_object_base": 1,
+      "json_object_member": 1,
+      "json_scalar_or_null": 1,
+      "ref_resolution": 1,
+      "schema_array_element": 1,
+      "schema_keyword_visit": 1,
+      "schema_location_entry": 1,
+      "schema_map_member": 1,
+      "single_schema_descent": 1
+    },
+    "admission_formulas": {
+      "regex_ast": "1+ast_nodes",
+      "regex_compact_counter": "1+ast_nodes",
+      "regex_grammar_parse": "1+pattern_scalars",
+      "resource_digest": "1+ceil(resource_jcs_bytes/256)"
+    },
+    "admission_limit": 250000,
+    "budget_rule": "precharge-whole-action-or-stop",
+    "diagnostics_cost_units": 0,
+    "formula_language": "integer-expression-v1",
+    "json_value_cost": {
+      "array": {
+        "base": 1,
+        "per_element": 1,
+        "recursive_value_cost": true
+      },
+      "object": {
+        "base": 1,
+        "member_order": "unsigned-utf8-bytes",
+        "per_member": 1,
+        "recursive_value_cost": true
+      },
+      "scalar_or_null": 1
+    },
+    "keyword_rules": {
+      "$schema": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "$ref": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "ref_resolution",
+            "condition": "keyword-value-present",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "ref_resolution",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "each-selected-subschema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "$defs": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_map_member",
+            "condition": "keyword-value-is-map",
+            "formula": null,
+            "iteration": "map-values",
+            "order": "unsigned-utf8-bytes"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "$comment": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "allOf": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_array_element",
+            "condition": "keyword-value-is-array",
+            "formula": null,
+            "iteration": "schema-array-elements",
+            "order": "schema-array-order"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "each-selected-subschema",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          }
+        ]
+      },
+      "anyOf": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_array_element",
+            "condition": "keyword-value-is-array",
+            "formula": null,
+            "iteration": "schema-array-elements",
+            "order": "schema-array-order"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "each-selected-subschema",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          }
+        ]
+      },
+      "oneOf": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_array_element",
+            "condition": "keyword-value-is-array",
+            "formula": null,
+            "iteration": "schema-array-elements",
+            "order": "schema-array-order"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "each-selected-subschema",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          }
+        ]
+      },
+      "not": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "discard-always",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "each-selected-subschema",
+            "formula": null,
+            "iteration": "applicator-branches",
+            "order": "schema-array-order"
+          }
+        ]
+      },
+      "if": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-selected-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "evaluate-if-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "if-then-else"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "evaluate-if-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "if-then-else"
+          }
+        ]
+      },
+      "then": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-selected-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "branch-selected-by-if",
+            "formula": null,
+            "iteration": "selected-conditional",
+            "order": "if-then-else"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "selected-branch",
+            "formula": null,
+            "iteration": "selected-conditional",
+            "order": "if-then-else"
+          }
+        ]
+      },
+      "else": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-selected-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "branch-selected-by-if",
+            "formula": null,
+            "iteration": "selected-conditional",
+            "order": "if-then-else"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "selected-branch",
+            "formula": null,
+            "iteration": "selected-conditional",
+            "order": "if-then-else"
+          }
+        ]
+      },
+      "dependentSchemas": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_map_member",
+            "condition": "keyword-value-is-map",
+            "formula": null,
+            "iteration": "map-values",
+            "order": "unsigned-utf8-bytes"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "map_member_visit",
+            "condition": "each-dependent-declaration",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "property_presence_or_membership_check",
+            "condition": "trigger-property",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "trigger-present",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "trigger-present",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          }
+        ]
+      },
+      "prefixItems": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_array_element",
+            "condition": "keyword-value-is-array",
+            "formula": null,
+            "iteration": "schema-array-elements",
+            "order": "schema-array-order"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "items-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "prefix-index-covered",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "prefix-index-covered",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "items": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "items-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "post-prefix-item",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "post-prefix-item",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "contains": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "evaluated-items-on-count-success",
+        "evaluated_set_rule": "items-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-actual-array-element",
+            "formula": null,
+            "iteration": "actual-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "each-actual-array-element",
+            "formula": null,
+            "iteration": "actual-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "contains-count-succeeded-new-marker",
+            "formula": null,
+            "iteration": "matched-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "minContains": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "maxContains": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "properties": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_map_member",
+            "condition": "keyword-value-is-map",
+            "formula": null,
+            "iteration": "map-values",
+            "order": "unsigned-utf8-bytes"
+          }
+        ],
+        "annotation_rule": "evaluated-properties",
+        "evaluated_set_rule": "properties-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "map_member_visit",
+            "condition": "each-declared-property",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "property_presence_or_membership_check",
+            "condition": "each-declared-property",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "declared-property-present",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "declared-property-present",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          }
+        ]
+      },
+      "patternProperties": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "schema_map_member",
+            "condition": "keyword-value-is-map",
+            "formula": null,
+            "iteration": "map-values",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": null,
+            "condition": "each-map-key",
+            "formula": "regex_grammar_parse",
+            "iteration": "map-keys",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": null,
+            "condition": "grammar-accepted",
+            "formula": "regex_ast",
+            "iteration": "ast-nodes",
+            "order": "construction-order"
+          },
+          {
+            "action": null,
+            "condition": "grammar-accepted",
+            "formula": "regex_compact_counter",
+            "iteration": "ast-nodes",
+            "order": "construction-order"
+          }
+        ],
+        "annotation_rule": "evaluated-properties",
+        "evaluated_set_rule": "properties-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "map_member_visit",
+            "condition": "each-declared-pattern",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-actual-member",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": null,
+            "condition": "each-actual-member-times-each-pattern",
+            "formula": "regex_attempt",
+            "iteration": "actual-members-x-declared-patterns",
+            "order": "member-then-pattern-utf8"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "pattern-matched",
+            "formula": null,
+            "iteration": "actual-members-x-declared-patterns",
+            "order": "member-then-pattern-utf8"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "actual-members-x-declared-patterns",
+            "order": "member-then-pattern-utf8"
+          }
+        ]
+      },
+      "additionalProperties": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "properties-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-actual-member",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "property_presence_or_membership_check",
+            "condition": "classify-additional-member",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "member-is-additional",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          }
+        ]
+      },
+      "propertyNames": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-actual-member",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "applicator_branch_entry",
+            "condition": "each-property-name",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "property-name-instance",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          }
+        ]
+      },
+      "type": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "enum": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-enum-candidate",
+            "formula": null,
+            "iteration": "enum-candidates",
+            "order": "schema-array-order"
+          },
+          {
+            "action": null,
+            "condition": "each-enum-candidate-full-scan",
+            "formula": "const_or_enum_jcs_compare",
+            "iteration": "enum-candidates",
+            "order": "schema-array-order"
+          }
+        ]
+      },
+      "const": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "always",
+            "formula": "const_or_enum_jcs_compare",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "multipleOf": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "maximum": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "exclusiveMaximum": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "minimum": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "exclusiveMinimum": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "maxLength": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "minLength": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "pattern": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-is-string",
+            "formula": "regex_grammar_parse",
+            "iteration": "pattern-scalars",
+            "order": "scalar-order"
+          },
+          {
+            "action": null,
+            "condition": "grammar-accepted",
+            "formula": "regex_ast",
+            "iteration": "ast-nodes",
+            "order": "construction-order"
+          },
+          {
+            "action": null,
+            "condition": "grammar-accepted",
+            "formula": "regex_compact_counter",
+            "iteration": "ast-nodes",
+            "order": "construction-order"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "instance-string",
+            "formula": "regex_attempt",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "maxItems": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "minItems": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "uniqueItems": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-actual-array-element",
+            "formula": null,
+            "iteration": "actual-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": null,
+            "condition": "each-actual-array-element",
+            "formula": "unique_item_digest",
+            "iteration": "actual-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "maxProperties": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "minProperties": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "numeric_assertion",
+            "condition": "keyword-applicable",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "required": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-required-name",
+            "formula": null,
+            "iteration": "required-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "required_name_presence_check",
+            "condition": "each-required-name",
+            "formula": null,
+            "iteration": "required-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "dependentRequired": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "none",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "map_member_visit",
+            "condition": "each-dependent-declaration",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "property_presence_or_membership_check",
+            "condition": "trigger-property",
+            "formula": null,
+            "iteration": "declared-map-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "trigger-present-each-dependency",
+            "formula": null,
+            "iteration": "dependency-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "required_name_presence_check",
+            "condition": "trigger-present-each-dependency",
+            "formula": null,
+            "iteration": "dependency-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "title": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "description": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "default": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "deprecated": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "readOnly": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "writeOnly": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "examples": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "format": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "contentEncoding": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "contentMediaType": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "contentSchema": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "x-*": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": null,
+            "condition": "keyword-value-present",
+            "formula": "json-value-cost",
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "collect-on-success",
+        "evaluated_set_rule": "none",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ]
+      },
+      "unevaluatedItems": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "items-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "item-not-evaluated",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "property_presence_or_membership_check",
+            "condition": "evaluated-item-membership",
+            "formula": null,
+            "iteration": "actual-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "item-not-evaluated",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "affected-array-elements",
+            "order": "array-index"
+          }
+        ]
+      },
+      "unevaluatedProperties": {
+        "admission_steps": [
+          {
+            "action": "schema_keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "single_schema_descent",
+            "condition": "keyword-selects-schema",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          }
+        ],
+        "annotation_rule": "propagate-success-only",
+        "evaluated_set_rule": "properties-on-success",
+        "semantic_steps": [
+          {
+            "action": "keyword_visit",
+            "condition": "always",
+            "formula": null,
+            "iteration": "once",
+            "order": "keyword-ordinal"
+          },
+          {
+            "action": "object_member_or_array_element_visit",
+            "condition": "each-actual-member",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "property_presence_or_membership_check",
+            "condition": "evaluated-property-membership",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "schema_instance_pair",
+            "condition": "member-not-evaluated",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          },
+          {
+            "action": "evaluated_set_new_marker",
+            "condition": "subschema-succeeded-new-marker",
+            "formula": null,
+            "iteration": "actual-object-members",
+            "order": "unsigned-utf8-bytes"
+          }
+        ]
+      }
+    },
+    "precharge_and_stop": {
+      "exceeding_action_executed": false,
+      "partial_charge": false,
+      "partial_object_result": false,
+      "resource_diagnostic_cost_units": 0
+    },
+    "semantic_actions": {
+      "applicator_branch_entry": 1,
+      "evaluated_set_new_marker": 1,
+      "keyword_visit": 1,
+      "map_member_visit": 1,
+      "numeric_assertion": 1,
+      "object_member_or_array_element_visit": 1,
+      "property_presence_or_membership_check": 1,
+      "ref_resolution": 1,
+      "required_name_presence_check": 1,
+      "schema_instance_pair": 1
+    },
+    "semantic_formulas": {
+      "const_or_enum_jcs_compare": "1+ceil(candidate_jcs_bytes/256)+ceil(instance_jcs_bytes/256)",
+      "regex_attempt": "1+pattern_scalars+input_scalars",
+      "unique_item_digest": "1+ceil(item_jcs_bytes/256)"
+    },
+    "semantic_limit": 1000000,
+    "traversal": {
+      "arrays": "index-ascending",
+      "combiners": "schema-array-order",
+      "maps_and_instance_members": "unsigned-utf8-bytes",
+      "schema_keywords": "keyword-ordinal"
+    }
+  }
+}
