@@ -1,0 +1,51 @@
+name: Cognitive IR differential conformance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cognitive-ir-differential.yml"
+      - "packages/cognitive-ir/**"
+      - "scripts/conformance/**"
+      - "tests/conformance/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cognitive-ir-differential.yml"
+      - "packages/cognitive-ir/**"
+      - "scripts/conformance/**"
+      - "tests/conformance/**"
+
+permissions:
+  contents: read
+
+jobs:
+  differential:
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONNOUSERSITE: "1"
+      npm_config_offline: "true"
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify portable profile
+        run: python -B packages/cognitive-ir/tests/test_profile_contract.py
+      - name: Verify profile self-consistency
+        run: python -B packages/cognitive-ir/contracts/tools/verify_profile.py
+      - name: Test TypeScript consumer
+        run: node --test packages/cognitive-ir/tests/conformance-ts/*.test.ts
+      - name: Test Python consumer
+        run: python -B packages/cognitive-ir/tests/conformance_python/test_consumer.py
+      - name: Test differential safety gate
+        run: python -B tests/conformance/test_differential.py
+      - name: Compare both consumers with machine expected
+        run: python -B scripts/conformance/differential.py --profile-root packages/cognitive-ir/contracts/profile/1.0.0 --node node
