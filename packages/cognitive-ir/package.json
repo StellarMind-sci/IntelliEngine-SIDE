@@ -1,0 +1,12 @@
+{
+  "name": "@intelliengine/cognitive-ir",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "conformance:ts": "node src/conformance-ts/cli.ts --profile-root contracts/profile/1.0.0",
+    "test:conformance:ts": "node --test tests/conformance-ts/*.test.ts"
+  }
+}

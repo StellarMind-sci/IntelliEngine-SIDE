@@ -1,0 +1,32 @@
+name: Cognitive IR TypeScript conformance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cognitive-ir-ts.yml"
+      - "packages/cognitive-ir/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cognitive-ir-ts.yml"
+      - "packages/cognitive-ir/**"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run TypeScript conformance tests
+        run: node --test packages/cognitive-ir/tests/conformance-ts/*.test.ts
+      - name: Execute portable profile
+        run: node packages/cognitive-ir/src/conformance-ts/cli.ts --profile-root packages/cognitive-ir/contracts/profile/1.0.0
