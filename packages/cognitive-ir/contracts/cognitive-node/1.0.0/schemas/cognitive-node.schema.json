@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["contract_version", "id", "revision", "base_kind", "type_id", "type_version", "data", "provenance_refs"],
+  "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"},
+  "properties": {
+    "contract_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"},
+    "id": {"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "type": "string"},
+    "revision": {"maximum": 9007199254740991, "minimum": 1, "type": "integer"},
+    "base_kind": {"enum": ["entity", "variable", "relation", "constraint", "state", "process", "goal", "evidence", "assumption", "action", "experiment"]},
+    "type_id": {"pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*/[a-z0-9]+(?:[.-][a-z0-9]+)*$", "type": "string"},
+    "type_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"},
+    "data": {"type": "object"},
+    "provenance_refs": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true}
+  },
+  "additionalProperties": true
+}

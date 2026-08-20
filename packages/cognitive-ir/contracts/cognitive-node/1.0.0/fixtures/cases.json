@@ -1,0 +1,149 @@
+{
+  "contract_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "core-entity-transport-valid",
+      "category": "transport",
+      "operation": "transport",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-7a42-7a1b-8c2d-6a3f5b7e9d10", "revision": 1, "base_kind": "entity", "type_id": "org.intelliengine.core/entity", "type_version": "1.0.0", "data": {"name": "pendulum bob"}, "provenance_refs": ["prov:source:pendulum-notes:paragraph-12"]},
+      "context": {},
+      "expected": {"interface": "cognitive_node", "mode": "transport", "object_result": "valid", "operation_outcome": "succeeded", "issues": []}
+    },
+    {
+      "case_id": "math-equation-type-definition-valid",
+      "category": "type-definition",
+      "operation": "registration",
+      "input": {"definition_format_version": "1.0.0", "type_id": "org.intelliengine.math/equation", "type_version": "1.2.0", "base_kind": "relation", "owner": {"scope": "plugin", "id": "org.intelliengine.math"}, "data_schema": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "properties": {"expression": {"type": "string", "minLength": 1}, "symbols": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}}, "required": ["expression", "symbols"], "additionalProperties": false}, "schema_bundle": [], "required_capabilities": [], "provenance_refs": ["prov:type:math-equation:1"]},
+      "context": {"namespace_decision": "allowed", "owner_trust": "trusted"},
+      "expected": {"interface": "type_definition", "mode": "registration", "object_result": "valid", "operation_outcome": "succeeded", "issues": []}
+    },
+    {
+      "case_id": "math-equation-semantic-valid",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-7b03-724f-a6e1-1706659f32cd", "revision": 3, "base_kind": "relation", "type_id": "org.intelliengine.math/equation", "type_version": "1.2.0", "data": {"expression": "x^2 + y^2 = r^2", "symbols": ["r", "x", "y"]}, "provenance_refs": ["prov:derivation:equation-extraction:42"]},
+      "context": {"type_snapshot": "exact-math-equation"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "valid", "operation_outcome": "succeeded", "issues": []}
+    },
+    {
+      "case_id": "unknown-type-opaque",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-7c21-77ea-9c8d-d56e3fd94e34", "revision": 1, "base_kind": "state", "type_id": "org.example.neuroscience/activation-map", "type_version": "2.0.0", "data": {"opaque_vendor_value": "preserve-me"}, "provenance_refs": ["prov:import:external-project:7"]},
+      "context": {"type_snapshot": "type-id-absent"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "opaque", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.unknown_type", "path": "/type_id", "severity": "error"}]}
+    },
+    {
+      "case_id": "unsupported-type-version-opaque",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-7c21-77ea-9c8d-d56e3fd94e34", "revision": 1, "base_kind": "state", "type_id": "org.example.neuroscience/activation-map", "type_version": "2.0.0", "data": {"opaque_vendor_value": "preserve-me"}, "provenance_refs": ["prov:import:external-project:7"]},
+      "context": {"type_snapshot": "type-id-present-version-unavailable"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "opaque", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.unsupported_type_version", "path": "/type_version", "severity": "error"}]}
+    },
+    {
+      "case_id": "missing-provenance-invalid",
+      "category": "transport",
+      "operation": "transport",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-7d10-72c8-82aa-2b6f86ab2d33", "revision": 1, "base_kind": "variable", "type_id": "org.intelliengine.core/variable", "type_version": "1.0.0", "data": {"name": "x"}, "provenance_refs": []},
+      "context": {},
+      "expected": {"interface": "cognitive_node", "mode": "transport", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.missing_provenance", "path": "/provenance_refs", "severity": "error"}]}
+    },
+    {
+      "case_id": "base-kind-mismatch-invalid",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-7e55-7623-a707-3796bd50f812", "revision": 1, "base_kind": "action", "type_id": "org.intelliengine.math/equation", "type_version": "1.2.0", "data": {"expression": "x = 1", "symbols": ["x"]}, "provenance_refs": ["prov:user:1"]},
+      "context": {"type_snapshot": "exact-math-equation"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.base_kind_mismatch", "path": "/base_kind", "severity": "error"}]}
+    },
+    {
+      "case_id": "project-owner-core-namespace-denied",
+      "category": "type-definition",
+      "operation": "registration",
+      "input": {"definition_format_version": "1.0.0", "type_id": "org.intelliengine.core/custom-secret-type", "type_version": "1.0.0", "base_kind": "entity", "owner": {"scope": "project", "id": "0190c6b8-7f61-7b0b-a217-7da2ff2d41aa"}, "data_schema": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object"}, "schema_bundle": [], "required_capabilities": [], "provenance_refs": ["prov:user:type-definition:1"]},
+      "context": {"namespace_decision": "denied", "owner_trust": "trusted"},
+      "expected": {"interface": "type_definition", "mode": "registration", "object_result": "valid", "operation_outcome": "policy_denied", "issues": [{"code": "type_definition.namespace_denied", "path": "/type_id", "severity": "error"}]}
+    },
+    {
+      "case_id": "parser-duplicate-key-invalid",
+      "category": "parser",
+      "operation": "transport",
+      "input": {"portable_profile_fixture": "parser-duplicate-key"},
+      "context": {},
+      "expected": {"interface": "cognitive_node", "mode": "transport", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.duplicate_key", "path": "", "severity": "error"}]}
+    },
+    {
+      "case_id": "parser-unpaired-surrogate-invalid",
+      "category": "parser",
+      "operation": "transport",
+      "input": {"portable_profile_fixture": "parser-unpaired-surrogate"},
+      "context": {},
+      "expected": {"interface": "cognitive_node", "mode": "transport", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.invalid_unicode", "path": "", "severity": "error"}]}
+    },
+    {
+      "case_id": "node-resource-limit-exhausted",
+      "category": "resource",
+      "operation": "transport",
+      "input": {"boundary": "cognitive_node_jcs_bytes", "relation": "limit-plus-one"},
+      "context": {},
+      "expected": {"interface": "cognitive_node", "mode": "transport", "object_result": "not_evaluated", "operation_outcome": "resource_exhausted", "issues": [{"code": "validation.resource_exhausted", "path": "", "severity": "error"}]}
+    },
+    {
+      "case_id": "type-definition-resource-limit-exhausted",
+      "category": "resource",
+      "operation": "registration",
+      "input": {"boundary": "type_definition_jcs_bytes", "relation": "limit-plus-one"},
+      "context": {},
+      "expected": {"interface": "type_definition", "mode": "registration", "object_result": "not_evaluated", "operation_outcome": "resource_exhausted", "issues": [{"code": "type_definition.resource_exhausted", "path": "", "severity": "error"}]}
+    },
+    {
+      "case_id": "compatible-read",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-8101-7a2a-8d28-05ae2df86c01", "revision": 1, "base_kind": "relation", "type_id": "org.intelliengine.math/equation", "type_version": "1.3.0", "data": {"expression": "x = 1", "symbols": ["x"]}, "provenance_refs": ["prov:user:compatible-read:1"]},
+      "context": {"type_snapshot": "older-compatible-math-equation-1.2.0"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "compatible_read", "operation_outcome": "succeeded", "issues": []}
+    },
+    {
+      "case_id": "untrusted-type-opaque",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-8102-7285-95ce-b6c28b99880a", "revision": 1, "base_kind": "state", "type_id": "org.example.neuroscience/activation-map", "type_version": "2.0.0", "data": {"opaque_vendor_value": "preserve-me"}, "provenance_refs": ["prov:import:external-project:8"]},
+      "context": {"type_snapshot": "exact-type-owner-untrusted"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "opaque", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.untrusted_type", "path": "/type_id", "severity": "error"}]}
+    },
+    {
+      "case_id": "type-resolution-indeterminate",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-8103-72a8-8aa8-5cc3da74b108", "revision": 1, "base_kind": "entity", "type_id": "org.intelliengine.core/entity", "type_version": "1.0.0", "data": {"name": "unknown authority"}, "provenance_refs": ["prov:user:authority-check:1"]},
+      "context": {"type_snapshot": "authority-indeterminate"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": [{"code": "cognitive_node.type_resolution_indeterminate", "path": "/type_id", "severity": "error"}]}
+    },
+    {
+      "case_id": "invalid-data",
+      "category": "semantic",
+      "operation": "semantic",
+      "input": {"contract_version": "1.0.0", "id": "0190c6b8-8104-7778-8570-cce05f966f5a", "revision": 1, "base_kind": "relation", "type_id": "org.intelliengine.math/equation", "type_version": "1.2.0", "data": {"expression": "x = 1"}, "provenance_refs": ["prov:user:invalid-equation:1"]},
+      "context": {"type_snapshot": "exact-math-equation"},
+      "expected": {"interface": "cognitive_node", "mode": "semantic", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "cognitive_node.invalid_data", "path": "/data/symbols", "severity": "error"}]}
+    },
+    {
+      "case_id": "type-definition-forbidden-ref",
+      "category": "type-definition",
+      "operation": "registration",
+      "input": {"definition_format_version": "1.0.0", "type_id": "org.intelliengine.math/remote-shape", "type_version": "1.0.0", "base_kind": "entity", "owner": {"scope": "plugin", "id": "org.intelliengine.math"}, "data_schema": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "$ref": "https://example.invalid/schema.json"}, "schema_bundle": [], "required_capabilities": [], "provenance_refs": ["prov:type:remote-shape:1"]},
+      "context": {"namespace_decision": "allowed", "owner_trust": "trusted"},
+      "expected": {"interface": "type_definition", "mode": "registration", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "type_definition.forbidden_ref", "path": "/data_schema/$ref", "severity": "error"}]}
+    },
+    {
+      "case_id": "type-definition-unsupported-vocabulary",
+      "category": "type-definition",
+      "operation": "registration",
+      "input": {"definition_format_version": "1.0.0", "type_id": "org.intelliengine.math/unknown-keyword", "type_version": "1.0.0", "base_kind": "entity", "owner": {"scope": "plugin", "id": "org.intelliengine.math"}, "data_schema": {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "unknownKeyword": true}, "schema_bundle": [], "required_capabilities": [], "provenance_refs": ["prov:type:unknown-keyword:1"]},
+      "context": {"namespace_decision": "allowed", "owner_trust": "trusted"},
+      "expected": {"interface": "type_definition", "mode": "registration", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "type_definition.unsupported_schema_vocabulary", "path": "/data_schema/unknownKeyword", "severity": "error"}]}
+    }
+  ]
+}

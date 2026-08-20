@@ -1,0 +1,47 @@
+{
+  "contract_family": "cognitive-node",
+  "contract_version": "1.0.0",
+  "portable_profile": {
+    "profile_jcs_sha256": "cbaad5c17a1e1315131b773c72be52834ed1f72a121323f68781970e8d6c413a",
+    "profile_version": "1.0.0"
+  },
+  "base_kinds": [
+    "action",
+    "assumption",
+    "constraint",
+    "entity",
+    "evidence",
+    "experiment",
+    "goal",
+    "process",
+    "relation",
+    "state",
+    "variable"
+  ],
+  "limits": {
+    "cognitive_node_jcs_bytes": 1048576,
+    "json_array_elements": 10000,
+    "json_depth": 64,
+    "json_members_and_elements": 100000,
+    "json_string_utf8_bytes": 262144,
+    "ref_chain": 64,
+    "regex_unicode_scalars": 1024,
+    "schema_bundle_resources": 128,
+    "type_definition_jcs_bytes": 2097152
+  },
+  "schemas": {
+    "cognitive_node": "schemas/cognitive-node.schema.json",
+    "cognitive_node_ref": "schemas/cognitive-node-ref.schema.json",
+    "diagnostic": "schemas/diagnostic.schema.json",
+    "fixture_suite": "schemas/fixture-suite.schema.json",
+    "lock": "schemas/lock.schema.json",
+    "type_definition": "schemas/type-definition.schema.json",
+    "validation_result": "schemas/validation-result.schema.json"
+  },
+  "diagnostics": {
+    "cognitive_node": "diagnostics/cognitive-node.json",
+    "type_definition": "diagnostics/type-definition.json"
+  },
+  "fixtures": "fixtures/cases.json",
+  "canonical_vectors": "fixtures/canonical-vectors.json"
+}

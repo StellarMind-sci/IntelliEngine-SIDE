@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["contract_version", "cases"],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["case_id", "category", "operation", "input", "context", "expected"],
+        "properties": {
+          "case_id": {"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string"},
+          "category": {"enum": ["transport", "semantic", "type-definition", "resource", "parser"]},
+          "operation": {"enum": ["transport", "semantic", "registration"]},
+          "input": {},
+          "context": {"type": "object"},
+          "expected": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

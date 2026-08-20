@@ -1,0 +1,18 @@
+{
+  "contract_version": "1.0.0",
+  "self_digest": "excluded",
+  "entries": [
+    {"path": "contract.json", "digest_kind": "jcs_sha256", "sha256": "127d42994eebb05133510c02391c01efe40ec32dd858514943fd40c5efc37c51"},
+    {"path": "diagnostics/cognitive-node.json", "digest_kind": "jcs_sha256", "sha256": "652b8bd472f2cc6a80532e92a596073dfff8917b92f90cfd4534ec2d9d8af35e"},
+    {"path": "diagnostics/type-definition.json", "digest_kind": "jcs_sha256", "sha256": "3a3707f471d547a0badcc91650f4a27367b8a9b303b41453a34c3add1cd2777c"},
+    {"path": "fixtures/canonical-vectors.json", "digest_kind": "jcs_sha256", "sha256": "6d27c9be9d92614c184813b4c341ac555b37827e3063dafce5325053de55cd25"},
+    {"path": "fixtures/cases.json", "digest_kind": "jcs_sha256", "sha256": "db2fed25c377c84de455bdf129f273de031d4d58e6fa6b1fa5421864671df5e2"},
+    {"path": "schemas/cognitive-node-ref.schema.json", "digest_kind": "jcs_sha256", "sha256": "794fd80e447010b77fb9975a1785d50295ba97a003e256e8946c1f2438b39405"},
+    {"path": "schemas/cognitive-node.schema.json", "digest_kind": "jcs_sha256", "sha256": "8f89554f1227d2171a78ed0cf01c6a39c6afd76ddfa43206ff0e138031e24cc5"},
+    {"path": "schemas/diagnostic.schema.json", "digest_kind": "jcs_sha256", "sha256": "5592cb79b047482b8934b5b382a007c2fefad7ed2d481525e704e1c0c953a6be"},
+    {"path": "schemas/fixture-suite.schema.json", "digest_kind": "jcs_sha256", "sha256": "b7c73ff2d8de1b7bff8ef73cdcfeb75b7a7aad17d6d547815317a3ee7d27d1bd"},
+    {"path": "schemas/lock.schema.json", "digest_kind": "jcs_sha256", "sha256": "b8ed1745213cd91e1956bb9c9823585557bc250cd9a95537e0be9d4cba754338"},
+    {"path": "schemas/type-definition.schema.json", "digest_kind": "jcs_sha256", "sha256": "b1147b6a26262c432ddfe4e59af0712c20d1c1dce7cb4c8650a8a86f531e82d4"},
+    {"path": "schemas/validation-result.schema.json", "digest_kind": "jcs_sha256", "sha256": "efcf8a5b1c8a65ef9528a44d921d62b599582bf991b4a4f027ef8a9fa3fd0bd0"}
+  ]
+}
