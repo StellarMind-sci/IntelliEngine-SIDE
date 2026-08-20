@@ -6,7 +6,9 @@
     "node": ">=24"
   },
   "scripts": {
+    "cognitive-node": "node src/cognitive-node/cli.ts --contract-root contracts/cognitive-node/1.0.0 --profile-root contracts/profile/1.0.0",
     "conformance:ts": "node src/conformance-ts/cli.ts --profile-root contracts/profile/1.0.0",
+    "test:cognitive-node": "node --test tests/cognitive-node-ts/*.test.ts",
     "test:conformance:ts": "node --test tests/conformance-ts/*.test.ts"
   }
 }

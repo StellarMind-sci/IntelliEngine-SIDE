@@ -1,0 +1,47 @@
+name: CognitiveNode runtime
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cognitive-node.yml"
+      - "packages/cognitive-ir/**"
+      - "scripts/cognitive-node/**"
+      - "tests/cognitive-node/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cognitive-node.yml"
+      - "packages/cognitive-ir/**"
+      - "scripts/cognitive-node/**"
+      - "tests/cognitive-node/**"
+
+permissions:
+  contents: read
+
+jobs:
+  cognitive-node:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONNOUSERSITE: "1"
+      npm_config_offline: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify CognitiveNode contract
+        run: python -B packages/cognitive-ir/tests/test_cognitive_node_contract.py
+      - name: Test Python CognitiveNode runtime
+        run: python -B packages/cognitive-ir/tests/cognitive_node_python/test_runtime.py
+      - name: Test TypeScript CognitiveNode runtime
+        run: node --test packages/cognitive-ir/tests/cognitive-node-ts/*.test.ts
+      - name: Compare CognitiveNode consumers
+        run: python -B tests/cognitive-node/test_differential.py
