@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["interface", "mode", "object_result", "operation_outcome", "issues"],
+  "properties": {
+    "interface": {"enum": ["cognitive_node", "type_definition"]},
+    "mode": {"enum": ["transport", "semantic", "mutation", "registration"]},
+    "object_result": {"enum": ["valid", "invalid", "compatible_read", "opaque", "not_evaluated"]},
+    "operation_outcome": {"enum": ["succeeded", "conflict", "policy_denied", "resource_exhausted", "indeterminate"]},
+    "issues": {"type": "array"}
+  },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "properties": {"interface": {"const": "cognitive_node"}, "mode": {"const": "transport"}},
+      "oneOf": [
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "invalid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "resource_exhausted"}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "indeterminate"}}}
+      ]
+    },
+    {
+      "properties": {"interface": {"const": "cognitive_node"}, "mode": {"const": "semantic"}},
+      "oneOf": [
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "invalid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "compatible_read"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "opaque"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "resource_exhausted"}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "indeterminate"}}}
+      ]
+    },
+    {
+      "properties": {"interface": {"const": "cognitive_node"}, "mode": {"const": "mutation"}},
+      "oneOf": [
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "conflict"}}},
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "policy_denied"}}},
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "resource_exhausted"}}},
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "indeterminate"}}}
+      ]
+    },
+    {
+      "properties": {"interface": {"const": "type_definition"}, "mode": {"const": "registration"}},
+      "oneOf": [
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "invalid"}, "operation_outcome": {"const": "succeeded"}}},
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "policy_denied"}}},
+        {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "conflict"}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "resource_exhausted"}}},
+        {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "indeterminate"}}}
+      ]
+    }
+  ]
+}

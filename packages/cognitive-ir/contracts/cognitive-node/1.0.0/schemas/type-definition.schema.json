@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["definition_format_version", "type_id", "type_version", "base_kind", "owner", "data_schema", "schema_bundle", "required_capabilities", "provenance_refs"],
+  "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"},
+  "properties": {
+    "definition_format_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"},
+    "type_id": {"pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*/[a-z0-9]+(?:[.-][a-z0-9]+)*$", "type": "string"},
+    "type_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"},
+    "base_kind": {"enum": ["entity", "variable", "relation", "constraint", "state", "process", "goal", "evidence", "assumption", "action", "experiment"]},
+    "owner": {
+      "type": "object",
+      "required": ["scope", "id"],
+      "properties": {"scope": {"enum": ["core", "plugin", "project"]}, "id": {"minLength": 1, "type": "string"}},
+      "additionalProperties": false
+    },
+    "data_schema": {
+      "type": "object",
+      "required": ["$schema", "type"],
+      "properties": {"$schema": {"const": "https://json-schema.org/draft/2020-12/schema"}, "type": {"const": "object"}},
+      "additionalProperties": true
+    },
+    "schema_bundle": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["uri", "sha256", "schema"],
+        "properties": {
+          "uri": {"pattern": "^urn:intelliengine:schema:sha256:[0-9a-f]{64}$", "type": "string"},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "schema": {"type": "object"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "required_capabilities": {"items": {"pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*/[a-z0-9]+(?:[.-][a-z0-9]+)*@(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"}, "type": "array", "uniqueItems": true},
+    "provenance_refs": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true}
+  },
+  "additionalProperties": true
+}

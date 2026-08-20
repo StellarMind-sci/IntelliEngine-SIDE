@@ -1,0 +1,9 @@
+{
+  "contract_version": "1.0.0",
+  "vectors": [
+    {"vector_id": "object-key-order", "value": {"z": 1, "a": 2}, "jcs": "{\"a\":2,\"z\":1}"},
+    {"vector_id": "negative-zero", "value": -0, "jcs": "0"},
+    {"vector_id": "array-order", "value": [3, 2, 1], "jcs": "[3,2,1]"},
+    {"vector_id": "utf16-key-order", "value": {"": "bmp", "𐀀": "astral"}, "jcs": "{\"𐀀\":\"astral\",\"\":\"bmp\"}"}
+  ]
+}

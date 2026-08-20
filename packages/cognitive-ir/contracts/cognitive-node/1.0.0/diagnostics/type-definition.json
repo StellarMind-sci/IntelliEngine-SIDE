@@ -1,0 +1,21 @@
+{
+  "interface": "type_definition",
+  "codes": [
+    {"code": "type_definition.authority_indeterminate", "severity": "error", "allowed_pairs": [["not_evaluated", "indeterminate"]]},
+    {"code": "type_definition.base_kind_drift", "severity": "error", "allowed_pairs": [["valid", "conflict"]]},
+    {"code": "type_definition.capability_denied", "severity": "error", "allowed_pairs": [["valid", "policy_denied"]]},
+    {"code": "type_definition.forbidden_ref", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.immutable_key_conflict", "severity": "error", "allowed_pairs": [["valid", "conflict"]]},
+    {"code": "type_definition.invalid_capability_id", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.invalid_field", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.invalid_format_version", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.invalid_schema", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.invalid_structure", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.issues_truncated", "severity": "warning", "allowed_pairs": []},
+    {"code": "type_definition.namespace_denied", "severity": "error", "allowed_pairs": [["valid", "policy_denied"]]},
+    {"code": "type_definition.resource_exhausted", "severity": "error", "allowed_pairs": [["not_evaluated", "resource_exhausted"]]},
+    {"code": "type_definition.unsupported_schema_vocabulary", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "type_definition.untrusted_owner", "severity": "error", "allowed_pairs": [["valid", "policy_denied"]]},
+    {"code": "type_definition.validation_indeterminate", "severity": "error", "allowed_pairs": [["not_evaluated", "indeterminate"]]}
+  ]
+}
