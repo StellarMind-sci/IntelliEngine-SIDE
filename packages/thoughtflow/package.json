@@ -1,1 +1,11 @@
-{"name":"@intelliengine/thoughtflow","private":true,"type":"module","scripts":{"test:contract":"python -m unittest tests/test_contract.py -v"}}
+{
+  "name": "@intelliengine/thoughtflow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:contract": "python -m unittest tests/test_contract.py -v",
+    "test:python": "python -m unittest tests/python/test_runtime.py -v",
+    "test:ts": "node --test tests/ts/runtime.test.ts",
+    "test:differential": "python scripts/differential.py"
+  }
+}

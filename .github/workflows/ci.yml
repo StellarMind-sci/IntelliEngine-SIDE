@@ -20,7 +20,7 @@ jobs:
         run: python scripts/verify_governance.py
 
   thoughtflow-contract:
-    name: Thoughtflow contract (${{ matrix.os }})
+    name: Thoughtflow (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -31,10 +31,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
       - name: Verify Thoughtflow machine contract
         run: python packages/thoughtflow/contracts/tools/verify_contract.py
       - name: Test Thoughtflow contract behavior
         run: python -m unittest packages/thoughtflow/tests/test_contract.py -v
+      - name: Test Thoughtflow Python runtime
+        run: python -m unittest packages/thoughtflow/tests/python/test_runtime.py -v
+      - name: Test Thoughtflow TypeScript runtime
+        run: node --test packages/thoughtflow/tests/ts/runtime.test.ts
+      - name: Compare Thoughtflow consumers
+        run: python packages/thoughtflow/scripts/differential.py
 
 
   # Add lint, unit, contract, integration, security, package-compatibility, and build jobs as
