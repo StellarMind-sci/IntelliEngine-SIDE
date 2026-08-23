@@ -1,5 +1,52 @@
+import { readFileSync } from "node:fs";
+import { canonicalize } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const CONTROL = new Set(["sequence", "branch", "verification_feedback"]);
+const FLOW_SCHEMA = JSON.parse(readFileSync(new URL("../../contracts/thoughtflow/1.0.0/schemas/thoughtflow.schema.json", import.meta.url), "utf8"));
+const MAX_JCS_BYTES = 4194304;
+
+const isObject = (value: any) => value !== null && typeof value === "object" && !Array.isArray(value);
+
+function schemaValid(value: any, schema: any): boolean {
+  if (!isObject(schema)) return false;
+  if (schema.type === "object" && !isObject(value)) return false;
+  if (schema.type === "array" && !Array.isArray(value)) return false;
+  if (schema.type === "string" && typeof value !== "string") return false;
+  if (schema.type === "integer" && !Number.isSafeInteger(value)) return false;
+  if ("const" in schema && value !== schema.const) return false;
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return false;
+  if (typeof value === "string") {
+    const length = Array.from(value).length;
+    if (length < (schema.minLength ?? 0) || length > (schema.maxLength ?? Number.POSITIVE_INFINITY)) return false;
+    if (typeof schema.pattern === "string" && !new RegExp(schema.pattern, "u").test(value)) return false;
+  }
+  if (typeof value === "number") {
+    if (value < (schema.minimum ?? Number.NEGATIVE_INFINITY) || value > (schema.maximum ?? Number.POSITIVE_INFINITY)) return false;
+  }
+  if (Array.isArray(value)) {
+    if (value.length < (schema.minItems ?? 0) || value.length > (schema.maxItems ?? Number.POSITIVE_INFINITY)) return false;
+    if (schema.items !== undefined && value.some((item) => !schemaValid(item, schema.items))) return false;
+  }
+  if (isObject(value)) {
+    if ((schema.required ?? []).some((name: string) => !(name in value))) return false;
+    const properties = schema.properties ?? {};
+    for (const [name, item] of Object.entries(value)) {
+      if (name in properties) {
+        if (!schemaValid(item, properties[name])) return false;
+      } else if (schema.additionalProperties === false) return false;
+    }
+  }
+  if (Array.isArray(schema.oneOf) && schema.oneOf.filter((child: any) => schemaValid(value, child)).length !== 1) return false;
+  return true;
+}
+
+function withinSizeLimit(value: any): boolean {
+  try {
+    return Buffer.byteLength(canonicalize(value), "utf8") <= MAX_JCS_BYTES;
+  } catch {
+    return false;
+  }
+}
 
 export const issue = (code: string, path: string) => ({ code, path, severity: "error" });
 export const verdict = (valid: boolean, diagnostic?: any) => ({
@@ -14,7 +61,7 @@ export const indeterminate = (code: string, path: string) => ({
 const refKey = (value: any) => {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).sort().join(",") !== "id,revision") return null;
   if (typeof value.id !== "string" || !UUID.test(value.id) || !Number.isSafeInteger(value.revision) || value.revision < 1) return null;
-  return `${value.id}\0${value.revision}`;
+  return `${value.id}\0${String(value.revision).padStart(16, "0")}`;
 };
 const compareUtf8 = (left: string, right: string) => Buffer.compare(Buffer.from(left), Buffer.from(right));
 const ordered = (values: any, key: (item: any) => string | null) => {
@@ -45,6 +92,7 @@ export function validateGraph(flow: any) {
   if (typeof flow.contract_version !== "string" || !flow.contract_version.startsWith("1.")) return verdict(false, issue("thoughtflow.unsupported_contract_version", "/contract_version"));
   if (typeof flow.id !== "string" || !UUID.test(flow.id)) return verdict(false, issue("thoughtflow.invalid_json", "/id"));
   if (!Number.isSafeInteger(flow.revision) || flow.revision < 1) return verdict(false, issue("thoughtflow.invalid_revision", "/revision"));
+  if (!schemaValid(flow, FLOW_SCHEMA) || !withinSizeLimit(flow)) return verdict(false, issue("thoughtflow.invalid_json", ""));
   if (!ordered(flow.steps, (item) => item && typeof item.step_id === "string" ? item.step_id : null)) return verdict(false, issue("thoughtflow.noncanonical_set", "/steps"));
   if (!ordered(flow.transitions, transitionKey)) return verdict(false, issue("thoughtflow.noncanonical_set", "/transitions"));
   if (!ordered(flow.knowledge_unit_refs, refKey)) return verdict(false, issue("thoughtflow.noncanonical_set", "/knowledge_unit_refs"));
@@ -52,6 +100,7 @@ export function validateGraph(flow: any) {
   if (!ordered(flow.provenance_refs, (item) => typeof item === "string" && item ? item : null)) return verdict(false, issue("thoughtflow.noncanonical_set", "/provenance_refs"));
   const byId = new Map(flow.steps.map((step: any) => [step.step_id, step]));
   if (!byId.has(flow.entry_step_id)) return verdict(false, issue("thoughtflow.dangling_step", "/entry_step_id"));
+  if (!flow.steps.some((step: any) => step.kind === "goal") || !flow.steps.some((step: any) => step.kind === "verification")) return verdict(false, issue("thoughtflow.invalid_step", "/steps"));
 
   const usedKu = new Set<string>(), usedCn = new Set<string>();
   const common = new Set(["step_id", "kind", "title", "description", "knowledge_unit_refs", "cognitive_node_refs"]);
@@ -70,18 +119,21 @@ export function validateGraph(flow: any) {
     }
     if (step.kind === "verification") {
       if (!step.acceptance_statement || !ordered(step.evidence_node_refs, refKey) || !step.evidence_node_refs.length) return verdict(false, issue("thoughtflow.invalid_step", `/steps/${index}`));
-      step.evidence_node_refs.forEach((item: any) => usedCn.add(refKey(item)!));
+      const evidence = new Set(step.evidence_node_refs.map(refKey)), nodes = new Set(step.cognitive_node_refs.map(refKey));
+      if ([...evidence].some((item) => !nodes.has(item))) return verdict(false, issue("thoughtflow.reference_closure_mismatch", `/steps/${index}/evidence_node_refs`));
+      evidence.forEach((item: any) => usedCn.add(item));
     }
     if (step.kind === "iteration") {
       if (!Number.isInteger(step.max_iterations) || step.max_iterations < 1 || step.max_iterations > 10000 || !step.exit_condition) return verdict(false, issue("thoughtflow.invalid_loop", `/steps/${index}`));
+      if (!step.verification_step_ids.length || !ordered(step.verification_step_ids, (id: any) => typeof id === "string" ? id : null)) return verdict(false, issue("thoughtflow.invalid_loop", `/steps/${index}/verification_step_ids`));
       if (step.verification_step_ids.some((id: string) => !byId.has(id) || byId.get(id).kind !== "verification")) return verdict(false, issue("thoughtflow.dangling_step", `/steps/${index}/verification_step_ids`));
     }
   }
   if (JSON.stringify([...new Set(flow.knowledge_unit_refs.map(refKey))].sort()) !== JSON.stringify([...usedKu].sort())) return verdict(false, issue("thoughtflow.reference_closure_mismatch", "/knowledge_unit_refs"));
   if (JSON.stringify([...new Set(flow.cognitive_node_refs.map(refKey))].sort()) !== JSON.stringify([...usedCn].sort())) return verdict(false, issue("thoughtflow.reference_closure_mismatch", "/cognitive_node_refs"));
 
-  const edges = new Map<string, string[]>(), indegree = new Map<string, number>(), outgoing = new Map<string, any[]>();
-  for (const id of byId.keys()) { edges.set(id, []); indegree.set(id, 0); outgoing.set(id, []); }
+  const edges = new Map<string, string[]>(), reverse = new Map<string, string[]>(), indegree = new Map<string, number>(), outgoing = new Map<string, any[]>();
+  for (const id of byId.keys()) { edges.set(id, []); reverse.set(id, []); indegree.set(id, 0); outgoing.set(id, []); }
   const baseTransition = new Set(["transition_id", "kind", "from_step_id", "to_step_id"]);
   const fields: Record<string, Set<string>> = {
     sequence: baseTransition, data_dependency: baseTransition,
@@ -99,6 +151,7 @@ export function validateGraph(flow: any) {
     outgoing.get(transition.from_step_id)!.push({ index, transition });
     if (CONTROL.has(transition.kind)) {
       edges.get(transition.from_step_id)!.push(transition.to_step_id);
+      reverse.get(transition.to_step_id)!.push(transition.from_step_id);
       indegree.set(transition.to_step_id, indegree.get(transition.to_step_id)! + 1);
     }
   }
@@ -114,6 +167,8 @@ export function validateGraph(flow: any) {
   if (visited !== byId.size) return verdict(false, issue("thoughtflow.unconstrained_cycle", "/transitions"));
   const seen = reachable(flow.entry_step_id, edges);
   for (let index = 0; index < flow.steps.length; index++) if (!seen.has(flow.steps[index].step_id)) return verdict(false, issue("thoughtflow.unreachable_step", `/steps/${index}`));
+  const roots = [...byId.keys()].filter((id) => indegree.get(id) === 0);
+  if (roots.length !== 1 || roots[0] !== flow.entry_step_id) return verdict(false, issue("thoughtflow.invalid_transition", "/entry_step_id"));
 
   for (let index = 0; index < flow.steps.length; index++) {
     const step = flow.steps[index], controls = outgoing.get(step.step_id)!.filter(({ transition }) => transition.kind !== "data_dependency");
@@ -131,9 +186,14 @@ export function validateGraph(flow: any) {
           const suffix = !["failed", "needs_evidence"].includes(loop.outcome) ? "/outcome" : "";
           return verdict(false, issue("thoughtflow.invalid_loop", `/transitions/${transitionIndex}${suffix}`));
         }
+        const forward = reachable(loop.to_step_id, edges), backward = reachable(loop.from_step_id, reverse);
+        const component = [...forward].filter((id) => backward.has(id));
+        if (component.filter((id) => byId.get(id).kind === "iteration").length !== 1 || !component.some((id) => byId.get(id).kind === "verification")) return verdict(false, issue("thoughtflow.invalid_loop", `/transitions/${transitionIndex}`));
       }
       const outcomes = [...feedback.map((item) => item.outcome), ...loops.map(({ transition }) => transition.outcome)];
       if (new Set(outcomes).size !== outcomes.length) return verdict(false, issue("thoughtflow.duplicate_outcome", `/steps/${index}`));
+    } else if (controls.some(({ transition }) => ["branch", "verification_feedback", "loop"].includes(transition.kind))) {
+      return verdict(false, issue("thoughtflow.invalid_transition", `/steps/${index}`));
     }
   }
   return verdict(true);

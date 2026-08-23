@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import copy
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+COGNITIVE_IR_PYTHON = Path(__file__).resolve().parents[3] / "cognitive-ir" / "python"
+if str(COGNITIVE_IR_PYTHON) not in sys.path:
+    sys.path.insert(0, str(COGNITIVE_IR_PYTHON))
+
+from intelliengine_conformance.json_codec import parse_json_bytes
 
 from .validation import (
     indeterminate,
@@ -16,22 +23,10 @@ from .validation import (
 )
 
 
-def _reject_duplicates(pairs):
-    value = {}
-    for key, item in pairs:
-        if key in value:
-            raise ValueError("duplicate JSON member")
-        value[key] = item
-    return value
-
-
 def parse_and_validate_transport(raw: bytes) -> dict:
     try:
-        text = raw.decode("utf-8", errors="strict")
-        if text.startswith("\ufeff"):
-            raise ValueError("BOM is forbidden")
-        flow = json.loads(text, object_pairs_hook=_reject_duplicates)
-    except (UnicodeDecodeError, ValueError, json.JSONDecodeError):
+        flow = parse_json_bytes(raw)
+    except Exception:
         return verdict(False, issue("thoughtflow.invalid_json", ""))
     return validate_graph(flow)
 
@@ -49,6 +44,18 @@ def graph_summary(flow: dict) -> dict:
     for step in flow["steps"]:
         kinds[step["kind"]] = kinds.get(step["kind"], 0) + 1
     kinds = {key: kinds[key] for key in sorted(kinds)}
+    control_edges: dict[str, list[str]] = {}
+    for transition in flow["transitions"]:
+        if transition["kind"] in {"sequence", "branch", "verification_feedback"}:
+            control_edges.setdefault(transition["from_step_id"], []).append(transition["to_step_id"])
+    reachable = set()
+    pending = [flow["entry_step_id"]]
+    while pending:
+        current = pending.pop()
+        if current not in reachable:
+            reachable.add(current)
+            pending.extend(control_edges.get(current, []))
+    reachable_ids = sorted(reachable, key=lambda value: value.encode("utf-8"))
     controllers = [
         {"max_iterations": step["max_iterations"], "step_id": step["step_id"]}
         for step in flow["steps"] if step["kind"] == "iteration"
@@ -59,6 +66,8 @@ def graph_summary(flow: dict) -> dict:
         "transition_count": len(flow["transitions"]),
         "step_kinds": kinds,
         "loop_controllers": controllers,
+        "reachable_step_count": len(reachable_ids),
+        "reachable_step_ids": reachable_ids,
     }
 
 
@@ -68,7 +77,7 @@ def _candidate(transition: dict) -> dict:
         "to_step_id": transition["to_step_id"],
         "transition_id": transition["transition_id"],
     }
-    for field in ("branch_label", "condition_statement", "is_default"):
+    for field in ("branch_label", "condition_statement", "is_default", "outcome"):
         if field in transition:
             value[field] = transition[field]
     return value
@@ -134,7 +143,12 @@ def simulate_bounded(
                 branch_index[current] = index + 1
         candidates = next_candidates(flow, current, outcome, branch)
         if candidates["status"] != "ready":
-            return {"status": candidates["status"], "path": path, "current_step_id": current, "candidates": candidates["candidates"], "iteration_counts": iteration_counts}
+            result = {"status": candidates["status"], "path": path, "current_step_id": current, "candidates": candidates["candidates"], "iteration_counts": iteration_counts}
+            if candidates["status"] in {"requires_observation", "unknown_outcome"}:
+                result.update({"object_result": "not_evaluated", "operation_outcome": "indeterminate"})
+            return result
+        if len(candidates["candidates"]) > 1:
+            return {"status": "ambiguous_control", "path": path, "current_step_id": current, "candidates": candidates["candidates"], "iteration_counts": iteration_counts}
         if not candidates["candidates"]:
             return {"status": "completed", "path": path, "current_step_id": current, "iteration_counts": iteration_counts}
         transition = candidates["candidates"][0]

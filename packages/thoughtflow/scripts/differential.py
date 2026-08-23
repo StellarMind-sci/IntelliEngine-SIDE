@@ -56,6 +56,12 @@ def compare_projections(left: dict, right: dict) -> None:
     raise ValueError(f"Thoughtflow differential mismatch: {case_id} {pointer}")
 
 
+def assert_machine_expected(projection: dict) -> None:
+    for fixture in projection.get("fixtures", []):
+        if fixture.get("actual") != fixture.get("expected"):
+            raise ValueError(f"Thoughtflow machine expected mismatch: {fixture.get('case_id', 'unknown')} machine expected")
+
+
 def _run(command: list[str]) -> dict:
     completed = subprocess.run(command, capture_output=True, text=True, check=True)
     return json.loads(completed.stdout)
@@ -65,6 +71,8 @@ def run_differential(contract_root: Path) -> dict:
     root = contract_root.resolve(strict=True)
     python_result = _run([sys.executable, str(PYTHON_CLI), "--contract-root", str(root)])
     typescript_result = _run(["node", str(TS_CLI), "--contract-root", str(root)])
+    assert_machine_expected(python_result)
+    assert_machine_expected(typescript_result)
     compare_projections(python_result, typescript_result)
     return {"case_count": len(python_result["fixtures"]), "contract_version": python_result["contract_version"]}
 

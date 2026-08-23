@@ -20,18 +20,34 @@ export function graphSummary(flow: any) {
   const kinds: Record<string, number> = {};
   for (const step of flow.steps) kinds[step.kind] = (kinds[step.kind] ?? 0) + 1;
   const step_kinds = Object.fromEntries(Object.keys(kinds).sort().map((key) => [key, kinds[key]]));
+  const controlEdges = new Map<string, string[]>();
+  for (const step of flow.steps) controlEdges.set(step.step_id, []);
+  for (const transition of flow.transitions) {
+    if (["sequence", "branch", "verification_feedback"].includes(transition.kind)) controlEdges.get(transition.from_step_id)!.push(transition.to_step_id);
+  }
+  const reachable = new Set<string>(), pending = [flow.entry_step_id];
+  while (pending.length) {
+    const current = pending.pop()!;
+    if (!reachable.has(current)) {
+      reachable.add(current);
+      pending.push(...(controlEdges.get(current) ?? []));
+    }
+  }
+  const reachable_step_ids = [...reachable].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
   return {
     entry_step_id: flow.entry_step_id,
     step_count: flow.steps.length,
     transition_count: flow.transitions.length,
     step_kinds,
     loop_controllers: flow.steps.filter((step: any) => step.kind === "iteration").map((step: any) => ({ max_iterations: step.max_iterations, step_id: step.step_id })),
+    reachable_step_count: reachable_step_ids.length,
+    reachable_step_ids,
   };
 }
 
 const project = (transition: any) => {
   const result: any = { kind: transition.kind, to_step_id: transition.to_step_id, transition_id: transition.transition_id };
-  for (const field of ["branch_label", "condition_statement", "is_default"]) if (field in transition) result[field] = transition[field];
+  for (const field of ["branch_label", "condition_statement", "is_default", "outcome"]) if (field in transition) result[field] = transition[field];
   return result;
 };
 
@@ -83,7 +99,12 @@ export function simulateBounded(
       if (index < values.length) { selectedBranch = values[index]; branchIndex[current] = index + 1; }
     }
     const result = nextCandidates(flow, current, { observedOutcome, selectedBranch });
-    if (result.status !== "ready") return { status: result.status, path, current_step_id: current, candidates: result.candidates, iteration_counts };
+    if (result.status !== "ready") {
+      const stopped: any = { status: result.status, path, current_step_id: current, candidates: result.candidates, iteration_counts };
+      if (["requires_observation", "unknown_outcome"].includes(result.status)) Object.assign(stopped, { object_result: "not_evaluated", operation_outcome: "indeterminate" });
+      return stopped;
+    }
+    if (result.candidates.length > 1) return { status: "ambiguous_control", path, current_step_id: current, candidates: result.candidates, iteration_counts };
     if (!result.candidates.length) return { status: "completed", path, current_step_id: current, iteration_counts };
     const transition: any = result.candidates[0];
     if (transition.kind === "loop") {

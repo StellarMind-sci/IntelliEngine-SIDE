@@ -37,6 +37,26 @@ class ThoughtflowPythonRuntimeTests(unittest.TestCase):
 
         self.assertEqual(result["issues"][0]["code"], "thoughtflow.invalid_json")
 
+    def test_raw_transport_enforces_locked_schema_and_size_boundary(self) -> None:
+        mutations = []
+        extra = valid_flow()
+        extra["unknown"] = True
+        mutations.append(extra)
+        missing = valid_flow()
+        del missing["title"]
+        mutations.append(missing)
+        future_minor = valid_flow()
+        future_minor["contract_version"] = "1.1.0"
+        mutations.append(future_minor)
+        oversized = valid_flow()
+        oversized["title"] = "x" * 4194304
+        mutations.append(oversized)
+
+        for flow in mutations:
+            with self.subTest(keys=sorted(flow)):
+                raw = json.dumps(flow, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                self.assertEqual(parse_and_validate_transport(raw)["issues"][0]["code"], "thoughtflow.invalid_json")
+
     def test_graph_summary_is_deterministic(self) -> None:
         summary = graph_summary(valid_flow())
 
@@ -49,6 +69,8 @@ class ThoughtflowPythonRuntimeTests(unittest.TestCase):
                 "operation": 1, "verification": 1,
             },
             "loop_controllers": [{"max_iterations": 3, "step_id": "s03-iteration"}],
+            "reachable_step_count": 7,
+            "reachable_step_ids": ["s01-goal", "s02-analysis", "s03-iteration", "s04-operation", "s05-artifact", "s06-verification", "s07-success"],
         })
 
     def test_iteration_requires_explicit_branch_selection(self) -> None:
@@ -62,7 +84,7 @@ class ThoughtflowPythonRuntimeTests(unittest.TestCase):
 
         self.assertEqual(result, {
             "status": "ready",
-            "candidates": [{"kind": "loop", "to_step_id": "s03-iteration", "transition_id": "t08"}],
+            "candidates": [{"kind": "loop", "outcome": "failed", "to_step_id": "s03-iteration", "transition_id": "t08"}],
         })
 
     def test_simulation_stops_at_declared_iteration_limit(self) -> None:
@@ -85,6 +107,46 @@ class ThoughtflowPythonRuntimeTests(unittest.TestCase):
         result = validate_revision_transition(previous, candidate)
 
         self.assertEqual(result["issues"][0]["code"], "thoughtflow.revision_without_change")
+
+
+    def test_simulation_never_chooses_first_of_multiple_control_successors(self) -> None:
+        flow = valid_flow()
+        flow["transitions"].append({
+            "transition_id": "t99", "kind": "sequence",
+            "from_step_id": "s01-goal", "to_step_id": "s03-iteration",
+        })
+
+        result = simulate_bounded(flow, observations={}, branch_selections={}, max_steps=5)
+
+        self.assertEqual(result["status"], "ambiguous_control")
+        self.assertEqual(result["current_step_id"], "s01-goal")
+
+    def test_tampered_expected_cannot_change_actual(self) -> None:
+        suite = json.loads((CONTRACT_ROOT / "fixtures" / "cases.json").read_text(encoding="utf-8"))
+        case = copy.deepcopy(suite["cases"][0])
+        original_expected = copy.deepcopy(case["expected"])
+        case["expected"] = {
+            "object_result": "invalid",
+            "operation_outcome": "succeeded",
+            "issues": [{"code": "thoughtflow.invalid_json", "path": "", "severity": "error"}],
+        }
+
+        raw = json.dumps(case["input"]["flow"], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        actual = parse_and_validate_transport(raw)
+
+        self.assertEqual(actual, original_expected)
+        self.assertNotEqual(actual, case["expected"])
+
+
+    def test_missing_verification_observation_is_indeterminate(self) -> None:
+        result = simulate_bounded(
+            valid_flow(), observations={},
+            branch_selections={"s03-iteration": ["retry"]}, max_steps=10,
+        )
+
+        self.assertEqual(result["status"], "requires_observation")
+        self.assertEqual(result["object_result"], "not_evaluated")
+        self.assertEqual(result["operation_outcome"], "indeterminate")
 
 
 if __name__ == "__main__":

@@ -44,6 +44,14 @@ jobs:
         run: node --test packages/thoughtflow/tests/ts/runtime.test.ts
       - name: Compare Thoughtflow consumers
         run: python packages/thoughtflow/scripts/differential.py
+      - name: Regress CognitiveNode Python consumers
+        run: python -m unittest packages/cognitive-ir/tests/test_cognitive_node_contract.py packages/cognitive-ir/tests/cognitive_node_python/test_runtime.py packages/cognitive-ir/tests/conformance_python/test_consumer.py tests/cognitive-node/test_differential.py tests/conformance/test_differential.py
+      - name: Regress CognitiveNode TypeScript consumers
+        run: node --test packages/cognitive-ir/tests/cognitive-node-ts/*.test.ts packages/cognitive-ir/tests/conformance-ts/*.test.ts
+      - name: Regress KnowledgeUnit Python consumers
+        run: python -m unittest packages/knowledge-units/tests/test_contract.py packages/knowledge-units/tests/python/test_runtime.py packages/knowledge-units/tests/test_differential.py
+      - name: Regress KnowledgeUnit TypeScript consumers
+        run: node --test packages/knowledge-units/tests/ts/*.test.ts
 
 
   # Add lint, unit, contract, integration, security, package-compatibility, and build jobs as
