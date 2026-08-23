@@ -45,7 +45,7 @@ jobs:
       - name: Compare Thoughtflow consumers
         run: python packages/thoughtflow/scripts/differential.py
       - name: Regress CognitiveNode Python consumers
-        run: python -m unittest packages/cognitive-ir/tests/test_cognitive_node_contract.py packages/cognitive-ir/tests/cognitive_node_python/test_runtime.py packages/cognitive-ir/tests/conformance_python/test_consumer.py tests/cognitive-node/test_differential.py tests/conformance/test_differential.py
+        run: python -m unittest packages/cognitive-ir/tests/test_profile_contract.py packages/cognitive-ir/tests/test_cognitive_node_contract.py packages/cognitive-ir/tests/cognitive_node_python/test_runtime.py packages/cognitive-ir/tests/conformance_python/test_consumer.py tests/cognitive-node/test_differential.py tests/conformance/test_differential.py
       - name: Regress CognitiveNode TypeScript consumers
         run: node --test packages/cognitive-ir/tests/cognitive-node-ts/*.test.ts packages/cognitive-ir/tests/conformance-ts/*.test.ts
       - name: Regress KnowledgeUnit Python consumers

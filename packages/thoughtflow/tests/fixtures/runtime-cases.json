@@ -1,0 +1,9 @@
+{
+  "nul_tuple_collision": {
+    "target_step_ids": ["A", "A\u0000B"],
+    "transitions": [
+      {"transition_id": "B\u0000C", "kind": "data_dependency", "from_step_id": "s01-goal", "to_step_id": "A"},
+      {"transition_id": "C", "kind": "data_dependency", "from_step_id": "s01-goal", "to_step_id": "A\u0000B"}
+    ]
+  }
+}

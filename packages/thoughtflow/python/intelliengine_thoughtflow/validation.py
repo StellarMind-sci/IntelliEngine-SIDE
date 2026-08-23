@@ -19,6 +19,21 @@ CONTROL = {"sequence", "branch", "verification_feedback"}
 CONTRACT_ROOT = Path(__file__).resolve().parents[2] / "contracts" / "thoughtflow" / "1.0.0"
 FLOW_SCHEMA = json.loads((CONTRACT_ROOT / "schemas" / "thoughtflow.schema.json").read_text(encoding="utf-8"))
 MAX_JCS_BYTES = 4194304
+CONTRACT_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+
+
+def contract_compatibility(value: Any) -> str:
+    if not isinstance(value, str):
+        return "unsupported"
+    match = CONTRACT_VERSION.fullmatch(value)
+    if match is None:
+        return "unsupported"
+    major, minor, patch = match.groups()
+    if major != "1":
+        return "unsupported"
+    if minor == "0" and patch == "0":
+        return "exact"
+    return "compatible_read"
 
 
 def _schema_valid(value: Any, schema: Any) -> bool:
@@ -123,8 +138,11 @@ def reachable(start: str, edges: dict[str, list[str]]) -> set[str]:
 def validate_graph(flow: Any) -> dict:
     if not isinstance(flow, dict):
         return verdict(False, issue("thoughtflow.invalid_json", ""))
-    if not isinstance(flow.get("contract_version"), str) or not flow["contract_version"].startswith("1."):
+    compatibility = contract_compatibility(flow.get("contract_version"))
+    if compatibility == "unsupported":
         return verdict(False, issue("thoughtflow.unsupported_contract_version", "/contract_version"))
+    if compatibility == "compatible_read":
+        return indeterminate("thoughtflow.unsupported_contract_version", "/contract_version")
     if not isinstance(flow.get("id"), str) or UUID.fullmatch(flow["id"]) is None:
         return verdict(False, issue("thoughtflow.invalid_json", "/id"))
     if isinstance(flow.get("revision"), bool) or not isinstance(flow.get("revision"), int) or flow["revision"] < 1:
@@ -275,6 +293,9 @@ def validate_references(flow: dict, snapshot: Any) -> dict:
 
 def validate_revision(previous: Any, candidate: Any) -> dict:
     if not isinstance(previous, dict) or not isinstance(candidate, dict): return verdict(False, issue("thoughtflow.invalid_json", ""))
+    compatibility = {contract_compatibility(previous.get("contract_version")), contract_compatibility(candidate.get("contract_version"))}
+    if "unsupported" in compatibility: return verdict(False, issue("thoughtflow.unsupported_contract_version", "/contract_version"))
+    if "compatible_read" in compatibility: return indeterminate("thoughtflow.unsupported_contract_version", "/contract_version")
     if previous.get("id") != candidate.get("id"): return verdict(False, issue("thoughtflow.revision_identity_mismatch", "/id"))
     if candidate.get("revision", 0) <= previous.get("revision", 0): return verdict(False, issue("thoughtflow.revision_not_increased", "/revision"))
     old, new = copy.deepcopy(previous), copy.deepcopy(candidate); old.pop("revision", None); new.pop("revision", None)

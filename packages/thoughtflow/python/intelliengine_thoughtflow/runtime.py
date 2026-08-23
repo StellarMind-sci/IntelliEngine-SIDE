@@ -13,6 +13,7 @@ if str(COGNITIVE_IR_PYTHON) not in sys.path:
 from intelliengine_conformance.json_codec import parse_json_bytes
 
 from .validation import (
+    contract_compatibility,
     indeterminate,
     issue,
     materialize,
@@ -89,6 +90,8 @@ def next_candidates(
     observed_outcome: str | None = None,
     selected_branch: str | None = None,
 ) -> dict:
+    if contract_compatibility(flow.get("contract_version")) == "compatible_read":
+        return {"status": "compatible_read", "candidates": [], "object_result": "not_evaluated", "operation_outcome": "indeterminate"}
     step = next((item for item in flow["steps"] if item["step_id"] == step_id), None)
     if step is None:
         return {"status": "unknown_step", "candidates": []}
@@ -116,6 +119,8 @@ def simulate_bounded(
     branch_selections: dict[str, list[str]],
     max_steps: int,
 ) -> dict:
+    if contract_compatibility(flow.get("contract_version")) == "compatible_read":
+        return {"status": "compatible_read", "path": [], "iteration_counts": {}, "object_result": "not_evaluated", "operation_outcome": "indeterminate"}
     if max_steps < 1:
         return {"status": "max_steps_reached", "path": [], "iteration_counts": {}}
     steps = {step["step_id"]: step for step in flow["steps"]}

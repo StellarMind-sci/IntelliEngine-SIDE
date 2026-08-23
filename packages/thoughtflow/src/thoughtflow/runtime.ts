@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { strictParse } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
-import { issue, materialize, validateGraph, validateReferences, validateRevision, verdict } from "./validation.ts";
+import { contractCompatibility, issue, materialize, validateGraph, validateReferences, validateRevision, verdict } from "./validation.ts";
 
 export function parseAndValidateTransport(raw: Uint8Array) {
   try {
@@ -56,6 +56,9 @@ export function nextCandidates(
   stepId: string,
   options: { observedOutcome?: string; selectedBranch?: string } = {},
 ) {
+  if (contractCompatibility(flow?.contract_version) === "compatible_read") {
+    return { status: "compatible_read", candidates: [], object_result: "not_evaluated", operation_outcome: "indeterminate" };
+  }
   const step = flow.steps.find((item: any) => item.step_id === stepId);
   if (!step) return { status: "unknown_step", candidates: [] };
   const outgoing = flow.transitions.filter((item: any) => item.from_step_id === stepId && item.kind !== "data_dependency");
@@ -81,6 +84,9 @@ export function simulateBounded(
     maxSteps: number;
   },
 ) {
+  if (contractCompatibility(flow?.contract_version) === "compatible_read") {
+    return { status: "compatible_read", path: [], iteration_counts: {}, object_result: "not_evaluated", operation_outcome: "indeterminate" };
+  }
   if (options.maxSteps < 1) return { status: "max_steps_reached", path: [], iteration_counts: {} };
   const steps = new Map(flow.steps.map((step: any) => [step.step_id, step]));
   const observationIndex: Record<string, number> = {}, branchIndex: Record<string, number> = {}, iteration_counts: Record<string, number> = {};

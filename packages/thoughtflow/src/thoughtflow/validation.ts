@@ -4,6 +4,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12
 const CONTROL = new Set(["sequence", "branch", "verification_feedback"]);
 const FLOW_SCHEMA = JSON.parse(readFileSync(new URL("../../contracts/thoughtflow/1.0.0/schemas/thoughtflow.schema.json", import.meta.url), "utf8"));
 const MAX_JCS_BYTES = 4194304;
+const CONTRACT_VERSION = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/;
+
+export function contractCompatibility(value: unknown): "exact" | "compatible_read" | "unsupported" {
+  if (typeof value !== "string") return "unsupported";
+  const match = CONTRACT_VERSION.exec(value);
+  if (!match) return "unsupported";
+  const [, major, minor, patch] = match;
+  if (major !== "1") return "unsupported";
+  if (minor === "0" && patch === "0") return "exact";
+  return "compatible_read";
+}
 
 const isObject = (value: any) => value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -63,17 +74,27 @@ const refKey = (value: any) => {
   if (typeof value.id !== "string" || !UUID.test(value.id) || !Number.isSafeInteger(value.revision) || value.revision < 1) return null;
   return `${value.id}\0${String(value.revision).padStart(16, "0")}`;
 };
+type SortKey = string | readonly string[];
 const compareUtf8 = (left: string, right: string) => Buffer.compare(Buffer.from(left), Buffer.from(right));
-const ordered = (values: any, key: (item: any) => string | null) => {
+const compareSortKey = (left: SortKey, right: SortKey) => {
+  if (typeof left === "string" && typeof right === "string") return compareUtf8(left, right);
+  if (typeof left === "string" || typeof right === "string") return typeof left === "string" ? -1 : 1;
+  for (let index = 0; index < Math.min(left.length, right.length); index++) {
+    const compared = compareUtf8(left[index]!, right[index]!);
+    if (compared !== 0) return compared;
+  }
+  return left.length - right.length;
+};
+const ordered = (values: any, key: (item: any) => SortKey | null) => {
   if (!Array.isArray(values)) return false;
   const keys = values.map(key);
-  return keys.every((item) => item !== null) && new Set(keys).size === keys.length &&
-    keys.every((item, index) => index === 0 || compareUtf8(keys[index - 1]!, item!) <= 0);
+  return keys.every((item) => item !== null) &&
+    keys.every((item, index) => index === 0 || compareSortKey(keys[index - 1]!, item!) < 0);
 };
 const transitionKey = (value: any) => {
   if (!value || typeof value !== "object") return null;
   const parts = [value.from_step_id, value.kind, value.branch_label ?? value.outcome ?? "", value.to_step_id, value.transition_id];
-  return parts.every((item) => typeof item === "string") ? parts.join("\0") : null;
+  return parts.every((item) => typeof item === "string") ? parts : null;
 };
 const reachable = (start: string, edges: Map<string, string[]>) => {
   const seen = new Set<string>(), pending = [start];
@@ -89,7 +110,9 @@ const reachable = (start: string, edges: Map<string, string[]>) => {
 
 export function validateGraph(flow: any) {
   if (!flow || typeof flow !== "object" || Array.isArray(flow)) return verdict(false, issue("thoughtflow.invalid_json", ""));
-  if (typeof flow.contract_version !== "string" || !flow.contract_version.startsWith("1.")) return verdict(false, issue("thoughtflow.unsupported_contract_version", "/contract_version"));
+  const compatibility = contractCompatibility(flow.contract_version);
+  if (compatibility === "unsupported") return verdict(false, issue("thoughtflow.unsupported_contract_version", "/contract_version"));
+  if (compatibility === "compatible_read") return indeterminate("thoughtflow.unsupported_contract_version", "/contract_version");
   if (typeof flow.id !== "string" || !UUID.test(flow.id)) return verdict(false, issue("thoughtflow.invalid_json", "/id"));
   if (!Number.isSafeInteger(flow.revision) || flow.revision < 1) return verdict(false, issue("thoughtflow.invalid_revision", "/revision"));
   if (!schemaValid(flow, FLOW_SCHEMA) || !withinSizeLimit(flow)) return verdict(false, issue("thoughtflow.invalid_json", ""));
@@ -228,7 +251,11 @@ export function validateReferences(flow: any, snapshot: any) {
 }
 
 export function validateRevision(previous: any, candidate: any) {
-  if (!previous || !candidate || previous.id !== candidate.id) return verdict(false, issue("thoughtflow.revision_identity_mismatch", "/id"));
+  if (!previous || !candidate) return verdict(false, issue("thoughtflow.invalid_json", ""));
+  const compatibility = [contractCompatibility(previous.contract_version), contractCompatibility(candidate.contract_version)];
+  if (compatibility.includes("unsupported")) return verdict(false, issue("thoughtflow.unsupported_contract_version", "/contract_version"));
+  if (compatibility.includes("compatible_read")) return indeterminate("thoughtflow.unsupported_contract_version", "/contract_version");
+  if (previous.id !== candidate.id) return verdict(false, issue("thoughtflow.revision_identity_mismatch", "/id"));
   if (!Number.isInteger(candidate.revision) || candidate.revision <= previous.revision) return verdict(false, issue("thoughtflow.revision_not_increased", "/revision"));
   const old = structuredClone(previous), next = structuredClone(candidate); delete old.revision; delete next.revision;
   if (JSON.stringify(old) === JSON.stringify(next)) return verdict(false, issue("thoughtflow.revision_without_change", "/revision"));
