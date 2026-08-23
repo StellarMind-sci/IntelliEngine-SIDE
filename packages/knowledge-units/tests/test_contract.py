@@ -99,6 +99,23 @@ class KnowledgeUnitContractTests(unittest.TestCase):
                 )
 
 
+    def test_nested_node_ref_sets_require_utf8_canonical_order(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "1.0.0"
+            shutil.copytree(CONTRACT_ROOT, root)
+            suite = json.loads((root / "fixtures" / "cases.json").read_text(encoding="utf-8"))
+            valid = next(case for case in suite["cases"] if case["case_id"] == "linear-equation-valid")
+            targets = valid["input"]["unit"]["learning_objectives"][0]["target_node_refs"]
+            targets.reverse()
+
+            result = verifier.validate_case(valid, root)
+
+        self.assertEqual(result["issues"], [{
+            "code": "knowledge_unit.noncanonical_set",
+            "path": "/learning_objectives/0/target_node_refs",
+            "severity": "error",
+        }])
     def test_nested_lock_json_cannot_escape_digest_closure(self) -> None:
         verifier = load_verifier()
         with tempfile.TemporaryDirectory() as directory:

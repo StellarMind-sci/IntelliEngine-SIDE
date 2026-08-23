@@ -1,0 +1,45 @@
+name: KnowledgeUnit runtime
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/knowledge-units.yml"
+      - "packages/knowledge-units/**"
+      - "packages/cognitive-ir/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/knowledge-units.yml"
+      - "packages/knowledge-units/**"
+      - "packages/cognitive-ir/**"
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONNOUSERSITE: "1"
+      npm_config_offline: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Verify KnowledgeUnit contract
+        run: python -B packages/knowledge-units/tests/test_contract.py
+      - name: Test Python KnowledgeUnit runtime
+        run: python -B packages/knowledge-units/tests/python/test_runtime.py
+      - name: Test TypeScript KnowledgeUnit runtime
+        run: node --test packages/knowledge-units/tests/ts/*.test.ts
+      - name: Compare KnowledgeUnit consumers
+        run: python -B packages/knowledge-units/tests/test_differential.py
