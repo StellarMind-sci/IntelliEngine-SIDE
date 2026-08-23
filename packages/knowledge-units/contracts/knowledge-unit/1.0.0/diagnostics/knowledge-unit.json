@@ -1,0 +1,17 @@
+{
+  "contract_version": "1.0.0",
+  "codes": [
+    "knowledge_unit.dangling_node_ref",
+    "knowledge_unit.duplicate_ref",
+    "knowledge_unit.invalid_behavior_capability",
+    "knowledge_unit.invalid_id",
+    "knowledge_unit.invalid_json",
+    "knowledge_unit.invalid_revision",
+    "knowledge_unit.mastery_without_evidence",
+    "knowledge_unit.missing_field",
+    "knowledge_unit.noncanonical_set",
+    "knowledge_unit.self_dependency",
+    "knowledge_unit.unsupported_contract_version"
+  ],
+  "severity": "error"
+}

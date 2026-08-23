@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "diagnostic": {
+      "type": "object", "required": ["code", "path", "severity"],
+      "properties": {
+        "code": {"pattern": "^knowledge_unit\\.[a-z0-9_]+$", "type": "string"},
+        "path": {"pattern": "^(|(?:/(?:[^~/]|~0|~1)*)+)$", "type": "string"},
+        "severity": {"const": "error"}
+      }, "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": ["object_result", "operation_outcome", "issues"],
+  "properties": {
+    "object_result": {"enum": ["valid", "invalid", "not_evaluated"]},
+    "operation_outcome": {"enum": ["succeeded", "resource_exhausted"]},
+    "issues": {"items": {"$ref": "#/$defs/diagnostic"}, "type": "array"}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "object_result": {"const": "valid"},
+        "operation_outcome": {"const": "succeeded"},
+        "issues": {"maxItems": 0}
+      }
+    },
+    {
+      "properties": {
+        "object_result": {"const": "invalid"},
+        "operation_outcome": {"const": "succeeded"},
+        "issues": {"minItems": 1}
+      }
+    },
+    {
+      "properties": {
+        "object_result": {"const": "not_evaluated"},
+        "operation_outcome": {"const": "resource_exhausted"},
+        "issues": {"minItems": 1}
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["code", "path", "severity"],
+  "properties": {
+    "code": {"pattern": "^knowledge_unit\\.[a-z0-9_]+$", "type": "string"},
+    "path": {"pattern": "^(|(?:/(?:[^~/]|~0|~1)*)+)$", "type": "string"},
+    "severity": {"const": "error"}
+  },
+  "additionalProperties": false
+}

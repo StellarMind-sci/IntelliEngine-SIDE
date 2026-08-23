@@ -1,0 +1,166 @@
+{
+  "contract_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "linear-equation-valid",
+      "input": {
+        "unit": {
+          "contract_version": "1.0.0",
+          "id": "10000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "title": "解一元一次方程",
+          "concept_boundary": {
+            "focus_node_refs": [
+              {"id": "20000000-0000-4000-8000-000000000001", "revision": 1},
+              {"id": "20000000-0000-4000-8000-000000000002", "revision": 1}
+            ],
+            "out_of_scope_statements": ["不包含二次及更高次方程", "不讨论复数域解"]
+          },
+          "learning_objectives": [
+            {
+              "objective_id": "isolate_variable",
+              "statement": "能够通过等式两边执行等价变换，将未知量单独置于一侧",
+              "target_node_refs": [
+                {"id": "20000000-0000-4000-8000-000000000002", "revision": 1},
+                {"id": "20000000-0000-4000-8000-000000000004", "revision": 1}
+              ]
+            }
+          ],
+          "node_bindings": [
+            {"role": "core", "node_ref": {"id": "20000000-0000-4000-8000-000000000001", "revision": 1}},
+            {"role": "core", "node_ref": {"id": "20000000-0000-4000-8000-000000000002", "revision": 1}},
+            {"role": "core", "node_ref": {"id": "20000000-0000-4000-8000-000000000003", "revision": 1}},
+            {"role": "core", "node_ref": {"id": "20000000-0000-4000-8000-000000000004", "revision": 1}},
+            {"role": "evidence", "node_ref": {"id": "20000000-0000-4000-8000-000000000006", "revision": 1}},
+            {"role": "example", "node_ref": {"id": "20000000-0000-4000-8000-000000000005", "revision": 1}}
+          ],
+          "prerequisite_unit_refs": [
+            {"id": "10000000-0000-4000-8000-000000000000", "revision": 1}
+          ],
+          "behaviors": [
+            {
+              "behavior_id": "solve_symbolically",
+              "kind": "calculation",
+              "capability": "runtime.math.symbolic",
+              "input_node_refs": [
+                {"id": "20000000-0000-4000-8000-000000000001", "revision": 1},
+                {"id": "20000000-0000-4000-8000-000000000002", "revision": 1}
+              ],
+              "output_node_refs": [
+                {"id": "20000000-0000-4000-8000-000000000004", "revision": 1}
+              ]
+            }
+          ],
+          "validations": [
+            {
+              "validation_id": "substitution_check",
+              "description": "将结果代回原方程后等式成立",
+              "subject_node_refs": [
+                {"id": "20000000-0000-4000-8000-000000000004", "revision": 1}
+              ],
+              "evidence_node_refs": [
+                {"id": "20000000-0000-4000-8000-000000000006", "revision": 1}
+              ]
+            }
+          ],
+          "mastery_criteria": [
+            {
+              "criterion_id": "explain_and_verify",
+              "statement": "能够解释每一步等价变换并以代入结果作为正确性证据",
+              "evidence_node_refs": [
+                {"id": "20000000-0000-4000-8000-000000000006", "revision": 1}
+              ]
+            }
+          ],
+          "provenance_refs": ["source:algebra-textbook:chapter-1"]
+        },
+        "available_node_refs": [
+          {"id": "20000000-0000-4000-8000-000000000001", "revision": 1},
+          {"id": "20000000-0000-4000-8000-000000000002", "revision": 1},
+          {"id": "20000000-0000-4000-8000-000000000003", "revision": 1},
+          {"id": "20000000-0000-4000-8000-000000000004", "revision": 1},
+          {"id": "20000000-0000-4000-8000-000000000005", "revision": 1},
+          {"id": "20000000-0000-4000-8000-000000000006", "revision": 1}
+        ]
+      },
+      "expected": {"object_result": "valid", "operation_outcome": "succeeded", "issues": []}
+    },
+    {
+      "case_id": "learning-objective-missing",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "remove", "path": "/learning_objectives"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.missing_field", "path": "/learning_objectives", "severity": "error"}]
+      }
+    },
+    {
+      "case_id": "node-bindings-noncanonical",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "reverse", "path": "/node_bindings"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.noncanonical_set", "path": "/node_bindings", "severity": "error"}]
+      }
+    },
+    {
+      "case_id": "prerequisite-self-dependency",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "append-self-dependency", "path": "/prerequisite_unit_refs"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.self_dependency", "path": "/prerequisite_unit_refs/1", "severity": "error"}]
+      }
+    },
+    {
+      "case_id": "mastery-evidence-missing",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "clear", "path": "/mastery_criteria/0/evidence_node_refs"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.mastery_without_evidence", "path": "/mastery_criteria/0/evidence_node_refs", "severity": "error"}]
+      }
+    },
+    {
+      "case_id": "behavior-capability-invalid",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "replace", "path": "/behaviors/0/capability", "value": "runtime.network.unrestricted"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.invalid_behavior_capability", "path": "/behaviors/0/capability", "severity": "error"}]
+      }
+    },
+    {
+      "case_id": "contract-version-unsupported",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "replace", "path": "/contract_version", "value": "2.0.0"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.unsupported_contract_version", "path": "/contract_version", "severity": "error"}]
+      }
+    },
+    {
+      "case_id": "node-ref-dangling",
+      "input": {
+        "base_case_id": "linear-equation-valid",
+        "mutation": {"kind": "replace", "path": "/learning_objectives/0/target_node_refs/0/id", "value": "29999999-0000-4000-8000-000000000001"}
+      },
+      "expected": {
+        "object_result": "invalid", "operation_outcome": "succeeded",
+        "issues": [{"code": "knowledge_unit.dangling_node_ref", "path": "", "severity": "error"}]
+      }
+    }
+  ]
+}

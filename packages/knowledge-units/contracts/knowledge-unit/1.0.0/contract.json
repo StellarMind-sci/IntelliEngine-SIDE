@@ -1,0 +1,25 @@
+{
+  "contract_family": "knowledge-unit",
+  "contract_version": "1.0.0",
+  "cognitive_node_contract": "1.0.0",
+  "schemas": {
+    "diagnostic": "schemas/diagnostic.schema.json",
+    "fixture_suite": "schemas/fixture-suite.schema.json",
+    "knowledge_unit": "schemas/knowledge-unit.schema.json",
+    "knowledge_unit_ref": "schemas/knowledge-unit-ref.schema.json",
+    "lock": "schemas/lock.schema.json",
+    "validation_result": "schemas/validation-result.schema.json"
+  },
+  "diagnostics": "diagnostics/knowledge-unit.json",
+  "fixtures": "fixtures/cases.json",
+  "limits": {
+    "behaviors": 256,
+    "knowledge_unit_jcs_bytes": 1048576,
+    "learning_objectives": 256,
+    "mastery_criteria": 256,
+    "node_bindings": 10000,
+    "prerequisite_units": 1024,
+    "validations": 256
+  },
+  "set_order": "unsigned-utf8"
+}

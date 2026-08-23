@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "node_ref": {
+      "type": "object",
+      "required": ["id", "revision"],
+      "properties": {
+        "id": {"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "type": "string"},
+        "revision": {"maximum": 9007199254740991, "minimum": 1, "type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "node_ref_set": {"items": {"$ref": "#/$defs/node_ref"}, "type": "array", "uniqueItems": true},
+    "unit_ref": {
+      "type": "object",
+      "required": ["id", "revision"],
+      "properties": {
+        "id": {"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "type": "string"},
+        "revision": {"maximum": 9007199254740991, "minimum": 1, "type": "integer"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": [
+    "contract_version", "id", "revision", "title", "concept_boundary",
+    "learning_objectives", "node_bindings", "prerequisite_unit_refs",
+    "behaviors", "validations", "mastery_criteria", "provenance_refs"
+  ],
+  "properties": {
+    "contract_version": {"pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$", "type": "string"},
+    "id": {"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "type": "string"},
+    "revision": {"maximum": 9007199254740991, "minimum": 1, "type": "integer"},
+    "title": {"maxLength": 512, "minLength": 1, "type": "string"},
+    "concept_boundary": {
+      "type": "object",
+      "required": ["focus_node_refs", "out_of_scope_statements"],
+      "properties": {
+        "focus_node_refs": {"allOf": [{"$ref": "#/$defs/node_ref_set"}, {"minItems": 1}]},
+        "out_of_scope_statements": {"items": {"minLength": 1, "type": "string"}, "type": "array", "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "learning_objectives": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "required": ["objective_id", "statement", "target_node_refs"],
+        "properties": {
+          "objective_id": {"pattern": "^[a-z][a-z0-9_-]*$", "type": "string"},
+          "statement": {"minLength": 1, "type": "string"},
+          "target_node_refs": {"allOf": [{"$ref": "#/$defs/node_ref_set"}, {"minItems": 1}]}
+        }, "additionalProperties": false
+      }
+    },
+    "node_bindings": {
+      "type": "array", "minItems": 1, "maxItems": 10000,
+      "items": {
+        "type": "object", "required": ["role", "node_ref"],
+        "properties": {
+          "role": {"enum": ["core", "evidence", "example", "representation"]},
+          "node_ref": {"$ref": "#/$defs/node_ref"}
+        }, "additionalProperties": false
+      }, "uniqueItems": true
+    },
+    "prerequisite_unit_refs": {"items": {"$ref": "#/$defs/unit_ref"}, "maxItems": 1024, "type": "array", "uniqueItems": true},
+    "behaviors": {
+      "type": "array", "maxItems": 256,
+      "items": {
+        "type": "object", "required": ["behavior_id", "kind", "capability", "input_node_refs", "output_node_refs"],
+        "properties": {
+          "behavior_id": {"pattern": "^[a-z][a-z0-9_-]*$", "type": "string"},
+          "kind": {"enum": ["calculation", "simulation", "transformation", "visualization"]},
+          "capability": {"enum": ["runtime.math.numeric", "runtime.math.symbolic", "runtime.visualization.2d"]},
+          "input_node_refs": {"$ref": "#/$defs/node_ref_set"},
+          "output_node_refs": {"allOf": [{"$ref": "#/$defs/node_ref_set"}, {"minItems": 1}]}
+        }, "additionalProperties": false
+      }
+    },
+    "validations": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "required": ["validation_id", "description", "subject_node_refs", "evidence_node_refs"],
+        "properties": {
+          "validation_id": {"pattern": "^[a-z][a-z0-9_-]*$", "type": "string"},
+          "description": {"minLength": 1, "type": "string"},
+          "subject_node_refs": {"allOf": [{"$ref": "#/$defs/node_ref_set"}, {"minItems": 1}]},
+          "evidence_node_refs": {"allOf": [{"$ref": "#/$defs/node_ref_set"}, {"minItems": 1}]}
+        }, "additionalProperties": false
+      }
+    },
+    "mastery_criteria": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "required": ["criterion_id", "statement", "evidence_node_refs"],
+        "properties": {
+          "criterion_id": {"pattern": "^[a-z][a-z0-9_-]*$", "type": "string"},
+          "statement": {"minLength": 1, "type": "string"},
+          "evidence_node_refs": {"allOf": [{"$ref": "#/$defs/node_ref_set"}, {"minItems": 1}]}
+        }, "additionalProperties": false
+      }
+    },
+    "provenance_refs": {"items": {"minLength": 1, "type": "string"}, "minItems": 1, "type": "array", "uniqueItems": true}
+  },
+  "additionalProperties": false
+}
