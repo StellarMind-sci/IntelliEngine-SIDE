@@ -1,0 +1,25 @@
+{
+  "contract_family": "thoughtflow",
+  "contract_version": "1.0.0",
+  "cognitive_node_contract": "1.0.0",
+  "knowledge_unit_contract": "1.0.0",
+  "schemas": {
+    "diagnostic": "schemas/diagnostic.schema.json",
+    "fixture_suite": "schemas/fixture-suite.schema.json",
+    "lock": "schemas/lock.schema.json",
+    "reference_snapshot": "schemas/reference-snapshot.schema.json",
+    "thoughtflow": "schemas/thoughtflow.schema.json",
+    "thoughtflow_ref": "schemas/thoughtflow-ref.schema.json",
+    "validation_result": "schemas/validation-result.schema.json"
+  },
+  "diagnostics": "diagnostics/thoughtflow.json",
+  "fixtures": "fixtures/cases.json",
+  "limits": {
+    "steps": 10000,
+    "transitions": 50000,
+    "iterations": 10000,
+    "thoughtflow_jcs_bytes": 4194304
+  },
+  "set_order": "unsigned-utf8",
+  "side_effects": "forbidden"
+}

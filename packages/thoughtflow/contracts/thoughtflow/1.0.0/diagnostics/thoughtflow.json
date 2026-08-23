@@ -1,0 +1,28 @@
+{
+  "contract_version": "1.0.0",
+  "codes": [
+    "thoughtflow.behavior_node_coverage",
+    "thoughtflow.dangling_reference",
+    "thoughtflow.dangling_step",
+    "thoughtflow.duplicate_outcome",
+    "thoughtflow.history_rewrite",
+    "thoughtflow.invalid_branch_set",
+    "thoughtflow.invalid_json",
+    "thoughtflow.invalid_loop",
+    "thoughtflow.invalid_revision",
+    "thoughtflow.invalid_step",
+    "thoughtflow.invalid_transition",
+    "thoughtflow.noncanonical_set",
+    "thoughtflow.opaque_reference",
+    "thoughtflow.reference_closure_mismatch",
+    "thoughtflow.reference_snapshot_incomplete",
+    "thoughtflow.revision_identity_mismatch",
+    "thoughtflow.revision_not_increased",
+    "thoughtflow.revision_without_change",
+    "thoughtflow.unconstrained_cycle",
+    "thoughtflow.unknown_behavior",
+    "thoughtflow.unsupported_contract_version",
+    "thoughtflow.unreachable_step"
+  ],
+  "severity": "error"
+}

@@ -1,0 +1,864 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "id",
+    "revision",
+    "title",
+    "entry_step_id",
+    "steps",
+    "transitions",
+    "knowledge_unit_refs",
+    "cognitive_node_refs",
+    "provenance_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "entry_step_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10000,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs",
+              "success_statement"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "goal"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "success_statement": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "analysis"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs",
+              "behavior_ref"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "operation"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "behavior_ref": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "decision"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs",
+              "acceptance_statement",
+              "evidence_node_refs"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "verification"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "acceptance_statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "evidence_node_refs": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs",
+              "artifact_key"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "artifact"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "artifact_key": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "step_id",
+              "kind",
+              "title",
+              "description",
+              "knowledge_unit_refs",
+              "cognitive_node_refs",
+              "max_iterations",
+              "exit_condition",
+              "verification_step_ids"
+            ],
+            "properties": {
+              "step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "iteration"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "knowledge_unit_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "cognitive_node_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "revision"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "max_iterations": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10000
+              },
+              "exit_condition": {
+                "type": "string",
+                "minLength": 1
+              },
+              "verification_step_ids": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "transition_id",
+              "kind",
+              "from_step_id",
+              "to_step_id"
+            ],
+            "properties": {
+              "transition_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "sequence"
+              },
+              "from_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to_step_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "transition_id",
+              "kind",
+              "from_step_id",
+              "to_step_id"
+            ],
+            "properties": {
+              "transition_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "data_dependency"
+              },
+              "from_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to_step_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "transition_id",
+              "kind",
+              "from_step_id",
+              "to_step_id",
+              "branch_label",
+              "condition_statement",
+              "is_default"
+            ],
+            "properties": {
+              "transition_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "branch"
+              },
+              "from_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "branch_label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "condition_statement": {
+                "type": "string",
+                "minLength": 1
+              },
+              "is_default": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "transition_id",
+              "kind",
+              "from_step_id",
+              "to_step_id",
+              "outcome"
+            ],
+            "properties": {
+              "transition_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "verification_feedback"
+              },
+              "from_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "enum": [
+                  "passed",
+                  "failed",
+                  "needs_evidence"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "transition_id",
+              "kind",
+              "from_step_id",
+              "to_step_id",
+              "outcome"
+            ],
+            "properties": {
+              "transition_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "loop"
+              },
+              "from_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to_step_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outcome": {
+                "enum": [
+                  "passed",
+                  "failed",
+                  "needs_evidence"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "knowledge_unit_refs": {
+      "type": "array",
+      "maxItems": 1024,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cognitive_node_refs": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "revision"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "provenance_refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false
+}

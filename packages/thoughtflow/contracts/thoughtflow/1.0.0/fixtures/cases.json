@@ -1,0 +1,838 @@
+{
+  "contract_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "linear-equation-iteration-valid",
+      "input": {
+        "mode": "reference",
+        "flow": {
+          "contract_version": "1.0.0",
+          "id": "018f0c20-7a8b-7c1d-8a2e-111111111111",
+          "revision": 1,
+          "title": "linear equation",
+          "entry_step_id": "s01-goal",
+          "steps": [
+            {
+              "step_id": "s01-goal",
+              "kind": "goal",
+              "title": "solve",
+              "description": "solve",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ],
+              "success_statement": "x is verified"
+            },
+            {
+              "step_id": "s02-analysis",
+              "kind": "analysis",
+              "title": "isolate",
+              "description": "isolate",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ]
+            },
+            {
+              "step_id": "s03-iteration",
+              "kind": "iteration",
+              "title": "revise",
+              "description": "revise",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ],
+              "max_iterations": 3,
+              "exit_condition": "verified or limit",
+              "verification_step_ids": [
+                "s06-verification"
+              ]
+            },
+            {
+              "step_id": "s04-operation",
+              "kind": "operation",
+              "title": "transform",
+              "description": "transform",
+              "knowledge_unit_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-222222222222",
+                  "revision": 1
+                }
+              ],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                },
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-444444444444",
+                  "revision": 1
+                }
+              ],
+              "behavior_ref": {
+                "knowledge_unit_ref": {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-222222222222",
+                  "revision": 1
+                },
+                "behavior_id": "solve-linear-equation"
+              }
+            },
+            {
+              "step_id": "s05-artifact",
+              "kind": "artifact",
+              "title": "candidate",
+              "description": "candidate",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-444444444444",
+                  "revision": 1
+                }
+              ],
+              "artifact_key": "candidate-solution"
+            },
+            {
+              "step_id": "s06-verification",
+              "kind": "verification",
+              "title": "substitute",
+              "description": "substitute",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-444444444444",
+                  "revision": 1
+                },
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-555555555555",
+                  "revision": 1
+                }
+              ],
+              "acceptance_statement": "equation holds",
+              "evidence_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-555555555555",
+                  "revision": 1
+                }
+              ]
+            },
+            {
+              "step_id": "s07-success",
+              "kind": "goal",
+              "title": "complete",
+              "description": "complete",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-555555555555",
+                  "revision": 1
+                }
+              ],
+              "success_statement": "solution accepted"
+            }
+          ],
+          "transitions": [
+            {
+              "transition_id": "t01",
+              "kind": "sequence",
+              "from_step_id": "s01-goal",
+              "to_step_id": "s02-analysis"
+            },
+            {
+              "transition_id": "t02",
+              "kind": "sequence",
+              "from_step_id": "s02-analysis",
+              "to_step_id": "s03-iteration"
+            },
+            {
+              "transition_id": "t03",
+              "kind": "branch",
+              "from_step_id": "s03-iteration",
+              "to_step_id": "s04-operation",
+              "branch_label": "retry",
+              "condition_statement": "retry needed",
+              "is_default": false
+            },
+            {
+              "transition_id": "t04",
+              "kind": "branch",
+              "from_step_id": "s03-iteration",
+              "to_step_id": "s07-success",
+              "branch_label": "stop",
+              "condition_statement": "stop",
+              "is_default": true
+            },
+            {
+              "transition_id": "t05",
+              "kind": "sequence",
+              "from_step_id": "s04-operation",
+              "to_step_id": "s05-artifact"
+            },
+            {
+              "transition_id": "t06",
+              "kind": "sequence",
+              "from_step_id": "s05-artifact",
+              "to_step_id": "s06-verification"
+            },
+            {
+              "transition_id": "t08",
+              "kind": "loop",
+              "from_step_id": "s06-verification",
+              "to_step_id": "s03-iteration",
+              "outcome": "failed"
+            },
+            {
+              "transition_id": "t07",
+              "kind": "verification_feedback",
+              "from_step_id": "s06-verification",
+              "to_step_id": "s07-success",
+              "outcome": "passed"
+            }
+          ],
+          "knowledge_unit_refs": [
+            {
+              "id": "018f0c20-7a8b-7c1d-8a2e-222222222222",
+              "revision": 1
+            }
+          ],
+          "cognitive_node_refs": [
+            {
+              "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+              "revision": 1
+            },
+            {
+              "id": "018f0c20-7a8b-7c1d-8a2e-444444444444",
+              "revision": 1
+            },
+            {
+              "id": "018f0c20-7a8b-7c1d-8a2e-555555555555",
+              "revision": 1
+            }
+          ],
+          "provenance_refs": [
+            "prov:synthetic:linear-equation"
+          ]
+        },
+        "snapshot": {
+          "cognitive_nodes": [
+            {
+              "ref": {
+                "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                "revision": 1
+              },
+              "object_result": "available"
+            },
+            {
+              "ref": {
+                "id": "018f0c20-7a8b-7c1d-8a2e-444444444444",
+                "revision": 1
+              },
+              "object_result": "available"
+            },
+            {
+              "ref": {
+                "id": "018f0c20-7a8b-7c1d-8a2e-555555555555",
+                "revision": 1
+              },
+              "object_result": "available"
+            }
+          ],
+          "knowledge_units": [
+            {
+              "ref": {
+                "id": "018f0c20-7a8b-7c1d-8a2e-222222222222",
+                "revision": 1
+              },
+              "object_result": "available",
+              "document": {
+                "contract_version": "1.0.0",
+                "id": "018f0c20-7a8b-7c1d-8a2e-222222222222",
+                "revision": 1,
+                "behaviors": [
+                  {
+                    "behavior_id": "solve-linear-equation",
+                    "input_node_refs": [
+                      {
+                        "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                        "revision": 1
+                      }
+                    ],
+                    "output_node_refs": [
+                      {
+                        "id": "018f0c20-7a8b-7c1d-8a2e-444444444444",
+                        "revision": 1
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": []
+      }
+    },
+    {
+      "case_id": "decision-artifact-valid",
+      "input": {
+        "mode": "graph",
+        "flow": {
+          "contract_version": "1.0.0",
+          "id": "018f0c20-7a8b-7c1d-8a2e-666666666666",
+          "revision": 1,
+          "title": "decision",
+          "entry_step_id": "d01-goal",
+          "steps": [
+            {
+              "step_id": "d01-goal",
+              "kind": "goal",
+              "title": "choose",
+              "description": "choose",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ],
+              "success_statement": "choice verified"
+            },
+            {
+              "step_id": "d02-decision",
+              "kind": "decision",
+              "title": "decide",
+              "description": "decide",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ]
+            },
+            {
+              "step_id": "d03-analysis",
+              "kind": "analysis",
+              "title": "symbolic",
+              "description": "symbolic",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ]
+            },
+            {
+              "step_id": "d04-artifact",
+              "kind": "artifact",
+              "title": "graph",
+              "description": "graph",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ],
+              "artifact_key": "graph"
+            },
+            {
+              "step_id": "d05-verification",
+              "kind": "verification",
+              "title": "check",
+              "description": "check",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ],
+              "acceptance_statement": "supports result",
+              "evidence_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ]
+            },
+            {
+              "step_id": "d06-success",
+              "kind": "goal",
+              "title": "done",
+              "description": "done",
+              "knowledge_unit_refs": [],
+              "cognitive_node_refs": [
+                {
+                  "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                  "revision": 1
+                }
+              ],
+              "success_statement": "verified"
+            }
+          ],
+          "transitions": [
+            {
+              "transition_id": "d01",
+              "kind": "sequence",
+              "from_step_id": "d01-goal",
+              "to_step_id": "d02-decision"
+            },
+            {
+              "transition_id": "d02",
+              "kind": "branch",
+              "from_step_id": "d02-decision",
+              "to_step_id": "d04-artifact",
+              "branch_label": "graph",
+              "condition_statement": "choose graph",
+              "is_default": false
+            },
+            {
+              "transition_id": "d03",
+              "kind": "branch",
+              "from_step_id": "d02-decision",
+              "to_step_id": "d03-analysis",
+              "branch_label": "symbolic",
+              "condition_statement": "choose symbolic",
+              "is_default": true
+            },
+            {
+              "transition_id": "d04",
+              "kind": "sequence",
+              "from_step_id": "d03-analysis",
+              "to_step_id": "d05-verification"
+            },
+            {
+              "transition_id": "d05",
+              "kind": "sequence",
+              "from_step_id": "d04-artifact",
+              "to_step_id": "d05-verification"
+            },
+            {
+              "transition_id": "d06",
+              "kind": "verification_feedback",
+              "from_step_id": "d05-verification",
+              "to_step_id": "d06-success",
+              "outcome": "passed"
+            }
+          ],
+          "knowledge_unit_refs": [],
+          "cognitive_node_refs": [
+            {
+              "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+              "revision": 1
+            }
+          ],
+          "provenance_refs": [
+            "prov:synthetic:decision"
+          ]
+        },
+        "snapshot": {
+          "cognitive_nodes": [
+            {
+              "ref": {
+                "id": "018f0c20-7a8b-7c1d-8a2e-333333333333",
+                "revision": 1
+              },
+              "object_result": "available"
+            }
+          ],
+          "knowledge_units": []
+        }
+      },
+      "expected": {
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": []
+      }
+    },
+    {
+      "case_id": "dangling-step",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/0/to_step_id",
+          "value": "missing-step"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.dangling_step",
+            "path": "/transitions/0/to_step_id",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "operation-unknown-behavior",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/snapshot/knowledge_units/0/document/behaviors/0/behavior_id",
+          "value": "different"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.unknown_behavior",
+            "path": "/steps/3/behavior_ref",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "decision-missing-default",
+      "input": {
+        "base_case_id": "decision-artifact-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/2/is_default",
+          "value": false
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.invalid_branch_set",
+            "path": "/steps/1",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "duplicate-feedback-outcome",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/7/outcome",
+          "value": "failed"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.duplicate_outcome",
+            "path": "/steps/5",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "loop-passed-outcome",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/6/outcome",
+          "value": "passed"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.invalid_loop",
+            "path": "/transitions/6/outcome",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "loop-wrong-target",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/6/to_step_id",
+          "value": "s04-operation"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.invalid_loop",
+            "path": "/transitions/6",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "normal-control-cycle",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/6",
+          "value": {
+            "transition_id": "t08",
+            "kind": "sequence",
+            "from_step_id": "s06-verification",
+            "to_step_id": "s03-iteration"
+          }
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.unconstrained_cycle",
+            "path": "/transitions",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "data-only-reachability",
+      "input": {
+        "base_case_id": "decision-artifact-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/transitions/0/kind",
+          "value": "data_dependency"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.unreachable_step",
+            "path": "/steps/1",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "noncanonical-steps",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "reverse",
+          "path": "/flow/steps"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.noncanonical_set",
+            "path": "/steps",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "unknown-contract-major",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/flow/contract_version",
+          "value": "2.0.0"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.unsupported_contract_version",
+            "path": "/contract_version",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "unused-cognitive-ref",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "append",
+          "path": "/flow/cognitive_node_refs",
+          "value": {
+            "id": "018f0c20-7a8b-7c1d-8a2e-777777777777",
+            "revision": 1
+          }
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.reference_closure_mismatch",
+            "path": "/cognitive_node_refs",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "reference-snapshot-missing",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "remove",
+          "path": "/snapshot/cognitive_nodes/2"
+        }
+      },
+      "expected": {
+        "object_result": "not_evaluated",
+        "operation_outcome": "indeterminate",
+        "issues": [
+          {
+            "code": "thoughtflow.reference_snapshot_incomplete",
+            "path": "/cognitive_node_refs/2",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "reference-opaque",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/snapshot/knowledge_units/0",
+          "value": {
+            "ref": {
+              "id": "018f0c20-7a8b-7c1d-8a2e-222222222222",
+              "revision": 1
+            },
+            "object_result": "opaque"
+          }
+        }
+      },
+      "expected": {
+        "object_result": "not_evaluated",
+        "operation_outcome": "indeterminate",
+        "issues": [
+          {
+            "code": "thoughtflow.opaque_reference",
+            "path": "/knowledge_unit_refs/0",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "reference-dangling",
+      "input": {
+        "base_case_id": "linear-equation-iteration-valid",
+        "mutation": {
+          "kind": "replace",
+          "path": "/snapshot/cognitive_nodes/2/object_result",
+          "value": "invalid"
+        }
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.dangling_reference",
+            "path": "/cognitive_node_refs/2",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "revision-only-change",
+      "input": {
+        "mode": "revision",
+        "base_case_id": "linear-equation-iteration-valid",
+        "candidate_mutations": [
+          {
+            "kind": "replace",
+            "path": "/flow/revision",
+            "value": 2
+          }
+        ]
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.revision_without_change",
+            "path": "/revision",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "revision-history-rewrite",
+      "input": {
+        "mode": "revision",
+        "base_case_id": "linear-equation-iteration-valid",
+        "candidate_mutations": [
+          {
+            "kind": "replace",
+            "path": "/flow/revision",
+            "value": 2
+          },
+          {
+            "kind": "replace",
+            "path": "/flow/steps/0/title",
+            "value": "rewritten"
+          }
+        ]
+      },
+      "expected": {
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "thoughtflow.history_rewrite",
+            "path": "/steps/0",
+            "severity": "error"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "entries"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "1.0.0"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "digest_kind",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "digest_kind": {
+            "const": "jcs_sha256"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
