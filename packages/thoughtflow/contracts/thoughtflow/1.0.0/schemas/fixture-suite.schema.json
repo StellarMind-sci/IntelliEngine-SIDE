@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "cases"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "1.0.0"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 18,
+      "maxItems": 18,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id",
+          "input",
+          "expected"
+        ],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "input": {
+            "type": "object"
+          },
+          "expected": {
+            "type": "object",
+            "required": [
+              "object_result",
+              "operation_outcome",
+              "issues"
+            ],
+            "properties": {
+              "object_result": {
+                "enum": [
+                  "valid",
+                  "invalid",
+                  "not_evaluated"
+                ]
+              },
+              "operation_outcome": {
+                "enum": [
+                  "succeeded",
+                  "indeterminate"
+                ]
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "code",
+                    "path",
+                    "severity"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "pattern": "^thoughtflow\\.[a-z0-9_]+$"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "severity": {
+                      "const": "error"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "oneOf": [
+              {
+                "properties": {
+                  "object_result": {
+                    "const": "valid"
+                  },
+                  "operation_outcome": {
+                    "const": "succeeded"
+                  },
+                  "issues": {
+                    "maxItems": 0
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "object_result": {
+                    "const": "invalid"
+                  },
+                  "operation_outcome": {
+                    "const": "succeeded"
+                  },
+                  "issues": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "object_result": {
+                    "const": "not_evaluated"
+                  },
+                  "operation_outcome": {
+                    "const": "indeterminate"
+                  },
+                  "issues": {
+                    "minItems": 1
+                  }
+                }
+              }
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

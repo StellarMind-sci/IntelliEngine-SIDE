@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "code",
+    "path",
+    "severity"
+  ],
+  "properties": {
+    "code": {
+      "type": "string",
+      "pattern": "^thoughtflow\\.[a-z0-9_]+$"
+    },
+    "path": {
+      "type": "string"
+    },
+    "severity": {
+      "const": "error"
+    }
+  },
+  "additionalProperties": false
+}

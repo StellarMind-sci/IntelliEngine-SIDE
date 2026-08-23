@@ -1,0 +1,55 @@
+{
+  "contract_version": "1.0.0",
+  "entries": [
+    {
+      "path": "contract.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "3b1ffbc2d951d2e7d24ece410af8133a5cfb5e4b28658fb9408871849774e194"
+    },
+    {
+      "path": "diagnostics/thoughtflow.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "3a3a346d90cf1dd4607042108c1525b1ea64a2e799a7b13169aebfea78e8d473"
+    },
+    {
+      "path": "fixtures/cases.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "cc1f46adcc807aff6206117e5dfb39e1a97496401d7240bf6ba91137ed19815a"
+    },
+    {
+      "path": "schemas/diagnostic.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "51b9a79d2ca578cb921e19b946baaedf76b07882dd4583d75464b90367212235"
+    },
+    {
+      "path": "schemas/fixture-suite.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "81aed0cdd0f7631a43820adc8d87409ef1ba94d7a6335fc96ce12ab807aadb3d"
+    },
+    {
+      "path": "schemas/lock.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "140a87c8553c870d0e38479f4935b390e759b044198def9a82ac79acec80310d"
+    },
+    {
+      "path": "schemas/reference-snapshot.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "d2d4aaf3c85a37ef1b7c64e84cbf0b9e0d7893d76a8ed3b419e38103b8dd3dcc"
+    },
+    {
+      "path": "schemas/thoughtflow-ref.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "794fd80e447010b77fb9975a1785d50295ba97a003e256e8946c1f2438b39405"
+    },
+    {
+      "path": "schemas/thoughtflow.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "39087addb5485997d92d975f13843b7b3715cd340224cbfa1701bf20c9b3768d"
+    },
+    {
+      "path": "schemas/validation-result.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "988a44bfd8651bfc6c2f4227920c0d62941c52c071718243f89a429207bc7a71"
+    }
+  ]
+}

@@ -19,5 +19,23 @@ jobs:
       - name: Verify repository governance
         run: python scripts/verify_governance.py
 
+  thoughtflow-contract:
+    name: Thoughtflow contract (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify Thoughtflow machine contract
+        run: python packages/thoughtflow/contracts/tools/verify_contract.py
+      - name: Test Thoughtflow contract behavior
+        run: python -m unittest packages/thoughtflow/tests/test_contract.py -v
+
+
   # Add lint, unit, contract, integration, security, package-compatibility, and build jobs as
   # implementation enters the repository. Keep each job independently reviewable and required.
