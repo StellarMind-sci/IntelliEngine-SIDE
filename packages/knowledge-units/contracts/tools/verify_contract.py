@@ -207,6 +207,25 @@ def validate_unit(unit: Any, available_node_refs: Any, schema: Any | None = None
     bound = {_ref_key(binding["node_ref"]) for binding in unit["node_bindings"]}
     if any(ref not in bound for ref in _collect_refs(unit)):
         return _result(False, _issue("knowledge_unit.dangling_node_ref", "/node_bindings"))
+    nested_sets: list[tuple[str, Any]] = []
+    boundary = unit.get("concept_boundary")
+    if isinstance(boundary, dict):
+        nested_sets.append(("/concept_boundary/focus_node_refs", boundary.get("focus_node_refs")))
+        if not _string_set(boundary.get("out_of_scope_statements")):
+            return _result(False, _issue("knowledge_unit.noncanonical_set", "/concept_boundary/out_of_scope_statements"))
+    for index, objective in enumerate(unit["learning_objectives"]):
+        nested_sets.append((f"/learning_objectives/{index}/target_node_refs", objective.get("target_node_refs")))
+    for index, behavior in enumerate(unit["behaviors"]):
+        nested_sets.append((f"/behaviors/{index}/input_node_refs", behavior.get("input_node_refs")))
+        nested_sets.append((f"/behaviors/{index}/output_node_refs", behavior.get("output_node_refs")))
+    for index, validation in enumerate(unit["validations"]):
+        nested_sets.append((f"/validations/{index}/subject_node_refs", validation.get("subject_node_refs")))
+        nested_sets.append((f"/validations/{index}/evidence_node_refs", validation.get("evidence_node_refs")))
+    for index, criterion in enumerate(unit["mastery_criteria"]):
+        nested_sets.append((f"/mastery_criteria/{index}/evidence_node_refs", criterion.get("evidence_node_refs")))
+    for path, references in nested_sets:
+        if not _sorted_unique(references, _ref_key):
+            return _result(False, _issue("knowledge_unit.noncanonical_set", path))
     boundary = unit["concept_boundary"]
     if not isinstance(boundary, dict) or not boundary.get("focus_node_refs") or not _sorted_unique(boundary.get("focus_node_refs"), _ref_key) or not _string_set(boundary.get("out_of_scope_statements")):
         return _result(False, _issue("knowledge_unit.invalid_json", "/concept_boundary"))

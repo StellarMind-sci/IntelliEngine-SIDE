@@ -1,0 +1,8 @@
+{
+  "name": "@intelliengine/knowledge-units",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/ts/*.test.ts"
+  }
+}
