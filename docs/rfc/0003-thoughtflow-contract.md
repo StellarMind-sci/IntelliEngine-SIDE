@@ -70,6 +70,12 @@ Thoughtflow v1 的规范对象至少包含：
 不改变其他规范内容也是无效转换。运行游标、迭代计数、已选分支、执行输出、节点坐标和个人 UI
 状态不属于 Thoughtflow 定义版本，后续由运行记录、ChangeSet 或体验层拥有。
 
+单对象校验只能证明当前封套与图自洽，不能凭空证明 revision 演进合法。后续机器契约必须提供独立的
+`validate_revision_transition(previous, candidate)` 只读比较模式，验证同一 ID、revision 单调递增、
+内容确实变化。历史存储是否被改写不能由两个对象证明，必须由后续不可变存储与 ChangeSet 审计保证；
+真正提交仍由 ChangeSet/ControlPlane 负责。
+
+
 ### 步骤
 
 每个步骤至少包含 `step_id`、`kind`、`title`、`description`、`knowledge_unit_refs` 和
@@ -122,16 +128,19 @@ Thoughtflow v1 的规范对象至少包含：
 `branch` 必须包含非空 `branch_label` 和 `condition_statement`；同一来源的 label 唯一，并且必须
 恰有一个 `is_default=true` 的分支，供条件无法判定时安全停留或交给用户选择。默认分支不代表授权。
 
-`verification_feedback` 必须声明 `outcome`，其值为 `passed`、`failed` 或 `needs_evidence`；
-它只描述未来结果如何连接流程，不伪造当前验证结果。
+`verification_feedback` 与 `loop` 都必须声明 `outcome`。`verification_feedback` 允许
+`passed`、`failed` 或 `needs_evidence`；`loop` 只允许 `failed` 或 `needs_evidence`，
+不能把验证通过映射为自动重试。它们只描述未来结果如何连接流程，不伪造当前验证结果。
 
 `branch` 只能由 decision 或 iteration 发出；这两类步骤必须至少有两条 branch，所有 branch label
 唯一且恰有一个默认分支。它们不得发出 sequence 或 verification_feedback 控制转移，但可以声明
-data_dependency。`verification_feedback` 只能由 verification 发出，同一来源的 outcome 唯一，
-且每个 verification 至少有一条反馈转移。
+data_dependency。默认分支只是显式候选，条件未判定时只读模拟仍返回“需要外部决定”，不得自动前进。
 
-`loop` 只能由 verification 发出，并且该 verification 必须列在目标 iteration 的
-`verification_step_ids` 中。
+`verification_feedback` 与 `loop` 只能由 verification 发出；同一来源在两种转移中的 outcome
+必须联合唯一。每个 verification 至少有一条 verification_feedback；作为 loop 来源时，还必须有
+至少一条非 loop feedback 提供退出路径。
+
+`loop` 的来源 verification 必须列在目标 iteration 的 `verification_step_ids` 中。
 
 ### 受约束循环
 
@@ -150,7 +159,9 @@ Thoughtflow v1 采用受约束循环，而不是纯 DAG 或任意有向图：
 
 ### 图完整性与可达性
 
-- `entry_step_id` 必须存在，且所有步骤必须从入口可达；不保留孤立步骤。
+- `entry_step_id` 必须存在；图中至少有一个 goal 和一个 verification。
+- 删除 loop 后，所有步骤必须从入口经 sequence、branch 或 verification_feedback 控制转移可达；
+  data_dependency 不建立控制可达性，不能用来掩盖孤立步骤。
 - 删除 loop 后，入口是唯一没有入站控制转移的步骤；其余步骤至少有一条入站控制转移。
 - 顶层引用闭包与步骤实际使用引用必须完全相等，不接受未使用或未声明引用。
 - 同一集合内的步骤、转移、引用、label、outcome 和局部标识必须唯一并使用规范排序。
@@ -163,9 +174,20 @@ Thoughtflow v1 采用受约束循环，而不是纯 DAG 或任意有向图：
 ### 只读能力与数据流
 
 校验分为两个明确阶段：transport/graph 校验只消费 Thoughtflow 原始 bytes，不查询注册表；reference
-校验显式消费调用方提供的不可变 KnowledgeUnit 文档集合与 CognitiveNodeRef 可用集合。引用快照
-缺失或外部查询失败属于操作 `indeterminate`，不能把 Thoughtflow 对象伪装成 invalid；快照存在
-但固定引用或 behavior 不存在，才返回稳定 dangling/unknown 诊断。
+校验显式消费调用方提供的不可变 KnowledgeUnit 文档集合与 CognitiveNodeRef 可用集合。
+`ReferenceSnapshot` 是调用方显式提供的只读校验输入，不是 Thoughtflow 持久化字段。每个条目固定
+一个 CognitiveNodeRef 或 KnowledgeUnitRef，并携带该对象的 `object_result`；只有需要检查
+behavior 的可解释 KnowledgeUnit 条目才携带规范 document。snapshot 禁止路径、URL、回调、隐式
+registry 或“使用最新版本”语义，所有引用都必须精确到 revision。
+
+
+- transport/graph 缺陷返回 `object_result=invalid + operation_outcome=succeeded`。
+- 引用快照缺失、不可验证或外部查询失败返回
+  `object_result=not_evaluated + operation_outcome=indeterminate`，不能伪装成 invalid。
+- 快照完整但固定引用或 behavior 不存在，返回
+  `object_result=invalid + operation_outcome=succeeded` 及稳定 dangling/unknown 诊断。
+- 引用对象为 opaque 或仅 compatible_read 时，图可保留，但不得驱动 branch、loop 或 operation；
+  reference 结果保持 `not_evaluated + indeterminate`，并指出最小阻塞路径。
 
 只读模拟只消费已通过 reference 校验的对象。遇到自然语言 branch、verification outcome 或
 iteration exit condition 时返回“需要外部决定”及候选后继，不自行猜测条件真假。
@@ -188,7 +210,10 @@ iteration exit condition 时返回“需要外部决定”及候选后继，不�
 - `Thoughtflow` 与 `ThoughtflowRef` JSON Schema；
 - `ThoughtflowStep`、`ThoughtflowTransition` 和 `KnowledgeBehaviorRef` 的封闭结构；
 - validation result、稳定 `thoughtflow.*` 诊断目录、语言无关 fixtures 和 JCS lock；
-- Python 与 TypeScript 的 `parse_and_validate`、只读查询和 fixture CLI；
+- `ReferenceSnapshot` 只读输入 schema，但不把 snapshot 写入 Thoughtflow 对象；
+- Python 的 `parse_and_validate_transport`、`validate_references`、`validate_revision_transition`、
+  `graph_summary`、`next_candidates` 和 `simulate_bounded`，以及 TypeScript 对等 camelCase API；
+- 两种语言各自独立的 fixture CLI；
 - 双消费者 differential runner。
 
 M1 工件遵循 ADR-0005/0006：I-JSON-compatible 原始输入、JCS、canonical SemVer、安全整数、
@@ -248,16 +273,19 @@ Agent 和运行时会各自猜测循环入口与退出条件，因此不采用�
 
 机器契约至少包含以下真实产品场景：
 
-1. 一元一次方程：目标 → 分析 → 符号变换 operation → verification → 通过分支。
+1. 一元一次方程：目标 → 分析 → 符号变换 operation → verification → 通过反馈。
 2. 验证失败后通过 iteration 返回分析步骤，并在上限内再次验证。
 3. 悬空步骤、CognitiveNodeRef、KnowledgeUnitRef 或 behavior_ref 被拒绝。
 4. operation 引用了不存在的 behavior 或未覆盖 behavior 输入/输出节点时被拒绝。
-5. decision 缺少条件、重复 label 或缺少唯一默认分支时被拒绝。
-6. 普通边形成环、loop 未指向 iteration、循环缺少 verification 或无上限时被拒绝。
-7. 孤立/不可达步骤、非法入口、自环和重复 ID 被拒绝。
-8. 未知 contract major、重复 JSON key、非法 UTF-8、非规范集合顺序和非法状态对被拒绝。
-9. fixture expected 被篡改不能改变消费者实际计算结果。
-10. Python 与 TypeScript 对全部机器结果、图摘要和候选后继逐字段一致。
+5. decision 缺少条件、重复 label、缺少唯一默认分支或被模拟器自动选择时被拒绝。
+6. verification/loop outcome 重复、通过后循环或循环不存在非 loop 退出路径时被拒绝。
+7. 普通边形成环、loop 未指向 iteration、循环缺少 verification 或无上限时被拒绝。
+8. 孤立/不可达步骤、仅由 data_dependency 伪装可达、非法入口、自环和重复 ID 被拒绝。
+9. 未知 contract major、重复 JSON key、非法 UTF-8、非规范集合顺序和非法状态对被拒绝。
+10. 引用快照缺失、opaque、compatible_read 与真实 dangling 引用产生各自固定结果状态。
+11. revision 未变化、只改 revision、回退 revision 或改写历史内容被 transition 模式拒绝。
+12. fixture expected 被篡改不能改变消费者实际计算结果。
+13. Python 与 TypeScript 对全部机器结果、图摘要和候选后继逐字段一致。
 
 契约、消费者和 differential CI 必须在 Linux 与 Windows 运行；Issue #22 完成前只宣称应用层只读
 与确定性验证，不宣称任意子进程获得 OS 级文件/网络隔离，也不开放 portable 写入或执行。
