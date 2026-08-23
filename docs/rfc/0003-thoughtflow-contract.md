@@ -1,6 +1,6 @@
 # RFC-003：Thoughtflow v1 思维链公共契约
 
-- 状态：草案
+- 状态：已接受
 - 负责人：StellarMind-sci
 - 创建日期：2026-08-24
 - 关联 Issues：[GitHub Issue #32](https://github.com/StellarMind-sci/IntelliEngine-SIDE/issues/32)
@@ -292,4 +292,11 @@ Agent 和运行时会各自猜测循环入口与退出条件，因此不采用�
 
 ## 决定
 
-待产品负责人审阅本 RFC 后填写；接受后创建 ADR 并链接后续 contract/runtime Issues。
+产品负责人于 2026-08-24 接受本 RFC，并选择“受约束循环”方案：Thoughtflow v1 允许由验证失败或
+证据不足触发、具有唯一控制器和明确迭代上限的循环；移除 `loop` 边后，控制图必须保持无环。
+
+同时确认以下边界：Thoughtflow 只保存用户或 Agent 主动写入的显式工程推理，不保存模型隐藏的
+chain-of-thought；`operation` 和 behavior 仅声明意图，不产生代码、文件、网络、设备、模型或工具
+副作用；引用必须固定版本并由显式快照校验；分支不由模拟器自动替用户选择。
+
+后续由独立 ADR 固化该决定，并将机器契约与 Python/TypeScript 只读运行时拆成独立 Issues 交付。
