@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["id", "revision"],
+  "properties": {
+    "id": {"pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$", "type": "string"},
+    "revision": {"maximum": 9007199254740991, "minimum": 1, "type": "integer"}
+  },
+  "additionalProperties": false
+}

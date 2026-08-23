@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "diagnostic": {
+      "type": "object", "required": ["code", "path", "severity"],
+      "properties": {
+        "code": {"pattern": "^knowledge_unit\\.[a-z0-9_]+$", "type": "string"},
+        "path": {"pattern": "^(|(?:/(?:[^~/]|~0|~1)*)+)$", "type": "string"},
+        "severity": {"const": "error"}
+      }, "additionalProperties": false
+    },
+    "expected": {
+      "type": "object", "required": ["object_result", "operation_outcome", "issues"],
+      "properties": {
+        "object_result": {"enum": ["valid", "invalid", "not_evaluated"]},
+        "operation_outcome": {"enum": ["succeeded", "resource_exhausted"]},
+        "issues": {"items": {"$ref": "#/$defs/diagnostic"}, "type": "array"}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "object_result": {"const": "valid"},
+            "operation_outcome": {"const": "succeeded"},
+            "issues": {"maxItems": 0}
+          }
+        },
+        {
+          "properties": {
+            "object_result": {"const": "invalid"},
+            "operation_outcome": {"const": "succeeded"},
+            "issues": {"minItems": 1}
+          }
+        },
+        {
+          "properties": {
+            "object_result": {"const": "not_evaluated"},
+            "operation_outcome": {"const": "resource_exhausted"},
+            "issues": {"minItems": 1}
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "mutation": {
+      "type": "object", "required": ["kind", "path"],
+      "properties": {
+        "kind": {"enum": ["append-self-dependency", "clear", "remove", "replace", "reverse"]},
+        "path": {"pattern": "^/(?:[^~/]|~0|~1)+(?:/(?:[^~/]|~0|~1)+)*$", "type": "string"},
+        "value": true
+      }, "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": ["contract_version", "cases"],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "cases": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "required": ["case_id", "input", "expected"],
+        "properties": {
+          "case_id": {"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string"},
+          "input": {
+            "oneOf": [
+              {
+                "type": "object", "required": ["unit", "available_node_refs"],
+                "properties": {
+                  "unit": {"type": "object"},
+                  "available_node_refs": {"items": {"type": "object"}, "type": "array"}
+                }, "additionalProperties": false
+              },
+              {
+                "type": "object", "required": ["base_case_id", "mutation"],
+                "properties": {
+                  "base_case_id": {"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string"},
+                  "mutation": {"$ref": "#/$defs/mutation"}
+                }, "additionalProperties": false
+              }
+            ]
+          },
+          "expected": {"$ref": "#/$defs/expected"}
+        }, "additionalProperties": false
+      }
+    }
+  }, "additionalProperties": false
+}

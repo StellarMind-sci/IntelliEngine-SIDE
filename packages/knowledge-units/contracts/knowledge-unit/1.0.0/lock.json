@@ -1,0 +1,14 @@
+{
+  "contract_version": "1.0.0",
+  "entries": [
+    {"path": "contract.json", "digest_kind": "jcs_sha256", "sha256": "78aabc6080edc6221ab3d867d0939e17acbbf1e8e84b3ccd1ace48ecfaf5c102"},
+    {"path": "diagnostics/knowledge-unit.json", "digest_kind": "jcs_sha256", "sha256": "99b74816891cc04b8ae7ec64e7b770fc3aecdf44126db777222deb231b072c39"},
+    {"path": "fixtures/cases.json", "digest_kind": "jcs_sha256", "sha256": "e947828af69a42f0327d88de9f5f143c933fde67592e6309de858289fad14f05"},
+    {"path": "schemas/diagnostic.schema.json", "digest_kind": "jcs_sha256", "sha256": "0b3c631bb78eb19792b87bdc46173c28b9aceb810ccadf9551f108e958e0a0a0"},
+    {"path": "schemas/fixture-suite.schema.json", "digest_kind": "jcs_sha256", "sha256": "9183bd26333e63042bf5dcec475f1fadce93cab27568d46583f3b0f5d713b478"},
+    {"path": "schemas/knowledge-unit-ref.schema.json", "digest_kind": "jcs_sha256", "sha256": "794fd80e447010b77fb9975a1785d50295ba97a003e256e8946c1f2438b39405"},
+    {"path": "schemas/knowledge-unit.schema.json", "digest_kind": "jcs_sha256", "sha256": "03a544306b0e7a1b29ca91ab5d7ca094856bf9e07845ac03040f53de4991458a"},
+    {"path": "schemas/lock.schema.json", "digest_kind": "jcs_sha256", "sha256": "beb5186cfcda878e95214f279464f6b0e9b6bb607d20f26e017d2c833639b7dc"},
+    {"path": "schemas/validation-result.schema.json", "digest_kind": "jcs_sha256", "sha256": "8adfae5a677076b6b6335c57f77e12fad62b6912dc4724b22597f3cee5658d7b"}
+  ]
+}
