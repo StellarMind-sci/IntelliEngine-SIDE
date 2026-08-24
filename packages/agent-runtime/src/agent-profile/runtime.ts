@@ -139,7 +139,7 @@ export function validateProfile(profile: any, contractRoot?: URL | string): any 
   const personaSet = object(profile.persona) && "principles" in profile.persona ? stringSet(profile.persona.principles, false) : undefined; if (personaSet === false) return invalid("profile", "agent_profile.noncanonical_set", "/persona/principles");
   const nonempty = (value: any) => typeof value === "string" && value.length > 0;
   if (!nonempty(profile.display_name)) return invalid("profile", "agent_profile.invalid_profile_field", "/display_name");
-  if (!object(profile.persona) || !nonempty(profile.persona.summary) || !Array.isArray(profile.persona.principles) || !nonempty(profile.persona.communication_style) || Object.keys(profile.persona).some((key) => !["summary", "principles", "communication_style"].includes(key))) return invalid("profile", "agent_profile.invalid_profile_field", "/persona");
+  if (!object(profile.persona) || !nonempty(profile.persona.summary) || !Array.isArray(profile.persona.principles) || !profile.persona.principles.every(nonempty) || !nonempty(profile.persona.communication_style) || Object.keys(profile.persona).some((key) => !["summary", "principles", "communication_style"].includes(key))) return invalid("profile", "agent_profile.invalid_profile_field", "/persona");
   if (!object(profile.working_style) || !["planning_preference", "reasoning_preference", "verification_preference"].every((key) => nonempty(profile.working_style[key])) || Object.keys(profile.working_style).some((key) => !["planning_preference", "reasoning_preference", "verification_preference"].includes(key))) return invalid("profile", "agent_profile.invalid_profile_field", "/working_style");
   if (!object(profile.collaboration_preferences) || !["interaction_preference", "feedback_preference"].every((key) => nonempty(profile.collaboration_preferences[key])) || Object.keys(profile.collaboration_preferences).some((key) => !["interaction_preference", "feedback_preference"].includes(key))) return invalid("profile", "agent_profile.invalid_profile_field", "/collaboration_preferences");
   if (profile.declared_capabilities.some((value: any) => typeof value !== "string" || !/^[a-z][a-z0-9_]*(?:[.-][a-z0-9_]+)*$/.test(value))) return invalid("profile", "agent_profile.invalid_profile_field", "/declared_capabilities");
@@ -154,9 +154,18 @@ export function validateReferences(profile: any, snapshot: any, contractRoot?: U
   if (profileResult.object_result === "invalid") return { ...profileResult, mode: "reference" };
   if (profileResult.object_result === "compatible_read") return unknown("agent_profile.reference_snapshot_incomplete", "/contract_version");
   if (!object(snapshot) || !scalarJson(snapshot) || !withinLimits(snapshot)) return unknown("agent_profile.reference_snapshot_incomplete", "");
-  const extra = Object.keys(snapshot).filter((key) => !["contract_version", "provenance"].includes(key)); if (extra.length || JSON.stringify(semver(snapshot.contract_version)) !== JSON.stringify([1,0,0]) || !Array.isArray(snapshot.provenance) || !snapshot.provenance.length) return unknown("agent_profile.reference_snapshot_incomplete", extra.length ? `/${pointer(extra[0])}` : "/contract_version");
+  const extra = Object.keys(snapshot).filter((key) => !["contract_version", "provenance"].includes(key)).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+  if (extra.length) return unknown("agent_profile.reference_snapshot_incomplete", `/${pointer(extra[0])}`);
+  if (JSON.stringify(semver(snapshot.contract_version)) !== JSON.stringify([1, 0, 0])) return unknown("agent_profile.reference_snapshot_incomplete", "/contract_version");
+  if (!Array.isArray(snapshot.provenance) || !snapshot.provenance.length) return unknown("agent_profile.reference_snapshot_incomplete", "/provenance");
   const entries = new Map<string, [number, string]>(); let previous: Buffer | undefined;
-  for (let index = 0; index < snapshot.provenance.length; index++) { const entry = snapshot.provenance[index]; if (!object(entry) || Object.keys(entry).length !== 2 || typeof entry.ref !== "string" || !entry.ref || !["available", "invalid", "opaque", "compatible_read"].includes(entry.object_result)) return unknown("agent_profile.reference_snapshot_incomplete", `/provenance/${index}`); const key = Buffer.from(entry.ref); if (previous && Buffer.compare(previous,key) >= 0) return unknown("agent_profile.reference_snapshot_incomplete", `/provenance/${index}/ref`); previous = key; entries.set(entry.ref, [index, entry.object_result]); }
+  for (let index = 0; index < snapshot.provenance.length; index++) {
+    const entry = snapshot.provenance[index];
+    if (!object(entry) || Object.keys(entry).length !== 2 || typeof entry.ref !== "string" || !entry.ref || !["available", "invalid", "opaque", "compatible_read"].includes(entry.object_result)) return unknown("agent_profile.reference_snapshot_incomplete", "/provenance");
+    const key = Buffer.from(entry.ref);
+    if (previous && Buffer.compare(previous, key) >= 0) return unknown("agent_profile.reference_snapshot_incomplete", `/provenance/${index}/ref`);
+    previous = key; entries.set(entry.ref, [index, entry.object_result]);
+  }
   for (let index = 0; index < profile.provenance_refs.length; index++) { const row = entries.get(profile.provenance_refs[index]); if (!row || row[1] === "invalid") return invalid("reference", "agent_profile.dangling_provenance_reference", `/provenance_refs/${index}`); if (["opaque", "compatible_read"].includes(row[1])) return unknown("agent_profile.opaque_provenance_reference", `/provenance_refs/${index}`); }
   const refs = new Set(profile.provenance_refs); for (const [key, [index]] of entries) if (!refs.has(key)) return invalid("reference", "agent_profile.dangling_provenance_reference", `/provenance/${index}/ref`);
   return result("reference", "valid", "succeeded");

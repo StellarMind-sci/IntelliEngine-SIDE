@@ -57,3 +57,30 @@ test("locked contract rejects invalid and unlocked references", () => {
     } finally { rmSync(directory, { recursive: true, force: true }); }
   }
 });
+test("profile object shapes match schema for persona and preferences", () => {
+  for (const mutate of [
+    (value: any) => { value.persona.principles = [""]; },
+    (value: any) => { value.persona.principles = [1]; },
+    (value: any) => { delete value.working_style.planning_preference; },
+    (value: any) => { value.collaboration_preferences.extra = true; },
+  ]) {
+    const value = profile(); mutate(value);
+    const result = validateReferences(value, { contract_version: "1.0.0", provenance: [{ ref: value.provenance_refs[0], object_result: "available" }] }, root);
+    assert.equal(result.object_result, "invalid");
+    assert.equal(result.issues[0].code, "agent_profile.invalid_profile_field");
+  }
+});
+
+test("reference snapshot diagnostics use canonical Python-equivalent paths", () => {
+  const value = profile(), entry = { ref: value.provenance_refs[0], object_result: "available" };
+  const cases: Array<[any, string]> = [
+    [{ contract_version: "1.0.0", provenance: [] }, "/provenance"],
+    [{ contract_version: "1.0.0", provenance: [{ ...entry, extra: true }] }, "/provenance"],
+    [{ contract_version: "1.0.0", provenance: [entry], z: true, a: true }, "/a"],
+  ];
+  for (const [snapshot, path] of cases) {
+    const result = validateReferences(value, snapshot, root);
+    assert.equal(result.object_result, "not_evaluated");
+    assert.equal(result.issues[0].path, path);
+  }
+});
