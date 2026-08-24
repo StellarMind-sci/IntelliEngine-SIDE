@@ -273,6 +273,7 @@ class AgentProfileContractTests(unittest.TestCase):
         for relative, mutate in (
             ("schemas/agent-profile-ref.schema.json", lambda schema: schema.__setitem__("additionalProperties", True)),
             ("schemas/validation-result.schema.json", lambda schema: schema["properties"]["issues"].__setitem__("items", {"$ref": "https://example.invalid/diagnostic.schema.json"})),
+            ("schemas/validation-result.schema.json", lambda schema: schema["properties"]["issues"].__setitem__("items", {"$ref": "diagnostic.schema.json#/does-not-exist"})),
         ):
             with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary_directory:
                 copied_contract = Path(temporary_directory) / "contract"
@@ -297,6 +298,35 @@ class AgentProfileContractTests(unittest.TestCase):
         for invalid_ref in ({**valid_ref, "extra": True}, {**valid_ref, "id": "not-a-uuid"}, {**valid_ref, "revision": 0}):
             with self.subTest(invalid_ref=invalid_ref):
                 self.assertFalse(verifier.is_valid(invalid_ref, schema, schema))
+    def test_resource_limits_reject_deep_and_oversized_profiles_without_exceptions(self) -> None:
+        verifier = load_verifier()
+        at_array_limit = {**self.valid_profile(), "goals": [f"goal-{index:05d}" for index in range(10000)]}
+        above_array_limit = {**self.valid_profile(), "goals": [f"goal-{index:05d}" for index in range(10001)]}
+        self.assertEqual(verifier.validate_profile(at_array_limit)["object_result"], "valid")
+        self.assertEqual(verifier.validate_profile(above_array_limit)["issues"][0]["code"], "agent_profile.invalid_json")
+        nested: object = 0
+        for _ in range(2000):
+            nested = {"next": nested}
+        deep_profile = {**self.valid_profile(), "unexpected": nested}
+        direct_result = verifier.validate_profile(deep_profile)
+        self.assertEqual(direct_result["issues"][0]["code"], "agent_profile.invalid_json")
+        encoded = json.dumps(self.valid_profile(), separators=(",", ":")).encode("utf-8")
+        deep_raw = encoded[:-1] + b',"unexpected":' + (b'{"next":' * 2000) + b'0' + (b'}' * 2001)
+        raw_result = verifier.validate_raw(deep_raw, CONTRACT_ROOT)
+        self.assertEqual(raw_result["issues"][0]["code"], "agent_profile.invalid_json")
+        oversized_snapshot = {"contract_version": "1.0.0", "provenance": [{"ref": f"provenance://synthetic/{index:05d}-" + ("x" * 250), "object_result": "available"} for index in range(5000)]}
+        snapshot_result = verifier.validate_reference_snapshot(self.valid_profile(), oversized_snapshot)
+        self.assertEqual(snapshot_result["object_result"], "not_evaluated")
+        self.assertEqual(snapshot_result["issues"][0]["code"], "agent_profile.reference_snapshot_incomplete")
+
+    def test_semver_component_size_is_deterministically_invalid(self) -> None:
+        verifier = load_verifier()
+        profile = {**self.valid_profile(), "contract_version": ("9" * 5000) + ".0.0"}
+        direct_result = verifier.validate_profile(profile)
+        raw_result = verifier.validate_raw(json.dumps(profile, separators=(",", ":")).encode("utf-8"), CONTRACT_ROOT)
+
+        self.assertEqual(direct_result["issues"][0]["code"], "agent_profile.unsupported_contract_version")
+        self.assertEqual(raw_result["issues"][0]["code"], "agent_profile.unsupported_contract_version")
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 

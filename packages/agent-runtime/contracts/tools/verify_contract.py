@@ -23,6 +23,10 @@ JsonObject = dict[str, Any]
 SAFE_INTEGER = 9_007_199_254_740_991
 MAX_STRING_UTF8_BYTES = 262_144
 MAX_AGENT_PROFILE_JCS_BYTES = 1_048_576
+MAX_REFERENCE_SNAPSHOT_JCS_BYTES = 1_048_576
+MAX_JSON_ARRAY_ELEMENTS = 10_000
+MAX_JSON_DEPTH = 64
+MAX_JSON_MEMBERS_AND_ELEMENTS = 100_000
 UUID_V7 = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 ARTIFACT_PATH = re.compile(r"^[a-z0-9][a-z0-9._/-]*\.json$")
@@ -64,42 +68,83 @@ def _artifact_path(root: Path, relative: Any) -> Path:
     return candidate
 
 
-def _is_utf8_encodable(value: Any) -> bool:
-    if isinstance(value, str):
-        try:
-            value.encode("utf-8")
-        except UnicodeEncodeError:
+def _within_resource_limits(value: Any, *, jcs_limit: int | None = None) -> bool:
+    stack: list[tuple[Any, int]] = [(value, 1)]
+    seen_containers: set[int] = set()
+    members_and_elements = 0
+    while stack:
+        current, depth = stack.pop()
+        if depth > MAX_JSON_DEPTH:
             return False
+        if isinstance(current, str):
+            try:
+                if len(current.encode("utf-8")) > MAX_STRING_UTF8_BYTES:
+                    return False
+            except UnicodeEncodeError:
+                return False
+            continue
+        if isinstance(current, dict):
+            marker = id(current)
+            if marker in seen_containers:
+                return False
+            seen_containers.add(marker)
+            members_and_elements += len(current)
+            if members_and_elements > MAX_JSON_MEMBERS_AND_ELEMENTS:
+                return False
+            for key, item in current.items():
+                if not isinstance(key, str):
+                    return False
+                stack.append((key, depth))
+                stack.append((item, depth + 1))
+            continue
+        if isinstance(current, list):
+            marker = id(current)
+            if marker in seen_containers or len(current) > MAX_JSON_ARRAY_ELEMENTS:
+                return False
+            seen_containers.add(marker)
+            members_and_elements += len(current)
+            if members_and_elements > MAX_JSON_MEMBERS_AND_ELEMENTS:
+                return False
+            stack.extend((item, depth + 1) for item in current)
+            continue
+        if current is not None and not isinstance(current, (bool, int, float)):
+            return False
+    if jcs_limit is None:
         return True
-    if isinstance(value, list):
-        return all(_is_utf8_encodable(item) for item in value)
-    if isinstance(value, dict):
-        return all(_is_utf8_encodable(key) and _is_utf8_encodable(item) for key, item in value.items())
-    return True
+    try:
+        return len(canonicalize(value)) <= jcs_limit
+    except (RecursionError, TypeError, UnicodeEncodeError, ValueError):
+        return False
+
+
+def _raw_structure_within_limits(raw: bytes) -> bool:
+    if len(raw) > MAX_AGENT_PROFILE_JCS_BYTES:
+        return False
+    depth = 0
+    in_string = False
+    escaped = False
+    for byte in raw:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif byte == 0x5C:
+                escaped = True
+            elif byte == 0x22:
+                in_string = False
+            continue
+        if byte == 0x22:
+            in_string = True
+        elif byte in (0x7B, 0x5B):
+            depth += 1
+            if depth > MAX_JSON_DEPTH:
+                return False
+        elif byte in (0x7D, 0x5D):
+            depth -= 1
+    return not in_string and depth == 0
+
 
 def _pointer_token(value: str) -> str:
     return value.replace("~", "~0").replace("/", "~1")
-
-
-def _within_string_limit(value: Any) -> bool:
-    if isinstance(value, str):
-        try:
-            return len(value.encode("utf-8")) <= MAX_STRING_UTF8_BYTES
-        except UnicodeEncodeError:
-            return False
-    if isinstance(value, list):
-        return all(_within_string_limit(item) for item in value)
-    if isinstance(value, dict):
-        return all(_within_string_limit(key) and _within_string_limit(item) for key, item in value.items())
-    return True
-
-
-def _within_profile_jcs_limit(profile: JsonObject) -> bool:
-    try:
-        return len(canonicalize(profile)) <= MAX_AGENT_PROFILE_JCS_BYTES
-    except (TypeError, UnicodeEncodeError, ValueError):
-        return False
-
 
 def _issue(code: str, path: str) -> JsonObject:
     return {"code": code, "path": path, "severity": "warning" if code == "agent_profile.compatible_read" else "error"}
@@ -126,7 +171,13 @@ def _indeterminate(code: str, path: str) -> JsonObject:
 def _semver(value: Any) -> tuple[int, int, int] | None:
     if not isinstance(value, str) or (match := SEMVER.fullmatch(value)) is None:
         return None
-    return tuple(int(part) for part in match.groups())
+    parts = match.groups()
+    if any(len(part) > 18 for part in parts):
+        return None
+    try:
+        return tuple(int(part) for part in parts)
+    except ValueError:
+        return None
 
 
 def _canonical_string_set(value: Any, *, required: bool) -> bool | None:
@@ -156,7 +207,7 @@ def _reference_schema(root: Path | None = None) -> JsonObject:
 
 def validate_profile(profile: object, schema: object | None = None) -> JsonObject:
     mode = "profile"
-    if not isinstance(profile, dict) or not _is_utf8_encodable(profile) or not _within_string_limit(profile) or not _within_profile_jcs_limit(profile):
+    if not isinstance(profile, dict) or not _within_resource_limits(profile, jcs_limit=MAX_AGENT_PROFILE_JCS_BYTES):
         return _invalid(mode, "agent_profile.invalid_json", "")
     missing = next((field for field in REQUIRED_FIELDS if field not in profile), None)
     if missing is not None:
@@ -195,6 +246,8 @@ def validate_profile(profile: object, schema: object | None = None) -> JsonObjec
 
 
 def validate_raw(raw: bytes, root: Path) -> JsonObject:
+    if not isinstance(raw, bytes) or not _raw_structure_within_limits(raw):
+        return _invalid("transport", "agent_profile.invalid_json", "")
     try:
         profile = parse_json_bytes(raw)
     except Exception:
@@ -209,7 +262,7 @@ def validate_reference_snapshot(profile: object, snapshot: object | None, profil
         return {**profile_result, "mode": "reference"}
     if profile_result["object_result"] == "compatible_read":
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
-    if not isinstance(snapshot, dict) or not _is_utf8_encodable(snapshot):
+    if not isinstance(snapshot, dict) or not _within_resource_limits(snapshot, jcs_limit=MAX_REFERENCE_SNAPSHOT_JCS_BYTES):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "")
     extra = sorted((field for field in snapshot if field not in {"contract_version", "provenance"}), key=lambda field: field.encode("utf-8"))
     if extra:
@@ -391,6 +444,41 @@ def _validate_catalog(catalog: Any) -> dict[str, JsonObject]:
         raise ValueError("invalid diagnostic catalog")
     return entries
 
+def _json_pointer_exists(document: Any, fragment: str) -> bool:
+    if fragment == "":
+        return True
+    if not fragment.startswith("/"):
+        return False
+    current = document
+    for token in fragment[1:].split("/"):
+        decoded = ""
+        index = 0
+        while index < len(token):
+            if token[index] != "~":
+                decoded += token[index]
+                index += 1
+                continue
+            if index + 1 >= len(token) or token[index + 1] not in {"0", "1"}:
+                return False
+            decoded += "~" if token[index + 1] == "0" else "/"
+            index += 2
+        if isinstance(current, dict):
+            if decoded not in current:
+                return False
+            current = current[decoded]
+            continue
+        if isinstance(current, list):
+            if not decoded.isdigit() or (len(decoded) > 1 and decoded.startswith("0")):
+                return False
+            item_index = int(decoded)
+            if item_index >= len(current):
+                return False
+            current = current[item_index]
+            continue
+        return False
+    return True
+
+
 def _validate_schema_refs(value: Any, root: Path, source_relative: str, declared: set[str]) -> None:
     if isinstance(value, list):
         for item in value:
@@ -402,17 +490,22 @@ def _validate_schema_refs(value: Any, root: Path, source_relative: str, declared
     if reference is not None:
         if not isinstance(reference, str):
             raise ValueError("invalid schema reference")
-        if not reference.startswith("#"):
-            target, _, _ = reference.partition("#")
+        if reference.startswith("#"):
+            relative, fragment = source_relative, reference[1:]
+        else:
+            target, separator, fragment = reference.partition("#")
             if not target or ":" in target or "\\" in target:
                 raise ValueError("invalid schema reference")
             relative = (PurePosixPath(source_relative).parent / PurePosixPath(target)).as_posix()
             if relative not in declared:
                 raise ValueError("invalid schema reference")
-            _artifact_path(root, relative)
+            if not separator:
+                fragment = ""
+        target_schema = _load(_artifact_path(root, relative))
+        if not _json_pointer_exists(target_schema, fragment):
+            raise ValueError("invalid schema reference")
     for item in value.values():
         _validate_schema_refs(item, root, source_relative, declared)
-
 
 def _validate_schema_artifacts(root: Path, schema_paths: Any) -> None:
     if not isinstance(schema_paths, dict):
