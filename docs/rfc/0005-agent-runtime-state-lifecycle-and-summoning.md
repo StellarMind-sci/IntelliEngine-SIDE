@@ -59,7 +59,7 @@ SIDE 已用 `AgentProfile` 和精确 `AgentProfileRef(id, revision)` 定义长�
 
 - `contract_version` 是 canonical SemVer；未知 major 拒绝，同 major 较新 minor 仅无副作用兼容读取。
 - `state_id` 是 canonical lowercase UUID，producer 应生成 UUIDv7；不是 Profile、项目、会话或执行 ID。
-- `state_revision` 从 1 开始，每次实际转换或 rebind 增加 1；no-change/重放不增加。
+- `state_revision` 从 1 开始，每次实际转换或 rebind 增加 1；no_change/重放不增加。
 - `authority_scope_ref` 是 opaque 控制域引用。推荐模型下，控制域内同一 `AgentProfile.id` 至多一条现行状态；schema 不能证明存储唯一性。
 - `agent_profile_ref` 精确到 revision，不得使用 latest、名称、路径或会话 ID。
 - `status` 是闭合集合 `active | dormant | archived`，没有 `deleted`、`busy`、`error` 或角色状态。
@@ -68,26 +68,26 @@ SIDE 已用 `AgentProfile` 和精确 `AgentProfileRef(id, revision)` 定义长�
 
 状态不得包含 persona、goals、role、能力、私有记忆、提示词、模型/密钥、团队/项目、策略正文、权限、任务、进程、输出或 UI 状态。
 
-未来写入另定义 `AgentRuntimeTransitionIntent`（request、state、operation、expected revision/ref、可选 target ref、reason/provenance）和不可变 `AgentRuntimeTransitionRecord`（请求摘要、旧/新状态、结果、诊断、actor/Policy/ChangeSet/provenance、时间和回滚关联）。Intent 不是权限凭证，Record 不是可重放命令。
+未来写入另定义 `AgentRuntimeTransitionIntent`（request、operation、expected state ref、精确 expected ProfileRef、可选 target ProfileRef、reason/provenance）和不可变 `AgentRuntimeTransitionRecord`（请求摘要、旧/新状态、结果、诊断、actor/Policy/ChangeSet/provenance、时间和回滚关联）。Intent 不是权限凭证，Record 不是可重放命令。
 
 ### 状态语义
 
-- `active`：Agent 已唤醒，可被发现，并在独立有效授权、分工和 lease 下参与工程；可以没有模型、任务、团队或算力。每次进入 active 产生新 epoch，执行 lease 必须绑定 `(state_id, activation_epoch)`。
-- `dormant`：Agent 已关闭，不接收新任务、不主动调用模型或提交新副作用；身份、Profile、记忆、证据、模型绑定、关系和项目记录保留。关闭提交后旧 epoch 立即失去副作用资格，即使进程仍待清理。用户仍可发现和召唤它。
+- `active`：Agent 已唤醒，可被发现，并在独立有效授权、分工和 lease 下参与工程；可以没有模型、任务、团队或算力。每次进入 active 产生新 epoch，执行 lease 必须绑定 `(state_id, activation_epoch)`。每一次副作用的 admission 和最终 commit 都必须重新读取权威状态，并在同一个不可分割的授权/提交边界中验证 `status == active` 且 lease 的 `(state_id, activation_epoch)` 与权威状态完全相同；只在 admission 检查一次不够。
+- `dormant`：Agent 已关闭，不接收新任务、不主动调用模型或提交新副作用；身份、Profile、记忆、证据、模型绑定、关系和项目记录保留。`close` 必须原子提交 non-active 状态并使旧 epoch 的全部 lease 失效，之后才可报告已提交；因此 epoch 即使只在下一次进入 active 时递增，旧执行也已经无法通过 status/lease 的 commit 校验。进程和会话清理可以重试，但清理成功、失败或重连都不能恢复其 authority。用户仍可发现和召唤它。
 - `archived`：长期封存，默认搜索、推荐、调度、协作和批量召唤排除它；精确 ID 或显式包含归档时可只读检查。它不删除外部对象，不能直接执行、rebind 或进入 active，须先恢复到 dormant。
 
 Profile 存在但无 RuntimeState 表示尚未在控制域注册，与 dormant 不同，UI 不得混淆。
 
 ### 转换与 rebind
 
-| 操作 | 前置 | 结果 | 规则 |
-|---|---|---|---|
-| `create_state` | 不存在 | dormant | 精确 ProfileRef；默认不得 active；控制域内逻辑 Agent 唯一 |
-| `summon` | dormant | active | revision +1，epoch +1 |
-| `close` | active | dormant | revision +1，旧 epoch fencing |
-| `archive` | dormant | archived | revision +1，不删除外部对象 |
-| `restore` | archived | dormant | revision +1，不自动召唤 |
-| `rebind_profile` | dormant | dormant | 同 Profile ID、不同 revision；revision +1，epoch 不变 |
+| 操作 | 当前不存在 | 当前 active | 当前 dormant | 当前 archived |
+|---|---|---|---|---|
+| `create_state` | 状态变更：创建 dormant，revision=1、epoch=0 | `conflict`：唯一键已存在 | `conflict`：唯一键已存在 | `conflict`：唯一键已存在 |
+| `summon` | `conflict`：预期现有状态不存在 | `no_change` | 状态变更：active，revision +1、epoch +1 | `rejected`：必须先 restore |
+| `close` | `conflict`：预期现有状态不存在 | 状态变更：dormant，revision +1并 fencing 旧 epoch | `no_change` | `rejected`：archived 不是普通关闭状态 |
+| `archive` | `conflict`：预期现有状态不存在 | `rejected`：必须先 close | 状态变更：archived，revision +1 | `no_change` |
+| `restore` | `conflict`：预期现有状态不存在 | `rejected`：active 无需恢复 | `no_change` | 状态变更：dormant，revision +1 |
+| `rebind_profile` | `conflict`：预期现有状态不存在 | `rejected` | 同 Ref 为 `no_change`；同 Profile ID 的不同 Ref 为状态变更，revision +1、epoch 不变 | `rejected` |
 
 禁止 active→archived、archived→active、active/archived rebind、跨 Profile ID rebind、deleted 状态，以及因应用启动、模型重连、团队变化或 Profile 新 revision 自动转换。两步路径让“停止参与”和“长期可见性”分别可观察、授权、审计和回滚。
 
@@ -95,15 +95,28 @@ Profile 新 revision 出现时状态继续绑定旧 Ref。rebind 必须由显式
 
 ### 幂等、并发、竞态与恢复
 
-所有写入同时使用稳定 `request_id` 与 `expected_state_revision`：
+`create_state` 必须携带等价于 `expected_state = absent` 的前置条件，并使用 `(authority_scope_ref, agent_profile_ref.id)` 作为存储唯一键；`state_id` 是成功创建后该记录的稳定身份，不参与该唯一键。两个不同 request 并发创建同一唯一键时，只有一个可由 absent 原子变为存在，另一个返回 `conflict`。相同 request 的崩溃重试则由幂等记录返回首次结果。
+
+除 create 外，所有操作必须携带 expected state ref `{ state_id, state_revision }` 以及精确 `expected_profile_ref`。`state_id` 选择生命周期记录，`state_revision` 提供 CAS，Profile ID 只标识长期 Agent；三者不得互相替代。
+
+确定性判定顺序如下：
+
+1. 无法解析或不满足封闭 schema 的输入返回 `rejected`；有效 request 才能形成规范 payload。
+2. 查询 `request_id`：与已存规范 payload 完全一致时返回首次持久结果；同 request 不同 payload 返回 `conflict`。
+3. 校验 contract/Profile refs；非法、跨 Profile ID 或不支持写入的版本返回 `rejected`。
+4. 校验 expected state：create 要求唯一键 absent；其他操作要求 `{state_id,state_revision}`、`expected_profile_ref` 和权威状态完全匹配。不存在、已存在或任一不匹配返回 `conflict`。
+5. 按上表判定：合法改变返回状态变更计划；目标已满足返回 `no_change`；禁止转换返回 `rejected`。
+6. 只有状态变更计划继续进入 ControlPolicy、ChangeSet、fencing 和原子提交；`no_change` 不增加 revision/epoch、不创建执行 lease，也不伪装为新的授权。
+
+所有写入同时使用稳定 `request_id` 与上述 expected state：
 
 1. 同 request/相同规范 payload 重放，返回首次持久结果，不重复 revision、epoch、ChangeSet 或副作用。
-2. 同 request/不同 payload 返回幂等冲突并 fail closed。
-3. 不同 request 的 expected revision 过期时返回 conflict；即使目标碰巧相同，也不能掩盖期间的 rebind/转换。
-4. expected revision 正确且目标已满足，可返回 `no_change`，不建 revision，也不授予新 lease。
+2. 同 request/不同 payload 返回 `conflict` 并 fail closed。
+3. 不同 request 的 expected state 过期时返回 `conflict`；即使目标碰巧相同，也不能掩盖期间的 rebind/转换。
+4. expected state 正确且目标已满足，返回 `no_change`，不建 revision，也不授予新 lease。
 5. 当前状态、TransitionRecord、幂等结果和 epoch fencing 必须比较并交换、原子可见。
 
-并发 summon/archive、close/rebind、restore/archive 只有一个提交者，失败者重新读取并重新授权，不能自动改 expected revision。若状态已提交但进程/会话清理失败，权威状态仍是新状态；旧 epoch 被拒绝，清理可重试，不得静默恢复 active。
+并发 summon/archive、close/rebind、restore/archive 只有一个提交者，失败者重新读取并重新授权，不能自动改 expected state。每个副作用的 admission 与 commit 都再次原子验证权威 `status == active` 和 lease epoch；若状态已提交但进程/会话清理失败，权威状态仍是新状态，旧 epoch 无法提交，清理可重试且不得静默恢复 active。
 
 ### 只读与未来写入数据流
 
@@ -112,7 +125,7 @@ M1 可先实现：原始 bytes 校验、显式固定 Profile 快照引用校验�
 ```text
 TransitionIntent
   → transport / schema / exact ProfileRef
-  → expected revision + idempotency
+  → expected state + idempotency
   → pure transition plan
   → ControlPolicy + impact preview
   → ChangeSet approval
@@ -143,7 +156,7 @@ TransitionIntent
 - persona、目标、角色、工作风格、能力声明/证据、来源、信任和 active 状态都不授权模型、文件、网络、设备、项目或工具；平台上限优先。
 - 每次参与仍需独立 ProjectAssignment、ControlPolicy、ModelBinding 和 RuntimeKernel lease。
 - reason、actor/scope refs 和外部字符串不可信；日志不得回显隐私或凭据。
-- applied、no-change、conflict、rejected、indeterminate 都有稳定结果；成功事件关联 actor、Policy、ChangeSet、provenance，无权请求保留最小安全审计。
+- applied、no_change、conflict、rejected、indeterminate 都有稳定结果；成功事件关联 actor、Policy、ChangeSet、provenance，无权请求保留最小安全审计。
 - 回滚创建新受控转换，不覆盖历史。永久删除不属于状态机，未来必须有影响预览、显式高风险授权、依赖/保留检查、导出选择、审计和可恢复期；契约缺失时 fail closed。
 - 私有记忆、提示词、会话、凭据、用户身份和受保护原件不得进入状态、fixtures、诊断、差分输出或默认工程包。
 
@@ -192,9 +205,9 @@ TransitionIntent
 3. 合法链 `dormant → active → dormant → archived → dormant → active` 的 revision/epoch 正确。
 4. 直接 active↔archived、非法 rebind、跨 ID、deleted 被拒绝。
 5. 新 Profile revision 不自动 rebind；dormant 显式 rebind 可审计且不改 epoch。
-6. 幂等重放、payload 冲突、stale revision 和 no-change 语义准确。
+6. 幂等重放、同 request 不同 payload、stale expected state 和 `no_change` 语义准确；覆盖 summon(active)、close(dormant)、archive(archived)、restore(dormant) 和 same-ref rebind。
 7. summon/archive、close/rebind、restore/archive 并发只有一个 CAS 成功。
-8. close 后旧 epoch lease 无副作用权；再次 summon 使用更大 epoch。
+8. 每次副作用 admission 与 commit 均原子重验 active+epoch；close 后旧 lease 无副作用权，清理失败不恢复 authority，再次 summon 使用更大 epoch。
 9. 转换/rebind 不删除或改写 Profile、记忆、证据、模型、团队、关系、项目对象。
 10. persona、角色、能力、来源、信任和 active 不产生权限/模型调用。
 11. 未知 major 拒绝；较新同 major 只读但禁止写入。
