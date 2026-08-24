@@ -10,12 +10,12 @@
     {
       "path": "diagnostics/agent-profile.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "a7704ba0fd6494d5764e9f4c5404b35606b18ac8da317f5390f15a33cf5c9687"
+      "sha256": "c09eb5a28a259cfab1b474831b536f2d5838a3c71317c477ea4c675238611723"
     },
     {
       "path": "fixtures/cases.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "1e3c68d44dae0ad7512f34fab5be0a72564214c7724e7a0c154d1932a7af13f3"
+      "sha256": "802b4cfbc37010a191762de80fd789513d8bf966d583501ff1112545907ad81b"
     },
     {
       "path": "schemas/agent-profile-ref.schema.json",

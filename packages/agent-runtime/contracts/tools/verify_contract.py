@@ -154,6 +154,11 @@ def validate_profile(profile: object, schema: object | None = None) -> JsonObjec
             return _invalid(mode, "agent_profile.invalid_profile_field", f"/{field}")
         if not canonical:
             return _invalid(mode, "agent_profile.noncanonical_set", f"/{field}")
+    persona = profile["persona"]
+    if isinstance(persona, dict) and "principles" in persona:
+        principles = _canonical_string_set(persona["principles"], required=False)
+        if principles is False:
+            return _invalid(mode, "agent_profile.noncanonical_set", "/persona/principles")
     active_schema = schema if schema is not None else _schema()
     if not is_valid(profile, active_schema, active_schema):
         first_invalid = next((field for field in REQUIRED_FIELDS if not is_valid(profile[field], active_schema["properties"][field], active_schema)), "")
@@ -301,25 +306,77 @@ def _verify_lock(root: Path) -> None:
             raise ValueError("lock digest mismatch")
         if entry.get("sha256") != _jcs_sha256(_artifact_path(root, relative)):
             raise ValueError("lock digest mismatch")
-def verify_contract(root: Path) -> JsonObject:
-    root = root.resolve()
-    _verify_lock(root)
-    manifest = _load(root / "contract.json")
+def _validate_manifest(manifest: Any) -> None:
+    expected_limits = {
+        "agent_profile_jcs_bytes": 1_048_576,
+        "reference_snapshot_jcs_bytes": 1_048_576,
+        "json_array_elements": 10_000,
+        "json_depth": 64,
+        "json_members_and_elements": 100_000,
+        "json_string_utf8_bytes": 262_144,
+    }
+    if not isinstance(manifest, dict) or set(manifest) != {"contract_family", "contract_version", "side_effects", "set_order", "limits", "schemas", "diagnostics", "fixtures"}:
+        raise ValueError("invalid contract manifest")
     if manifest.get("contract_family") != "agent-profile" or manifest.get("contract_version") != "1.0.0":
         raise ValueError("invalid contract manifest")
     if manifest.get("side_effects") != "forbidden" or manifest.get("set_order") != "unsigned-utf8":
         raise ValueError("invalid contract safety metadata")
+    if manifest.get("limits") != expected_limits:
+        raise ValueError("invalid contract limits")
     if manifest.get("schemas") != REQUIRED_SCHEMA_PATHS:
         raise ValueError("contract must declare every AgentProfile schema")
-    diagnostics = manifest.get("diagnostics")
-    if diagnostics != {"agent_profile": "diagnostics/agent-profile.json"}:
+    if manifest.get("diagnostics") != {"agent_profile": "diagnostics/agent-profile.json"}:
         raise ValueError("contract must declare the AgentProfile diagnostic catalog")
+    if manifest.get("fixtures") != "fixtures/cases.json":
+        raise ValueError("invalid contract artifact path")
+
+
+def _validate_catalog(catalog: Any) -> dict[str, JsonObject]:
+    legal_pairs = {("valid", "succeeded"), ("invalid", "succeeded"), ("compatible_read", "succeeded"), ("not_evaluated", "indeterminate")}
+    if not isinstance(catalog, dict) or set(catalog) != {"contract_version", "codes"} or catalog.get("contract_version") != "1.0.0":
+        raise ValueError("invalid diagnostic catalog")
+    codes = catalog.get("codes")
+    if not isinstance(codes, list) or not codes:
+        raise ValueError("invalid diagnostic catalog")
+    entries: dict[str, JsonObject] = {}
+    encoded_codes: list[bytes] = []
+    for entry in codes:
+        if not isinstance(entry, dict) or set(entry) != {"code", "severity", "allowed_pairs"}:
+            raise ValueError("invalid diagnostic catalog")
+        code, severity, allowed_pairs = entry.get("code"), entry.get("severity"), entry.get("allowed_pairs")
+        if not isinstance(code, str) or re.fullmatch(r"agent_profile\.[a-z][a-z0-9_]*", code) is None or severity not in {"error", "warning"}:
+            raise ValueError("invalid diagnostic catalog")
+        if not isinstance(allowed_pairs, list) or not allowed_pairs:
+            raise ValueError("invalid diagnostic catalog")
+        pairs: set[tuple[str, str]] = set()
+        for pair in allowed_pairs:
+            if not isinstance(pair, list) or len(pair) != 2 or not all(isinstance(item, str) for item in pair):
+                raise ValueError("invalid diagnostic catalog")
+            normalized = (pair[0], pair[1])
+            if normalized not in legal_pairs or normalized in pairs:
+                raise ValueError("invalid diagnostic catalog")
+            pairs.add(normalized)
+        encoded = code.encode("utf-8")
+        if code in entries:
+            raise ValueError("invalid diagnostic catalog")
+        entries[code] = entry
+        encoded_codes.append(encoded)
+    if encoded_codes != sorted(encoded_codes):
+        raise ValueError("invalid diagnostic catalog")
+    return entries
+
+def verify_contract(root: Path) -> JsonObject:
+    root = root.resolve()
+    _verify_lock(root)
+    manifest = _load(root / "contract.json")
+    _validate_manifest(manifest)
+    diagnostics = manifest["diagnostics"]
     artifact_paths = [*manifest["schemas"].values(), *diagnostics.values(), manifest.get("fixtures")]
     resolved_artifacts = [_artifact_path(root, relative_path) for relative_path in artifact_paths]
     if any(not path.is_file() for path in resolved_artifacts):
         raise FileNotFoundError("declared contract artifact is missing")
     catalog = _load(_artifact_path(root, diagnostics["agent_profile"]))
-    catalog_codes = {entry.get("code") for entry in catalog.get("codes", []) if isinstance(entry, dict)}
+    catalog_entries = _validate_catalog(catalog)
     suite = _load(_artifact_path(root, manifest["fixtures"]))
     fixture_schema = _load(_artifact_path(root, manifest["schemas"]["fixture_suite"]))
     result_schema = _load(_artifact_path(root, manifest["schemas"]["validation_result"]))
@@ -343,8 +400,10 @@ def verify_contract(root: Path) -> JsonObject:
         computed = validate_case(case, root)
         if computed != expected:
             raise ValueError(f"fixture result mismatch: {case['case_id']}: {computed!r}")
-        if any(issue["code"] not in catalog_codes for issue in computed["issues"]):
-            raise ValueError(f"unknown diagnostic: {case['case_id']}")
+        for issue in computed["issues"]:
+            entry = catalog_entries.get(issue["code"])
+            if entry is None or issue.get("severity") != entry["severity"] or [computed["object_result"], computed["operation_outcome"]] not in entry["allowed_pairs"]:
+                raise ValueError(f"catalog issue mismatch: {case['case_id']}")
     return {"case_count": len(cases), "contract_version": manifest["contract_version"]}
 
 

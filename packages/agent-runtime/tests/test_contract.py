@@ -60,6 +60,18 @@ class AgentProfileContractTests(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+    def test_profile_requires_canonical_persona_principles(self) -> None:
+        verifier = load_verifier()
+        sorted_profile = self.valid_profile()
+        sorted_profile["persona"] = {**sorted_profile["persona"], "principles": ["state assumptions", "verify examples"]}
+        unsorted_profile = self.valid_profile()
+        unsorted_profile["persona"] = {**unsorted_profile["persona"], "principles": ["verify examples", "state assumptions"]}
+
+        self.assertEqual(verifier.validate_profile(sorted_profile)["object_result"], "valid")
+        result = verifier.validate_profile(unsorted_profile)
+        self.assertEqual(result["object_result"], "invalid")
+        self.assertEqual(result["issues"][0]["code"], "agent_profile.noncanonical_set")
+        self.assertEqual(result["issues"][0]["path"], "/persona/principles")
     def test_profile_rejects_runtime_or_private_memory_fields(self) -> None:
         verifier = load_verifier()
         result = verifier.validate_profile({**self.valid_profile(), "runtime_state": "active"})
@@ -148,6 +160,46 @@ class AgentProfileContractTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "fixture result mismatch"):
                 verifier.verify_contract(copied_contract)
+    def test_verify_contract_rejects_tampered_diagnostic_catalog(self) -> None:
+        verifier = load_verifier()
+
+        def mutate_invalid_json(catalog: dict, **updates: object) -> None:
+            index = next(index for index, entry in enumerate(catalog["codes"]) if entry["code"] == "agent_profile.invalid_json")
+            catalog["codes"][index] = {**catalog["codes"][index], **updates}
+
+        for mutate in (
+            lambda catalog: mutate_invalid_json(catalog, severity="warning"),
+            lambda catalog: mutate_invalid_json(catalog, allowed_pairs=[["not_a_result", "succeeded"]]),
+        ):
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as temporary_directory:
+                copied_contract = Path(temporary_directory) / "contract"
+                shutil.copytree(CONTRACT_ROOT, copied_contract)
+                catalog_path = copied_contract / "diagnostics" / "agent-profile.json"
+                catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+                mutate(catalog)
+                catalog_path.write_text(json.dumps(catalog), encoding="utf-8")
+                self.refresh_lock(copied_contract, verifier)
+
+                with self.assertRaises(ValueError):
+                    verifier.verify_contract(copied_contract)
+
+    def test_verify_contract_rejects_tampered_manifest_limits_and_shape(self) -> None:
+        verifier = load_verifier()
+        for mutate in (
+            lambda manifest: manifest["limits"].__setitem__("json_depth", 63),
+            lambda manifest: manifest.__setitem__("unexpected", True),
+        ):
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as temporary_directory:
+                copied_contract = Path(temporary_directory) / "contract"
+                shutil.copytree(CONTRACT_ROOT, copied_contract)
+                manifest_path = copied_contract / "contract.json"
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                mutate(manifest)
+                manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                self.refresh_lock(copied_contract, verifier)
+
+                with self.assertRaises(ValueError):
+                    verifier.verify_contract(copied_contract)
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 

@@ -1589,6 +1589,57 @@
           }
         ]
       }
+    },
+    {
+      "case_id": "unsorted-persona-principles",
+      "input": {
+        "mode": "profile",
+        "profile": {
+          "contract_version": "1.0.0",
+          "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+          "revision": 1,
+          "display_name": "Synthetic Algebra Mentor",
+          "persona": {
+            "summary": "Synthetic public teaching profile.",
+            "principles": [
+              "verify examples",
+              "state assumptions"
+            ],
+            "communication_style": "clear"
+          },
+          "goals": [
+            "explain synthetic examples"
+          ],
+          "working_style": {
+            "planning_preference": "outline",
+            "reasoning_preference": "examples",
+            "verification_preference": "check"
+          },
+          "declared_capabilities": [
+            "algebra.explanation"
+          ],
+          "collaboration_preferences": {
+            "interaction_preference": "discuss",
+            "feedback_preference": "concrete corrections"
+          },
+          "provenance_refs": [
+            "provenance://synthetic/algebra-mentor"
+          ]
+        }
+      },
+      "expected": {
+        "interface": "agent_profile",
+        "mode": "profile",
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "agent_profile.noncanonical_set",
+            "path": "/persona/principles",
+            "severity": "error"
+          }
+        ]
+      }
     }
   ]
 }
