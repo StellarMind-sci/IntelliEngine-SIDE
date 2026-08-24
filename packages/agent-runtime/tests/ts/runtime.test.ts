@@ -104,3 +104,14 @@ test("raw escaped revision keys retain numeric tokens", () => {
   const result = parseAndValidateTransport(Buffer.from(JSON.stringify(mention)), root);
   assert.equal(result.object_result, "valid");
 });
+test("strict JSON failures precede raw revision lexical diagnostics", () => {
+  const raw = JSON.stringify(profile());
+  for (const invalid of [
+    raw.replace('"revision":1', '"revision":1.0,"revision":1'),
+    raw.replace('"revision":1', '"\\u0072evision":1.0,"revision":1'),
+    `${raw.slice(0, -1)},`,
+  ]) {
+    const result = parseAndValidateTransport(Buffer.from(invalid), root);
+    assert.deepEqual(result, { interface: "agent_profile", mode: "transport", object_result: "invalid", operation_outcome: "succeeded", issues: [{ code: "agent_profile.invalid_json", path: "", severity: "error" }] });
+  }
+});

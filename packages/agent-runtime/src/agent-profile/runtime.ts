@@ -183,8 +183,10 @@ const rawRevisionIsNonInteger = (raw: Uint8Array) => {
   } catch { return false; }
 };export function parseAndValidateTransport(raw: Uint8Array, contractRoot?: URL | string) {
   loaded(contractRoot); if (!(raw instanceof Uint8Array) || raw.length > MAX) return invalid("transport", "agent_profile.invalid_json", "");
-  if (rawRevisionIsNonInteger(raw)) return invalid("transport", "agent_profile.invalid_revision", "/revision");
-  try { const value = strictParse(raw); return { ...validateProfile(value, contractRoot), mode: "transport" }; } catch { return invalid("transport", "agent_profile.invalid_json", ""); }
+  try { const value = strictParse(raw);
+    if (rawRevisionIsNonInteger(raw)) return invalid("transport", "agent_profile.invalid_revision", "/revision");
+    return { ...validateProfile(value, contractRoot), mode: "transport" };
+  } catch { return invalid("transport", "agent_profile.invalid_json", ""); }
 }
 export function validateReferences(profile: any, snapshot: any, contractRoot?: URL | string): any {
   const current = loaded(contractRoot), profileResult = validateProfile(profile, current.root);
