@@ -84,3 +84,12 @@ test("reference snapshot diagnostics use canonical Python-equivalent paths", () 
     assert.equal(result.issues[0].path, path);
   }
 });
+test("raw revision preserves integer lexical semantics", () => {
+  assert.equal(validateReferences(profile(), { contract_version: "1.0.0", provenance: [{ ref: profile().provenance_refs[0], object_result: "available" }] }, root).object_result, "valid");
+  const raw = JSON.stringify(profile());
+  for (const token of ["1.0", "1e0", "-0"]) {
+    const result = parseAndValidateTransport(Buffer.from(raw.replace('"revision":1', `"revision":${token}`)), root);
+    assert.equal(result.object_result, "invalid");
+    assert.deepEqual(result.issues[0], { code: "agent_profile.invalid_revision", path: "/revision", severity: "error" });
+  }
+});

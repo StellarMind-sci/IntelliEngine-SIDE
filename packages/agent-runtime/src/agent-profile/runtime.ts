@@ -145,8 +145,15 @@ export function validateProfile(profile: any, contractRoot?: URL | string): any 
   if (profile.declared_capabilities.some((value: any) => typeof value !== "string" || !/^[a-z][a-z0-9_]*(?:[.-][a-z0-9_]+)*$/.test(value))) return invalid("profile", "agent_profile.invalid_profile_field", "/declared_capabilities");
   return versionGreater(version, [1, 0, 0]) ? result("profile", "compatible_read", "succeeded", issue("agent_profile.compatible_read", "/contract_version")) : result("profile", "valid", "succeeded");
 }
-export function parseAndValidateTransport(raw: Uint8Array, contractRoot?: URL | string) {
+const rawRevisionIsNonInteger = (raw: Uint8Array) => {
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(raw);
+    const match = /"revision"\s*:\s*(-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(text);
+    return match !== null && !/^[1-9][0-9]*$/.test(match[1]);
+  } catch { return false; }
+};export function parseAndValidateTransport(raw: Uint8Array, contractRoot?: URL | string) {
   loaded(contractRoot); if (!(raw instanceof Uint8Array) || raw.length > MAX) return invalid("transport", "agent_profile.invalid_json", "");
+  if (rawRevisionIsNonInteger(raw)) return invalid("transport", "agent_profile.invalid_revision", "/revision");
   try { const value = strictParse(raw); return { ...validateProfile(value, contractRoot), mode: "transport" }; } catch { return invalid("transport", "agent_profile.invalid_json", ""); }
 }
 export function validateReferences(profile: any, snapshot: any, contractRoot?: URL | string): any {
