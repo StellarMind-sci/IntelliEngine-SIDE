@@ -115,13 +115,17 @@ def _canonical_string_set(value: Any, *, required: bool) -> bool | None:
 
 
 def _schema(root: Path | None = None) -> JsonObject:
-    base = root if root is not None else REPOSITORY_ROOT / "packages" / "agent-runtime" / "contracts" / "agent-profile" / "1.0.0"
-    return _load(base / "schemas" / "agent-profile.schema.json")
+    if root is None:
+        base = REPOSITORY_ROOT / "packages" / "agent-runtime" / "contracts" / "agent-profile" / "1.0.0"
+        return _load(base / "schemas" / "agent-profile.schema.json")
+    return _load(_artifact_path(root, "schemas/agent-profile.schema.json"))
 
 
-def _reference_schema() -> JsonObject:
-    base = REPOSITORY_ROOT / "packages" / "agent-runtime" / "contracts" / "agent-profile" / "1.0.0"
-    return _load(base / "schemas" / "reference-snapshot.schema.json")
+def _reference_schema(root: Path | None = None) -> JsonObject:
+    if root is None:
+        base = REPOSITORY_ROOT / "packages" / "agent-runtime" / "contracts" / "agent-profile" / "1.0.0"
+        return _load(base / "schemas" / "reference-snapshot.schema.json")
+    return _load(_artifact_path(root, "schemas/reference-snapshot.schema.json"))
 
 def validate_profile(profile: object, schema: object | None = None) -> JsonObject:
     mode = "profile"
@@ -167,8 +171,8 @@ def validate_raw(raw: bytes, root: Path) -> JsonObject:
     return {**result, "mode": "transport"}
 
 
-def validate_reference_snapshot(profile: object, snapshot: object | None) -> JsonObject:
-    profile_result = validate_profile(profile)
+def validate_reference_snapshot(profile: object, snapshot: object | None, profile_schema: object | None = None, reference_schema: object | None = None) -> JsonObject:
+    profile_result = validate_profile(profile, profile_schema)
     if profile_result["object_result"] == "invalid":
         return {**profile_result, "mode": "reference"}
     if profile_result["object_result"] == "compatible_read":
@@ -180,7 +184,7 @@ def validate_reference_snapshot(profile: object, snapshot: object | None) -> Jso
         return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/{extra[0]}")
     if _semver(snapshot.get("contract_version")) != (1, 0, 0):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
-    snapshot_schema = _reference_schema()
+    snapshot_schema = reference_schema if reference_schema is not None else _reference_schema()
     if not is_valid(snapshot, snapshot_schema, snapshot_schema):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
     entries = snapshot["provenance"]
@@ -212,9 +216,9 @@ def validate_reference_snapshot(profile: object, snapshot: object | None) -> Jso
             return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/provenance/{index}/ref")
     return _result("reference", "valid", "succeeded")
 
-def validate_revision_transition(previous: object, candidate: object) -> JsonObject:
+def validate_revision_transition(previous: object, candidate: object, schema: object | None = None) -> JsonObject:
     for profile in (previous, candidate):
-        validation = validate_profile(profile)
+        validation = validate_profile(profile, schema)
         if validation["object_result"] == "invalid":
             return {**validation, "mode": "revision_transition"}
         if validation["object_result"] == "compatible_read":
@@ -246,9 +250,9 @@ def validate_case(case: dict, root: Path) -> JsonObject:
     if mode == "profile":
         return validate_profile(input_value.get("profile"), _schema(root))
     if mode == "reference":
-        return validate_reference_snapshot(input_value.get("profile"), input_value.get("snapshot"))
+        return validate_reference_snapshot(input_value.get("profile"), input_value.get("snapshot"), _schema(root), _reference_schema(root))
     if mode == "revision_transition":
-        return validate_revision_transition(input_value.get("previous"), input_value.get("candidate"))
+        return validate_revision_transition(input_value.get("previous"), input_value.get("candidate"), _schema(root))
     return _invalid("profile", "agent_profile.invalid_json", "/input/mode")
 
 

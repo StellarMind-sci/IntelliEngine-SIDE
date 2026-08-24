@@ -112,6 +112,18 @@ class AgentProfileContractTests(unittest.TestCase):
         case_ids = {case["case_id"] for case in suite["cases"]}
 
         self.assertTrue({"raw-unpaired-surrogate", "unsorted-provenance", "duplicate-declared-capabilities"} <= case_ids)
+    def test_verify_contract_uses_the_supplied_root_reference_schema(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            copied_contract = Path(temporary_directory) / "contract"
+            shutil.copytree(CONTRACT_ROOT, copied_contract)
+            reference_schema_path = copied_contract / "schemas" / "reference-snapshot.schema.json"
+            reference_schema = json.loads(reference_schema_path.read_text(encoding="utf-8"))
+            reference_schema["properties"]["provenance"]["minItems"] = 999
+            reference_schema_path.write_text(json.dumps(reference_schema), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "fixture result mismatch"):
+                verifier.verify_contract(copied_contract)
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 
