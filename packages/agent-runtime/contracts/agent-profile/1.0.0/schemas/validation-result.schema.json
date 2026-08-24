@@ -5,14 +5,15 @@
   "properties": {
     "interface": {"const": "agent_profile"},
     "mode": {"enum": ["transport", "profile", "reference", "revision_transition"]},
-    "object_result": {"enum": ["valid", "invalid", "not_evaluated"]},
+    "object_result": {"enum": ["valid", "invalid", "compatible_read", "not_evaluated"]},
     "operation_outcome": {"enum": ["succeeded", "indeterminate"]},
     "issues": {"type": "array", "items": {"$ref": "diagnostic.schema.json"}}
   },
   "additionalProperties": false,
   "oneOf": [
-    {"properties": {"object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
-    {"properties": {"object_result": {"const": "invalid"}, "operation_outcome": {"const": "succeeded"}}},
-    {"properties": {"object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "indeterminate"}}}
+    {"properties": {"mode": {"enum": ["transport", "profile", "reference", "revision_transition"]}, "object_result": {"const": "valid"}, "operation_outcome": {"const": "succeeded"}}},
+    {"properties": {"mode": {"enum": ["transport", "profile", "reference", "revision_transition"]}, "object_result": {"const": "invalid"}, "operation_outcome": {"const": "succeeded"}}},
+    {"properties": {"mode": {"enum": ["transport", "profile"]}, "object_result": {"const": "compatible_read"}, "operation_outcome": {"const": "succeeded"}}},
+    {"properties": {"mode": {"const": "reference"}, "object_result": {"const": "not_evaluated"}, "operation_outcome": {"const": "indeterminate"}}}
   ]
 }

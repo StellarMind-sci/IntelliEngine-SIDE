@@ -15,15 +15,17 @@
 - 只修改 `packages/agent-runtime/**` 和本计划；本 Issue 只能新增 `AgentProfile 1.0.0` 一项公共契约。
 - Profile 精确字段为 `contract_version`、`id`、`revision`、`display_name`、`persona`、`goals`、`working_style`、`declared_capabilities`、`collaboration_preferences`、`provenance_refs`；所有对象 `additionalProperties: false`。
 - `persona` 为 `summary`、`principles`、`communication_style`；`working_style` 为 `planning_preference`、`reasoning_preference`、`verification_preference`；`collaboration_preferences` 为 `interaction_preference`、`feedback_preference`。这些均是用户可填写的描述文本，不得引入固定角色 enum 或权限含义。
-- `declared_capabilities` 是按 unsigned UTF-8 规范排序的 capability identifier 集合，只能描述能力，不能授予任何模型、文件、网络、设备或工程写入权限。
-- `goals`、`persona.principles`、`declared_capabilities`、`provenance_refs` 是唯一且按 unsigned UTF-8 排序的集合；`provenance_refs` 非空。所有 revision 都使用 UUID v4/v5 样式小写 ID 与 1..9007199254740991 的 safe integer。
+- `declared_capabilities` 是非空、按 unsigned UTF-8 规范排序的 capability identifier 集合，只能描述能力，不能授予任何模型、文件、网络、设备或工程写入权限。
+- `goals`、`persona.principles`、`declared_capabilities`、`provenance_refs` 是唯一且按 unsigned UTF-8 排序的集合；`provenance_refs` 非空。所有 revision 都使用 canonical lowercase UUIDv7 ID 与 1..9007199254740991 的 safe integer。
 - `AgentProfileRef` 只能为 `{id, revision}`；不能使用 `latest`、模型 ID、状态或权限替代精确 revision。
-- `AgentProfileReferenceSnapshot` 不属于 Profile，包含 `contract_version: "1.0.0"` 和 `provenance` entries；entry 为 `{ref, object_result}`，状态只允许 `available`、`invalid`、`opaque`、`compatible_read`。快照必须按 ref 规范排序且与 Profile provenance refs 完全闭包匹配。
-- validation result 是三个封闭对：`valid+succeeded`、`invalid+succeeded`、`not_evaluated+indeterminate`；诊断必须为稳定 `agent_profile.*`、最小 JSON Pointer、`error` severity。
+- Profile 与 `AgentProfileReferenceSnapshot` 的 `contract_version` 都是 canonical SemVer。未知 major 为 invalid；同 major 的较新 minor 仅可作为无副作用 `compatible_read+succeeded` 的 Profile 读取，不得用于写入或智能副作用。
+- `AgentProfileReferenceSnapshot` 不属于 Profile，包含 `contract_version` 和非空 `provenance` entries；entry 为 `{ref, object_result}`，状态只允许 `available`、`invalid`、`opaque`、`compatible_read`。快照必须按 ref 规范排序且与 Profile provenance refs 完全闭包匹配。entry 的 `compatible_read` 仍导致 reference 结论 `not_evaluated+indeterminate`，不是 Profile 的 compatible read。
+- validation result 按 mode 封闭：`transport`/`profile` 为 `valid+succeeded`、`invalid+succeeded` 或 `compatible_read+succeeded`；`reference` 为 `valid+succeeded`、`invalid+succeeded` 或 `not_evaluated+indeterminate`；`revision_transition` 仅为 `valid+succeeded` 或 `invalid+succeeded`。诊断必须为稳定 `agent_profile.*`、最小 JSON Pointer；`agent_profile.compatible_read` 为 warning，其余当前 catalog 代码为 error。
 - 未提供快照、快照版本非本 major、`opaque` 或 `compatible_read` 来源均是 `not_evaluated+indeterminate`；完整快照中的 `invalid`/悬空来源是 `invalid+succeeded`。
 - revision transition 只能同 ID 且 candidate revision 严格增加、去掉 revision 后内容不同；契约不执行 ChangeSet、运行状态切换、写入、召唤、删除、模型调用、记忆访问、团队调度或权限判断。
 - raw transport 必须拒绝 BOM、重复 key、非法 UTF-8、非法 JSON/代理项和未知 major；Issue #22 未完成前只宣称应用层离线只读确定性校验，不宣称 OS 级隔离。
-- 所有 JSON 工件（不含 `lock.json`）必须被 `lock.json` 以 JCS SHA-256 完整闭包锁定；验证器不得重放 fixture expected 作为计算结果。
+- 所有 JSON 工件（不含 `lock.json`）必须被 `lock.json` 以 JCS SHA-256 完整闭包锁定，`self_digest` 固定为 `excluded`，每个 entry 固定 `digest_kind: "jcs_sha256"` 且 path 防 escape；Task 3 verifier 必须真实强制 entry path 的规范排序与路径唯一性，不能误用 JSON Schema `uniqueItems` 代替。验证器不得重放 fixture expected 作为计算结果。
+- `reference-snapshot.provenance` 与 fixture suite `cases` 均至少一项，fixture `case_id` 使用 canonical kebab identifier。Task 2/3 verifier 必须真实检查 provenance entries 与 fixture cases 的 key 唯一性和规范排序，不能声称 JSON Schema `uniqueItems` 已充分保证。
 
 ---
 

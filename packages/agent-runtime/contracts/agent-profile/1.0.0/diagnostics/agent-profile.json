@@ -1,19 +1,20 @@
 {
   "contract_version": "1.0.0",
   "codes": [
-    {"code": "agent_profile.invalid_json", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.missing_field", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.unsupported_contract_version", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.invalid_id", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.invalid_revision", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.invalid_profile_field", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.noncanonical_set", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.forbidden_runtime_field", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.reference_snapshot_incomplete", "allowed_pairs": [["not_evaluated", "indeterminate"]]},
-    {"code": "agent_profile.opaque_provenance_reference", "allowed_pairs": [["not_evaluated", "indeterminate"]]},
-    {"code": "agent_profile.dangling_provenance_reference", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.revision_identity_mismatch", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.revision_not_increased", "allowed_pairs": [["invalid", "succeeded"]]},
-    {"code": "agent_profile.revision_without_change", "allowed_pairs": [["invalid", "succeeded"]]}
+    {"code": "agent_profile.invalid_json", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.missing_field", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.unsupported_contract_version", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.invalid_id", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.invalid_revision", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.invalid_profile_field", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.noncanonical_set", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.forbidden_runtime_field", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.compatible_read", "severity": "warning", "allowed_pairs": [["compatible_read", "succeeded"]]},
+    {"code": "agent_profile.reference_snapshot_incomplete", "severity": "error", "allowed_pairs": [["not_evaluated", "indeterminate"]]},
+    {"code": "agent_profile.opaque_provenance_reference", "severity": "error", "allowed_pairs": [["not_evaluated", "indeterminate"]]},
+    {"code": "agent_profile.dangling_provenance_reference", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.revision_identity_mismatch", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.revision_not_increased", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]},
+    {"code": "agent_profile.revision_without_change", "severity": "error", "allowed_pairs": [["invalid", "succeeded"]]}
   ]
 }

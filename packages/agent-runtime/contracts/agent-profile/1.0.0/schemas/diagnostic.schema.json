@@ -5,7 +5,7 @@
   "properties": {
     "code": {"type": "string", "pattern": "^agent_profile\\.[a-z][a-z0-9_]*$"},
     "path": {"type": "string", "pattern": "^(?:|(?:/(?:[^~/]|~0|~1)*)*)$"},
-    "severity": {"const": "error"}
+    "severity": {"enum": ["error", "warning"]}
   },
   "additionalProperties": false
 }
