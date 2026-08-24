@@ -1,23 +1,145 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["contract_version", "cases"],
+  "required": [
+    "contract_version",
+    "cases",
+    "schema_probes"
+  ],
   "properties": {
-    "contract_version": {"const": "1.0.0"},
+    "contract_version": {
+      "const": "1.0.0"
+    },
     "cases": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["case_id", "input", "expected"],
+        "required": [
+          "case_id",
+          "input",
+          "expected"
+        ],
         "properties": {
-          "case_id": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
-          "input": {},
-          "expected": {"$ref": "validation-result.schema.json"}
+          "case_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "input": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "raw_hex"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "raw"
+                  },
+                  "raw_hex": {
+                    "type": "string",
+                    "pattern": "^(?:[0-9a-fA-F]{2})*$"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "profile"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "profile"
+                  },
+                  "profile": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "profile"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "reference"
+                  },
+                  "profile": {
+                    "type": "object"
+                  },
+                  "snapshot": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "previous",
+                  "candidate"
+                ],
+                "properties": {
+                  "mode": {
+                    "const": "revision_transition"
+                  },
+                  "previous": {
+                    "type": "object"
+                  },
+                  "candidate": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
+          "expected": {
+            "$ref": "validation-result.schema.json"
+          }
         },
         "additionalProperties": false
       },
       "uniqueItems": true
+    },
+    "schema_probes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "case_id",
+          "schema",
+          "value",
+          "valid"
+        ],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "schema": {
+            "const": "agent_profile_ref"
+          },
+          "value": {
+            "type": "object"
+          },
+          "valid": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false

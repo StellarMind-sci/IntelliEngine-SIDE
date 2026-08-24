@@ -521,11 +521,11 @@
       "expected": {
         "interface": "agent_profile",
         "mode": "reference",
-        "object_result": "not_evaluated",
-        "operation_outcome": "indeterminate",
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
         "issues": [
           {
-            "code": "agent_profile.reference_snapshot_incomplete",
+            "code": "agent_profile.dangling_provenance_reference",
             "path": "/provenance_refs/0",
             "severity": "error"
           }
@@ -726,6 +726,56 @@
           {
             "code": "agent_profile.reference_snapshot_incomplete",
             "path": "",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "noncanonical-semver",
+      "input": {
+        "mode": "profile",
+        "profile": {
+          "contract_version": "01.0.0",
+          "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+          "revision": 1,
+          "display_name": "Synthetic Algebra Mentor",
+          "persona": {
+            "summary": "Synthetic public teaching profile.",
+            "principles": [
+              "state assumptions"
+            ],
+            "communication_style": "clear"
+          },
+          "goals": [
+            "explain synthetic examples"
+          ],
+          "working_style": {
+            "planning_preference": "outline",
+            "reasoning_preference": "examples",
+            "verification_preference": "check"
+          },
+          "declared_capabilities": [
+            "algebra.explanation"
+          ],
+          "collaboration_preferences": {
+            "interaction_preference": "discuss",
+            "feedback_preference": "concrete corrections"
+          },
+          "provenance_refs": [
+            "provenance://synthetic/algebra-mentor"
+          ]
+        }
+      },
+      "expected": {
+        "interface": "agent_profile",
+        "mode": "profile",
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "agent_profile.unsupported_contract_version",
+            "path": "/contract_version",
             "severity": "error"
           }
         ]
@@ -1216,6 +1266,57 @@
       }
     },
     {
+      "case_id": "unsorted-goals",
+      "input": {
+        "mode": "profile",
+        "profile": {
+          "contract_version": "1.0.0",
+          "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+          "revision": 1,
+          "display_name": "Synthetic Algebra Mentor",
+          "persona": {
+            "summary": "Synthetic public teaching profile.",
+            "principles": [
+              "state assumptions"
+            ],
+            "communication_style": "clear"
+          },
+          "goals": [
+            "z synthetic goal",
+            "a synthetic goal"
+          ],
+          "working_style": {
+            "planning_preference": "outline",
+            "reasoning_preference": "examples",
+            "verification_preference": "check"
+          },
+          "declared_capabilities": [
+            "algebra.explanation"
+          ],
+          "collaboration_preferences": {
+            "interaction_preference": "discuss",
+            "feedback_preference": "concrete corrections"
+          },
+          "provenance_refs": [
+            "provenance://synthetic/algebra-mentor"
+          ]
+        }
+      },
+      "expected": {
+        "interface": "agent_profile",
+        "mode": "profile",
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "agent_profile.noncanonical_set",
+            "path": "/goals",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
       "case_id": "unsorted-persona-principles",
       "input": {
         "mode": "profile",
@@ -1325,6 +1426,57 @@
           {
             "code": "agent_profile.reference_snapshot_incomplete",
             "path": "/provenance/1/ref",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "unsorted-provenance-refs",
+      "input": {
+        "mode": "profile",
+        "profile": {
+          "contract_version": "1.0.0",
+          "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+          "revision": 1,
+          "display_name": "Synthetic Algebra Mentor",
+          "persona": {
+            "summary": "Synthetic public teaching profile.",
+            "principles": [
+              "state assumptions"
+            ],
+            "communication_style": "clear"
+          },
+          "goals": [
+            "explain synthetic examples"
+          ],
+          "working_style": {
+            "planning_preference": "outline",
+            "reasoning_preference": "examples",
+            "verification_preference": "check"
+          },
+          "declared_capabilities": [
+            "algebra.explanation"
+          ],
+          "collaboration_preferences": {
+            "interaction_preference": "discuss",
+            "feedback_preference": "concrete corrections"
+          },
+          "provenance_refs": [
+            "provenance://synthetic/z",
+            "provenance://synthetic/a"
+          ]
+        }
+      },
+      "expected": {
+        "interface": "agent_profile",
+        "mode": "profile",
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "agent_profile.noncanonical_set",
+            "path": "/provenance_refs",
             "severity": "error"
           }
         ]
@@ -1640,6 +1792,45 @@
         "operation_outcome": "succeeded",
         "issues": []
       }
+    }
+  ],
+  "schema_probes": [
+    {
+      "case_id": "agent-profile-ref-extra",
+      "schema": "agent_profile_ref",
+      "value": {
+        "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+        "revision": 1,
+        "extra": true
+      },
+      "valid": false
+    },
+    {
+      "case_id": "agent-profile-ref-invalid-id",
+      "schema": "agent_profile_ref",
+      "value": {
+        "id": "not-a-uuid",
+        "revision": 1
+      },
+      "valid": false
+    },
+    {
+      "case_id": "agent-profile-ref-invalid-revision",
+      "schema": "agent_profile_ref",
+      "value": {
+        "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+        "revision": 0
+      },
+      "valid": false
+    },
+    {
+      "case_id": "agent-profile-ref-valid",
+      "schema": "agent_profile_ref",
+      "value": {
+        "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+        "revision": 1
+      },
+      "valid": true
     }
   ]
 }

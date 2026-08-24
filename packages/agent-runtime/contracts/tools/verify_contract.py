@@ -21,6 +21,8 @@ from intelliengine_conformance.schema_validation import is_valid
 
 JsonObject = dict[str, Any]
 SAFE_INTEGER = 9_007_199_254_740_991
+MAX_STRING_UTF8_BYTES = 262_144
+MAX_AGENT_PROFILE_JCS_BYTES = 1_048_576
 UUID_V7 = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 ARTIFACT_PATH = re.compile(r"^[a-z0-9][a-z0-9._/-]*\.json$")
@@ -74,6 +76,30 @@ def _is_utf8_encodable(value: Any) -> bool:
     if isinstance(value, dict):
         return all(_is_utf8_encodable(key) and _is_utf8_encodable(item) for key, item in value.items())
     return True
+
+def _pointer_token(value: str) -> str:
+    return value.replace("~", "~0").replace("/", "~1")
+
+
+def _within_string_limit(value: Any) -> bool:
+    if isinstance(value, str):
+        try:
+            return len(value.encode("utf-8")) <= MAX_STRING_UTF8_BYTES
+        except UnicodeEncodeError:
+            return False
+    if isinstance(value, list):
+        return all(_within_string_limit(item) for item in value)
+    if isinstance(value, dict):
+        return all(_within_string_limit(key) and _within_string_limit(item) for key, item in value.items())
+    return True
+
+
+def _within_profile_jcs_limit(profile: JsonObject) -> bool:
+    try:
+        return len(canonicalize(profile)) <= MAX_AGENT_PROFILE_JCS_BYTES
+    except (TypeError, UnicodeEncodeError, ValueError):
+        return False
+
 
 def _issue(code: str, path: str) -> JsonObject:
     return {"code": code, "path": path, "severity": "warning" if code == "agent_profile.compatible_read" else "error"}
@@ -130,7 +156,7 @@ def _reference_schema(root: Path | None = None) -> JsonObject:
 
 def validate_profile(profile: object, schema: object | None = None) -> JsonObject:
     mode = "profile"
-    if not isinstance(profile, dict) or not _is_utf8_encodable(profile):
+    if not isinstance(profile, dict) or not _is_utf8_encodable(profile) or not _within_string_limit(profile) or not _within_profile_jcs_limit(profile):
         return _invalid(mode, "agent_profile.invalid_json", "")
     missing = next((field for field in REQUIRED_FIELDS if field not in profile), None)
     if missing is not None:
@@ -139,7 +165,7 @@ def validate_profile(profile: object, schema: object | None = None) -> JsonObjec
     if unknown:
         field = unknown[0]
         code = "agent_profile.forbidden_runtime_field" if field in FORBIDDEN_RUNTIME_FIELDS else "agent_profile.invalid_profile_field"
-        return _invalid(mode, code, f"/{field}")
+        return _invalid(mode, code, f"/{_pointer_token(field)}")
     version = _semver(profile["contract_version"])
     if version is None or version[0] != 1:
         return _invalid(mode, "agent_profile.unsupported_contract_version", "/contract_version")
@@ -187,7 +213,7 @@ def validate_reference_snapshot(profile: object, snapshot: object | None, profil
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "")
     extra = sorted((field for field in snapshot if field not in {"contract_version", "provenance"}), key=lambda field: field.encode("utf-8"))
     if extra:
-        return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/{extra[0]}")
+        return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/{_pointer_token(extra[0])}")
     if _semver(snapshot.get("contract_version")) != (1, 0, 0):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
     snapshot_schema = reference_schema if reference_schema is not None else _reference_schema()
@@ -209,7 +235,7 @@ def validate_reference_snapshot(profile: object, snapshot: object | None, profil
         path = f"/provenance_refs/{index}"
         item = indexed.get(ref)
         if item is None:
-            return _indeterminate("agent_profile.reference_snapshot_incomplete", path)
+            return _invalid("reference", "agent_profile.dangling_provenance_reference", path)
         _, entry = item
         state = entry["object_result"]
         if state == "invalid":
@@ -219,7 +245,7 @@ def validate_reference_snapshot(profile: object, snapshot: object | None, profil
     profile_refs = set(profile["provenance_refs"])
     for ref, (index, _) in indexed.items():
         if ref not in profile_refs:
-            return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/provenance/{index}/ref")
+            return _invalid("reference", "agent_profile.dangling_provenance_reference", f"/provenance/{index}/ref")
     return _result("reference", "valid", "succeeded")
 
 def validate_revision_transition(previous: object, candidate: object, schema: object | None = None) -> JsonObject:
@@ -365,13 +391,51 @@ def _validate_catalog(catalog: Any) -> dict[str, JsonObject]:
         raise ValueError("invalid diagnostic catalog")
     return entries
 
+def _validate_schema_refs(value: Any, root: Path, source_relative: str, declared: set[str]) -> None:
+    if isinstance(value, list):
+        for item in value:
+            _validate_schema_refs(item, root, source_relative, declared)
+        return
+    if not isinstance(value, dict):
+        return
+    reference = value.get("$ref")
+    if reference is not None:
+        if not isinstance(reference, str):
+            raise ValueError("invalid schema reference")
+        if not reference.startswith("#"):
+            target, _, _ = reference.partition("#")
+            if not target or ":" in target or "\\" in target:
+                raise ValueError("invalid schema reference")
+            relative = (PurePosixPath(source_relative).parent / PurePosixPath(target)).as_posix()
+            if relative not in declared:
+                raise ValueError("invalid schema reference")
+            _artifact_path(root, relative)
+    for item in value.values():
+        _validate_schema_refs(item, root, source_relative, declared)
+
+
+def _validate_schema_artifacts(root: Path, schema_paths: Any) -> None:
+    if not isinstance(schema_paths, dict):
+        raise ValueError("invalid contract schema manifest")
+    declared = set(schema_paths.values())
+    if declared != set(REQUIRED_SCHEMA_PATHS.values()):
+        raise ValueError("invalid contract schema manifest")
+    for relative in declared:
+        schema = _load(_artifact_path(root, relative))
+        if not isinstance(schema, dict) or schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+            raise ValueError("invalid contract schema")
+        _validate_schema_refs(schema, root, relative, declared)
+
+
 def verify_contract(root: Path) -> JsonObject:
     root = root.resolve()
     _verify_lock(root)
     manifest = _load(root / "contract.json")
     _validate_manifest(manifest)
+    schema_paths = manifest["schemas"]
+    _validate_schema_artifacts(root, schema_paths)
     diagnostics = manifest["diagnostics"]
-    artifact_paths = [*manifest["schemas"].values(), *diagnostics.values(), manifest.get("fixtures")]
+    artifact_paths = [*schema_paths.values(), *diagnostics.values(), manifest.get("fixtures")]
     resolved_artifacts = [_artifact_path(root, relative_path) for relative_path in artifact_paths]
     if any(not path.is_file() for path in resolved_artifacts):
         raise FileNotFoundError("declared contract artifact is missing")
@@ -388,8 +452,21 @@ def verify_contract(root: Path) -> JsonObject:
     if not is_valid(suite, resolved_fixture_schema, resolved_fixture_schema):
         raise ValueError("fixture suite does not match its machine schema")
     cases = suite.get("cases") if isinstance(suite, dict) else None
-    if not isinstance(cases, list):
+    schema_probes = suite.get("schema_probes") if isinstance(suite, dict) else None
+    if not isinstance(cases, list) or not isinstance(schema_probes, list):
         raise ValueError("fixture suite is invalid")
+    agent_profile_ref_schema = _load(_artifact_path(root, schema_paths["agent_profile_ref"]))
+    probe_ids = [probe.get("case_id") for probe in schema_probes if isinstance(probe, dict)]
+    if len(probe_ids) != len(schema_probes) or len(probe_ids) != len(set(probe_ids)):
+        raise ValueError("fixture schema probe IDs are invalid or duplicated")
+    try:
+        if probe_ids != sorted(probe_ids, key=lambda case_id: case_id.encode("utf-8")):
+            raise ValueError("fixture schema probe IDs are invalid or noncanonical")
+    except (AttributeError, UnicodeEncodeError) as error:
+        raise ValueError("fixture schema probe IDs are invalid or noncanonical") from error
+    for probe in schema_probes:
+        if is_valid(probe["value"], agent_profile_ref_schema, agent_profile_ref_schema) != probe["valid"]:
+            raise ValueError(f"fixture schema probe mismatch: {probe['case_id']}")
     case_ids = [case.get("case_id") for case in cases if isinstance(case, dict)]
     if len(case_ids) != len(cases) or len(case_ids) != len(set(case_ids)):
         raise ValueError("fixture case IDs are invalid or duplicated")

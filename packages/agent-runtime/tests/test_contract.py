@@ -213,6 +213,90 @@ class AgentProfileContractTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "fixture case IDs"):
                 verifier.verify_contract(copied_contract)
+    def test_reference_snapshot_closure_mismatches_are_invalid(self) -> None:
+        verifier = load_verifier()
+        profile = {**self.valid_profile(), "provenance_refs": ["provenance://synthetic/a", "provenance://synthetic/b"]}
+        missing = {"contract_version": "1.0.0", "provenance": [{"ref": "provenance://synthetic/a", "object_result": "available"}]}
+        extra = {"contract_version": "1.0.0", "provenance": [{"ref": "provenance://synthetic/algebra-mentor", "object_result": "available"}, {"ref": "provenance://synthetic/other", "object_result": "available"}]}
+
+        missing_result = verifier.validate_reference_snapshot(profile, missing)
+        self.assertEqual((missing_result["object_result"], missing_result["operation_outcome"]), ("invalid", "succeeded"))
+        self.assertEqual(missing_result["issues"][0]["code"], "agent_profile.dangling_provenance_reference")
+        self.assertEqual(missing_result["issues"][0]["path"], "/provenance_refs/1")
+        extra_result = verifier.validate_reference_snapshot(self.valid_profile(), extra)
+        self.assertEqual((extra_result["object_result"], extra_result["operation_outcome"]), ("invalid", "succeeded"))
+        self.assertEqual(extra_result["issues"][0]["code"], "agent_profile.dangling_provenance_reference")
+        self.assertEqual(extra_result["issues"][0]["path"], "/provenance/1/ref")
+
+    def test_profile_paths_escape_json_pointer_tokens(self) -> None:
+        verifier = load_verifier()
+        result = verifier.validate_profile({**self.valid_profile(), "unexpected/key~token": True})
+
+        self.assertEqual(result["issues"][0]["code"], "agent_profile.invalid_profile_field")
+        self.assertEqual(result["issues"][0]["path"], "/unexpected~1key~0token")
+        snapshot_result = verifier.validate_reference_snapshot(self.valid_profile(), {"contract_version": "1.0.0", "provenance": [], "unexpected/key~token": True})
+        self.assertEqual(snapshot_result["issues"][0]["path"], "/unexpected~1key~0token")
+
+    def test_profile_enforces_string_and_jcs_size_limits(self) -> None:
+        verifier = load_verifier()
+        at_limit = {**self.valid_profile(), "display_name": "x" * 262144}
+        above_limit = {**self.valid_profile(), "display_name": "x" * 262145}
+        self.assertEqual(verifier.validate_profile(at_limit)["object_result"], "valid")
+        self.assertEqual(verifier.validate_profile(above_limit)["issues"][0]["code"], "agent_profile.invalid_json")
+        self.assertEqual(verifier.validate_raw(json.dumps(at_limit, separators=(",", ":")).encode("utf-8"), CONTRACT_ROOT)["object_result"], "valid")
+        self.assertEqual(verifier.validate_raw(json.dumps(above_limit, separators=(",", ":")).encode("utf-8"), CONTRACT_ROOT)["issues"][0]["code"], "agent_profile.invalid_json")
+        bounded = "x" * 200000
+        raw_profile = {
+            **self.valid_profile(),
+            "display_name": bounded,
+            "persona": {"summary": bounded, "principles": ["state assumptions"], "communication_style": bounded},
+            "goals": [bounded],
+            "working_style": {"planning_preference": bounded, "reasoning_preference": bounded, "verification_preference": bounded},
+            "collaboration_preferences": {"interaction_preference": bounded, "feedback_preference": bounded},
+        }
+        raw = json.dumps(raw_profile, separators=(",", ":")).encode("utf-8")
+        self.assertGreater(len(raw), 1048576)
+        self.assertEqual(verifier.validate_raw(raw, CONTRACT_ROOT)["issues"][0]["code"], "agent_profile.invalid_json")
+
+    def test_fixture_input_schema_is_closed_and_mode_specific(self) -> None:
+        verifier = load_verifier()
+        fixture_schema = json.loads((CONTRACT_ROOT / "schemas" / "fixture-suite.schema.json").read_text(encoding="utf-8"))
+        input_schema = fixture_schema["properties"]["cases"]["items"]["properties"]["input"]
+        private_input = {"mode": "profile", "profile": self.valid_profile(), "private_memory": "not permitted"}
+        unsupported_input = {"mode": "unsupported", "profile": self.valid_profile()}
+
+        self.assertFalse(verifier.is_valid(private_input, input_schema, input_schema))
+        self.assertFalse(verifier.is_valid(unsupported_input, input_schema, input_schema))
+
+    def test_verify_contract_rejects_open_or_remote_referenced_schemas(self) -> None:
+        verifier = load_verifier()
+        for relative, mutate in (
+            ("schemas/agent-profile-ref.schema.json", lambda schema: schema.__setitem__("additionalProperties", True)),
+            ("schemas/validation-result.schema.json", lambda schema: schema["properties"]["issues"].__setitem__("items", {"$ref": "https://example.invalid/diagnostic.schema.json"})),
+        ):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as temporary_directory:
+                copied_contract = Path(temporary_directory) / "contract"
+                shutil.copytree(CONTRACT_ROOT, copied_contract)
+                schema_path = copied_contract / relative
+                schema = json.loads(schema_path.read_text(encoding="utf-8"))
+                mutate(schema)
+                schema_path.write_text(json.dumps(schema), encoding="utf-8")
+                self.refresh_lock(copied_contract, verifier)
+
+                with self.assertRaises(ValueError):
+                    verifier.verify_contract(copied_contract)
+
+    def test_agent_profile_ref_schema_rejects_invalid_closed_refs(self) -> None:
+        verifier = load_verifier()
+        schema = json.loads((CONTRACT_ROOT / "schemas" / "agent-profile-ref.schema.json").read_text(encoding="utf-8"))
+        valid_ref = {"id": "018f5e3a-7abc-7def-8abc-0123456789ab", "revision": 1}
+
+        self.assertTrue(verifier.is_valid(valid_ref, schema, schema))
+        suite = json.loads((CONTRACT_ROOT / "fixtures" / "cases.json").read_text(encoding="utf-8"))
+        self.assertEqual({probe["case_id"] for probe in suite["schema_probes"]}, {"agent-profile-ref-extra", "agent-profile-ref-invalid-id", "agent-profile-ref-invalid-revision", "agent-profile-ref-valid"})
+        for invalid_ref in ({**valid_ref, "extra": True}, {**valid_ref, "id": "not-a-uuid"}, {**valid_ref, "revision": 0}):
+            with self.subTest(invalid_ref=invalid_ref):
+                self.assertFalse(verifier.is_valid(invalid_ref, schema, schema))
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 
@@ -232,6 +316,7 @@ class AgentProfileContractTests(unittest.TestCase):
             {"interface": "agent_profile", "mode": "profile", "object_result": "invalid", "operation_outcome": "succeeded", "issues": []},
             {"interface": "agent_profile", "mode": "profile", "object_result": "compatible_read", "operation_outcome": "succeeded", "issues": []},
             {"interface": "agent_profile", "mode": "reference", "object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": []},
+            {"interface": "agent_profile", "mode": "profile", "object_result": "valid", "operation_outcome": "succeeded", "issues": [], "extra": True},
         )
 
         for result in invalid_results:

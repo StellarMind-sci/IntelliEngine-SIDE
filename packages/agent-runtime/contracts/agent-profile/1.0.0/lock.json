@@ -15,7 +15,7 @@
     {
       "path": "fixtures/cases.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "af9d5b288c2eb3170526dd24e60f3976835f8322c1b5d0ddcd9e18090b07db57"
+      "sha256": "630a13876d800d7898b463e2460eef71d3259377a6033685765142d37a99742a"
     },
     {
       "path": "schemas/agent-profile-ref.schema.json",
@@ -35,7 +35,7 @@
     {
       "path": "schemas/fixture-suite.schema.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "d28c253f3d61ce71c66e7666b037c5613d3b66a5ed2907ef7302f6c35d20f062"
+      "sha256": "bcbc78b7e681cfd1531eb6cf1a683c1a46c445beed7a92dc25f06fe2635d0869"
     },
     {
       "path": "schemas/lock.schema.json",
