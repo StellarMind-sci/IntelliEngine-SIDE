@@ -1,0 +1,56 @@
+{
+  "contract_version": "1.0.0",
+  "self_digest": "excluded",
+  "entries": [
+    {
+      "path": "contract.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "95d9d9a7ac7859002c4362c355fd4288f0fa89cea2960e805e8f27e4798675d2"
+    },
+    {
+      "path": "diagnostics/agent-profile.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "c09eb5a28a259cfab1b474831b536f2d5838a3c71317c477ea4c675238611723"
+    },
+    {
+      "path": "fixtures/cases.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "630a13876d800d7898b463e2460eef71d3259377a6033685765142d37a99742a"
+    },
+    {
+      "path": "schemas/agent-profile-ref.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "caf2eba3e3c849fae49404b056bc69c6dc235b800fdc631e6a50450a7968d565"
+    },
+    {
+      "path": "schemas/agent-profile.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "0d2558e00f58824daaa3483688b12335ecde6c13c0573a0ffefe25f8c13d3f27"
+    },
+    {
+      "path": "schemas/diagnostic.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "7da5623794f5912541e8740a64614792213ac714c505a53c36905ce1f57aa37b"
+    },
+    {
+      "path": "schemas/fixture-suite.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "bcbc78b7e681cfd1531eb6cf1a683c1a46c445beed7a92dc25f06fe2635d0869"
+    },
+    {
+      "path": "schemas/lock.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "d0304b19d6c5b99294e2242815245f2a2a23cdd4d932296e98512b166367a67b"
+    },
+    {
+      "path": "schemas/reference-snapshot.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "c23111ea1c235de272d3b13946b64d1dd995e2f86ce5d27fe1c639eddcd45889"
+    },
+    {
+      "path": "schemas/validation-result.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "61dfbc8dcca9eb3c64dc8a30fe4a9cc7cafc66c562af6fa85f236973e476914f"
+    }
+  ]
+}

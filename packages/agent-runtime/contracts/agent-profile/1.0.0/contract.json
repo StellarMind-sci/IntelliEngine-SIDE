@@ -1,0 +1,27 @@
+{
+  "contract_family": "agent-profile",
+  "contract_version": "1.0.0",
+  "side_effects": "forbidden",
+  "set_order": "unsigned-utf8",
+  "limits": {
+    "agent_profile_jcs_bytes": 1048576,
+    "json_array_elements": 10000,
+    "json_depth": 64,
+    "json_members_and_elements": 100000,
+    "json_string_utf8_bytes": 262144,
+    "reference_snapshot_jcs_bytes": 1048576
+  },
+  "schemas": {
+    "agent_profile": "schemas/agent-profile.schema.json",
+    "agent_profile_ref": "schemas/agent-profile-ref.schema.json",
+    "reference_snapshot": "schemas/reference-snapshot.schema.json",
+    "diagnostic": "schemas/diagnostic.schema.json",
+    "validation_result": "schemas/validation-result.schema.json",
+    "fixture_suite": "schemas/fixture-suite.schema.json",
+    "lock": "schemas/lock.schema.json"
+  },
+  "diagnostics": {
+    "agent_profile": "diagnostics/agent-profile.json"
+  },
+  "fixtures": "fixtures/cases.json"
+}
