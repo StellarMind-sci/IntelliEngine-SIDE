@@ -14,6 +14,7 @@ from intelliengine_agent_runtime.runtime import (  # noqa: E402
     parse_and_validate_transport,
     validate_references,
     validate_revision_transition,
+    load_locked_contract,
 )
 
 CONTRACT_ROOT = PACKAGE_ROOT / "contracts" / "agent-profile" / "1.0.0"
@@ -55,5 +56,41 @@ class AgentProfilePythonRuntimeTests(unittest.TestCase):
         self.assertEqual(validate_revision_transition(previous, same, CONTRACT_ROOT)["issues"][0]["code"], "agent_profile.revision_without_change")
         self.assertEqual(validate_revision_transition(previous, changed, CONTRACT_ROOT)["object_result"], "valid")
 
+
+    def test_object_api_rejects_unpaired_surrogates_recursively(self) -> None:
+        value = profile()
+        value["display_name"] = "\ud800"
+        result = validate_references(value, {"contract_version": "1.0.0", "provenance": [{"ref": value["provenance_refs"][0], "object_result": "available"}]}, CONTRACT_ROOT)
+        self.assertEqual(result["object_result"], "invalid")
+        self.assertEqual(result["issues"][0]["code"], "agent_profile.invalid_json")
+
+    def test_locked_contract_rejects_invalid_and_unlocked_references(self) -> None:
+        import hashlib
+        import shutil
+        import tempfile
+        import intelliengine_agent_runtime.runtime as runtime
+
+        def refresh(root: Path, reference: str, add_unlocked: bool = False) -> None:
+            schema_path = root / "schemas" / "agent-profile.schema.json"
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            schema["$ref"] = reference
+            schema_path.write_text(json.dumps(schema, separators=(",", ":")), encoding="utf-8")
+            if add_unlocked:
+                (root / "schemas" / "unlisted.json").write_text("{}", encoding="utf-8")
+            lock_path = root / "lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            for entry in lock["entries"]:
+                if entry["path"] == "schemas/agent-profile.schema.json":
+                    entry["sha256"] = hashlib.sha256(runtime.canonicalize(schema)).hexdigest()
+            lock_path.write_text(json.dumps(lock, separators=(",", ":")), encoding="utf-8")
+
+        for reference, add_unlocked in (("#/~2", False), ("../diagnostics/agent-profile.json", False), ("unlisted.json", True)):
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / "agent-profile" / "1.0.0"
+                root.parent.mkdir(parents=True)
+                shutil.copytree(CONTRACT_ROOT, root)
+                refresh(root, reference, add_unlocked)
+                with self.assertRaises(Exception):
+                    load_locked_contract(root)
 if __name__ == "__main__":
     unittest.main(verbosity=2)

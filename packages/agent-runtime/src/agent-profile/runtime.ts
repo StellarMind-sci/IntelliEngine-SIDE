@@ -25,19 +25,35 @@ const stringSet = (value: any, required: boolean): boolean | undefined => {
   const data = value.map((item) => Buffer.from(item));
   return data.every((item, index) => index === 0 || Buffer.compare(data[index - 1], item) < 0);
 };
+const scalarString = (value: string) => {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (!Number.isInteger(next) || next < 0xdc00 || next > 0xdfff) return false;
+      index++;
+    } else if (code >= 0xdc00 && code <= 0xdfff) return false;
+  }
+  return true;
+};
 const withinLimits = (value: any): boolean => {
   const stack: Array<[any, number]> = [[value, 1]], seen = new Set<any>(); let count = 0;
   while (stack.length) {
     const [current, depth] = stack.pop()!;
     if (depth > MAX_DEPTH) return false;
-    if (typeof current === "string") { if (Buffer.byteLength(current) > MAX_STRING) return false; }
+    if (typeof current === "string") { if (!scalarString(current) || Buffer.byteLength(current) > MAX_STRING) return false; }
     else if (Array.isArray(current)) { if (seen.has(current) || current.length > MAX_ARRAY) return false; seen.add(current); count += current.length; if (count > MAX_MEMBERS) return false; for (const child of current) stack.push([child, depth + 1]); }
     else if (object(current)) { if (seen.has(current)) return false; seen.add(current); const entries = Object.entries(current); count += entries.length; if (count > MAX_MEMBERS) return false; for (const [key, child] of entries) stack.push([key, depth], [child, depth + 1]); }
     else if (current !== null && typeof current !== "boolean" && typeof current !== "number") return false;
   }
   try { return Buffer.byteLength(canonicalize(value)) <= MAX; } catch { return false; }
 };
-const rootPath = (source: URL | string) => realpathSync(typeof source === "string" ? source : fileURLToPath(source)).replaceAll("\\", "/");
+const scalarJson = (value: any): boolean => {
+  if (typeof value === "string") return scalarString(value);
+  if (Array.isArray(value)) return value.every(scalarJson);
+  if (object(value)) return Object.entries(value).every(([key, child]) => scalarString(key) && scalarJson(child));
+  return true;
+};const rootPath = (source: URL | string) => realpathSync(typeof source === "string" ? source : fileURLToPath(source)).replaceAll("\\", "/");
 const safe = (root: string, relative: string) => {
   if (!relative || relative.includes("\\") || !relative.endsWith(".json") || relative.startsWith("/") || relative.split("/").some((item) => !item || item === "." || item === "..")) throw new ContractLoadError("unsafe artifact");
   const path = realpathSync(`${root}/${relative}`).replaceAll("\\", "/"); if (!(path === root || path.startsWith(`${root}/`))) throw new ContractLoadError("artifact escape"); return path;
@@ -55,7 +71,40 @@ const refsSafe = (value: any): boolean => {
   if (!object(value)) return true;
   return Object.entries(value).every(([key, child]) => key !== "$ref" || (typeof child === "string" && (child === "#" || child.startsWith("#/") || ((!child.includes(":")) && !child.includes("\\") && (child.endsWith(".json") || child.includes(".json#"))))) && refsSafe(child));
 };
-export function loadLockedContract(contractRoot: URL | string) {
+const pointerExists = (document: any, fragment: string): boolean => {
+  if (fragment === "") return true;
+  if (!fragment.startsWith("/")) return false;
+  let current = document;
+  for (const token of fragment.slice(1).split("/")) {
+    let decoded = "";
+    for (let index = 0; index < token.length; index++) {
+      if (token[index] !== "~") { decoded += token[index]; continue; }
+      if (++index >= token.length || !["0", "1"].includes(token[index])) return false;
+      decoded += token[index] === "0" ? "~" : "/";
+    }
+    if (Array.isArray(current) && /^(0|[1-9][0-9]*)$/.test(decoded) && Number(decoded) < current.length) current = current[Number(decoded)];
+    else if (object(current) && decoded in current) current = current[decoded];
+    else return false;
+  }
+  return true;
+};
+const validateRefs = (value: any, documents: Record<string, any>, source: string): void => {
+  if (Array.isArray(value)) { value.forEach((child) => validateRefs(child, documents, source)); return; }
+  if (!object(value)) return;
+  if ("$ref" in value) {
+    const reference = value.$ref;
+    if (typeof reference !== "string") throw new ContractLoadError("invalid schema reference");
+    let target: string, fragment: string;
+    if (reference.startsWith("#")) { target = source; fragment = reference.slice(1); }
+    else {
+      const marker = reference.indexOf("#"), path = marker < 0 ? reference : reference.slice(0, marker); fragment = marker < 0 ? "" : reference.slice(marker + 1);
+      if (!path || path.includes(":") || path.includes("\\") || path.startsWith("/") || path.split("/").some((part) => !part || part === "." || part === "..")) throw new ContractLoadError("invalid schema reference");
+      const parent = source.split("/").slice(0, -1); target = [...parent, ...path.split("/")].join("/");
+    }
+    if (!(target in documents) || !pointerExists(documents[target], fragment)) throw new ContractLoadError("invalid schema reference");
+  }
+  Object.values(value).forEach((child) => validateRefs(child, documents, source));
+};export function loadLockedContract(contractRoot: URL | string) {
   const root = rootPath(contractRoot);
   if (!root.endsWith("/agent-profile/1.0.0") || lstatSync(root).isSymbolicLink()) throw new ContractLoadError("unsafe contract root");
   const lock = strictParse(readFileSync(safe(root, "lock.json"))) as any;
@@ -70,6 +119,7 @@ export function loadLockedContract(contractRoot: URL | string) {
   }
   const actual = walkJson(root).filter((path) => path !== "lock.json");
   if (JSON.stringify(paths) !== JSON.stringify(actual)) throw new ContractLoadError("lock closure mismatch");
+  for (const [source, document] of Object.entries(documents)) validateRefs(document, documents, source);
   const manifest = documents["contract.json"];
   if (!object(manifest) || manifest.contract_family !== "agent-profile" || manifest.contract_version !== "1.0.0" || manifest.side_effects !== "forbidden") throw new ContractLoadError("invalid manifest");
   return { root, documents, manifest };
@@ -78,7 +128,7 @@ const defaultRoot = () => new URL("../../contracts/agent-profile/1.0.0/", import
 const loaded = (root?: URL | string) => loadLockedContract(root ?? defaultRoot());
 export function validateProfile(profile: any, contractRoot?: URL | string): any {
   loaded(contractRoot);
-  if (!object(profile) || !withinLimits(profile)) return invalid("profile", "agent_profile.invalid_json", "");
+  if (!object(profile) || !scalarJson(profile) || !withinLimits(profile)) return invalid("profile", "agent_profile.invalid_json", "");
   const missing = REQUIRED.find((field) => !(field in profile)); if (missing) return invalid("profile", "agent_profile.missing_field", `/${missing}`);
   const extra = Object.keys(profile).filter((field) => !REQUIRED.includes(field)).sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
   if (extra.length) return invalid("profile", FORBIDDEN.has(extra[0]) ? "agent_profile.forbidden_runtime_field" : "agent_profile.invalid_profile_field", `/${pointer(extra[0])}`);
@@ -103,7 +153,7 @@ export function validateReferences(profile: any, snapshot: any, contractRoot?: U
   const current = loaded(contractRoot), profileResult = validateProfile(profile, current.root);
   if (profileResult.object_result === "invalid") return { ...profileResult, mode: "reference" };
   if (profileResult.object_result === "compatible_read") return unknown("agent_profile.reference_snapshot_incomplete", "/contract_version");
-  if (!object(snapshot) || !withinLimits(snapshot)) return unknown("agent_profile.reference_snapshot_incomplete", "");
+  if (!object(snapshot) || !scalarJson(snapshot) || !withinLimits(snapshot)) return unknown("agent_profile.reference_snapshot_incomplete", "");
   const extra = Object.keys(snapshot).filter((key) => !["contract_version", "provenance"].includes(key)); if (extra.length || JSON.stringify(semver(snapshot.contract_version)) !== JSON.stringify([1,0,0]) || !Array.isArray(snapshot.provenance) || !snapshot.provenance.length) return unknown("agent_profile.reference_snapshot_incomplete", extra.length ? `/${pointer(extra[0])}` : "/contract_version");
   const entries = new Map<string, [number, string]>(); let previous: Buffer | undefined;
   for (let index = 0; index < snapshot.provenance.length; index++) { const entry = snapshot.provenance[index]; if (!object(entry) || Object.keys(entry).length !== 2 || typeof entry.ref !== "string" || !entry.ref || !["available", "invalid", "opaque", "compatible_read"].includes(entry.object_result)) return unknown("agent_profile.reference_snapshot_incomplete", `/provenance/${index}`); const key = Buffer.from(entry.ref); if (previous && Buffer.compare(previous,key) >= 0) return unknown("agent_profile.reference_snapshot_incomplete", `/provenance/${index}/ref`); previous = key; entries.set(entry.ref, [index, entry.object_result]); }

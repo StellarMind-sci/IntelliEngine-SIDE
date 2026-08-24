@@ -103,6 +103,53 @@ def _walk_refs(value: Any) -> None:
     elif isinstance(value, list):
         for child in value: _walk_refs(child)
 
+def _pointer_exists(document: Any, fragment: str) -> bool:
+    if fragment == "":
+        return True
+    if not fragment.startswith("/"):
+        return False
+    current = document
+    for token in fragment[1:].split("/"):
+        decoded, index = "", 0
+        while index < len(token):
+            if token[index] != "~":
+                decoded += token[index]; index += 1; continue
+            if index + 1 >= len(token) or token[index + 1] not in {"0", "1"}:
+                return False
+            decoded += "~" if token[index + 1] == "0" else "/"; index += 2
+        if isinstance(current, dict) and decoded in current:
+            current = current[decoded]
+        elif isinstance(current, list) and decoded.isdigit() and (len(decoded) == 1 or not decoded.startswith("0")) and int(decoded) < len(current):
+            current = current[int(decoded)]
+        else:
+            return False
+    return True
+
+def _validate_refs(value: Any, documents: dict[str, Any], source: str) -> None:
+    if isinstance(value, list):
+        for child in value:
+            _validate_refs(child, documents, source)
+        return
+    if not isinstance(value, dict):
+        return
+    reference = value.get("$ref")
+    if reference is not None:
+        if not isinstance(reference, str):
+            raise ContractLoadError("invalid schema reference")
+        if reference.startswith("#"):
+            target, fragment = source, reference[1:]
+        else:
+            target_text, separator, fragment = reference.partition("#")
+            pure = PurePosixPath(target_text)
+            if not target_text or not separator and not target_text.endswith(".json") or ":" in target_text or "\\" in target_text or pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts):
+                raise ContractLoadError("invalid schema reference")
+            target = (PurePosixPath(source).parent / pure).as_posix()
+            if not separator:
+                fragment = ""
+        if target not in documents or not _pointer_exists(documents[target], fragment):
+            raise ContractLoadError("invalid schema reference")
+    for child in value.values():
+        _validate_refs(child, documents, source)
 def load_locked_contract(contract_root: Path | str) -> dict[str, Any]:
     root = Path(contract_root)
     if root.is_symlink() or root.name != "1.0.0" or root.parent.name != "agent-profile":
@@ -126,6 +173,8 @@ def load_locked_contract(contract_root: Path | str) -> dict[str, Any]:
         _walk_refs(value); locked.append(relative); documents[relative] = value
     actual = sorted((item.resolve().relative_to(root).as_posix() for item in root.rglob("*.json") if item.is_file() and item.resolve() != lock_path), key=lambda value: value.encode())
     if actual != locked: raise ContractLoadError("lock closure mismatch")
+    for source, document in documents.items():
+        _validate_refs(document, documents, source)
     manifest = documents.get("contract.json")
     if not isinstance(manifest, dict) or manifest.get("contract_version") != "1.0.0" or manifest.get("contract_family") != "agent-profile" or manifest.get("side_effects") != "forbidden":
         raise ContractLoadError("invalid manifest")

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import test from "node:test";
-import { executeFixtureSuite, parseAndValidateTransport, validateReferences, validateRevisionTransition } from "../../src/agent-profile/runtime.ts";
+import { executeFixtureSuite, loadLockedContract, parseAndValidateTransport, validateReferences, validateRevisionTransition } from "../../src/agent-profile/runtime.ts";
+import { canonicalize } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
 
 const root = new URL("../../contracts/agent-profile/1.0.0/", import.meta.url);
 const suite = JSON.parse(readFileSync(new URL("fixtures/cases.json", root), "utf8"));
@@ -32,4 +35,25 @@ test("revision transition requires identity growth and content change", () => {
   same.revision = 2; changed.revision = 2; changed.display_name = "Changed identity description";
   assert.equal(validateRevisionTransition(previous, same, root).issues[0].code, "agent_profile.revision_without_change");
   assert.equal(validateRevisionTransition(previous, changed, root).object_result, "valid");
+});
+test("object API rejects unpaired surrogate units recursively", () => {
+  const value = profile(); value.display_name = "\uD800";
+  const snapshot = { contract_version: "1.0.0", provenance: [{ ref: value.provenance_refs[0], object_result: "available" }] };
+  const result = validateReferences(value, snapshot, root);
+  assert.equal(result.object_result, "invalid");
+  assert.equal(result.issues[0].code, "agent_profile.invalid_json");
+});
+
+test("locked contract rejects invalid and unlocked references", () => {
+  for (const [reference, addUnlisted] of [["#/~2", false], ["../diagnostics/agent-profile.json", false], ["unlisted.json", true]] as const) {
+    const directory = mkdtempSync(`${tmpdir()}/agent-profile-ref-`);
+    try {
+      const contract = `${directory}/agent-profile/1.0.0`; cpSync(new URL("../../contracts/agent-profile/1.0.0/", import.meta.url), contract, { recursive: true });
+      const schemaPath = `${contract}/schemas/agent-profile.schema.json`, schema = JSON.parse(readFileSync(schemaPath, "utf8")); schema.$ref = reference; writeFileSync(schemaPath, JSON.stringify(schema));
+      if (addUnlisted) writeFileSync(`${contract}/schemas/unlisted.json`, "{}");
+      const lockPath = `${contract}/lock.json`, lock = JSON.parse(readFileSync(lockPath, "utf8"));
+      lock.entries.find((entry: any) => entry.path === "schemas/agent-profile.schema.json").sha256 = createHash("sha256").update(canonicalize(schema)).digest("hex"); writeFileSync(lockPath, JSON.stringify(lock));
+      assert.throws(() => loadLockedContract(contract));
+    } finally { rmSync(directory, { recursive: true, force: true }); }
+  }
 });
