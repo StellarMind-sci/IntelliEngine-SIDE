@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["contract_version", "provenance"],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "provenance": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ref", "object_result"],
+        "properties": {
+          "ref": {"type": "string", "minLength": 1},
+          "object_result": {"enum": ["available", "invalid", "opaque", "compatible_read"]}
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

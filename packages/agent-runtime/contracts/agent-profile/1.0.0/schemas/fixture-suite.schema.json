@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["contract_version", "cases"],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case_id", "input", "expected"],
+        "properties": {
+          "case_id": {"type": "string", "minLength": 1},
+          "input": {},
+          "expected": {"$ref": "validation-result.schema.json"}
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
