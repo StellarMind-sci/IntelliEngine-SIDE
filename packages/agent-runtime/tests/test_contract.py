@@ -38,6 +38,28 @@ class AgentProfileContractTests(unittest.TestCase):
             "provenance_refs": ["provenance://synthetic/algebra-mentor"],
         }
 
+    def refresh_lock(self, root: Path, verifier: object) -> None:
+        lock_path = root / "lock.json"
+        entries = [
+            {
+                "path": relative,
+                "digest_kind": "jcs_sha256",
+                "sha256": verifier._jcs_sha256(root / relative),
+            }
+            for relative in verifier._locked_json_paths(root)
+        ]
+        lock_path.write_text(
+            json.dumps(
+                {
+                    "contract_version": "1.0.0",
+                    "self_digest": "excluded",
+                    "entries": entries,
+                },
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
     def test_profile_rejects_runtime_or_private_memory_fields(self) -> None:
         verifier = load_verifier()
         result = verifier.validate_profile({**self.valid_profile(), "runtime_state": "active"})
@@ -69,6 +91,7 @@ class AgentProfileContractTests(unittest.TestCase):
             manifest["fixtures"] = "../outside.json"
             (copied_contract / "contract.json").write_text(json.dumps(manifest), encoding="utf-8")
             shutil.copyfile(CONTRACT_ROOT / "fixtures" / "cases.json", temporary_root / "outside.json")
+            self.refresh_lock(copied_contract, verifier)
 
             with self.assertRaisesRegex(ValueError, "artifact path"):
                 verifier.verify_contract(copied_contract)
@@ -121,6 +144,7 @@ class AgentProfileContractTests(unittest.TestCase):
             reference_schema = json.loads(reference_schema_path.read_text(encoding="utf-8"))
             reference_schema["properties"]["provenance"]["minItems"] = 999
             reference_schema_path.write_text(json.dumps(reference_schema), encoding="utf-8")
+            self.refresh_lock(copied_contract, verifier)
 
             with self.assertRaisesRegex(ValueError, "fixture result mismatch"):
                 verifier.verify_contract(copied_contract)
@@ -211,6 +235,59 @@ class AgentProfileContractTests(unittest.TestCase):
         self.assertEqual(cases["minItems"], 1)
         self.assertEqual(cases["items"]["properties"]["case_id"]["pattern"], "^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
+    def test_nested_json_cannot_escape_lock_closure(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            copied_contract = Path(temporary_directory) / "contract"
+            shutil.copytree(CONTRACT_ROOT, copied_contract)
+            nested = copied_contract / "schemas" / "nested"
+            nested.mkdir()
+            (nested / "added.json").write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "lock closure mismatch"):
+                verifier.verify_contract(copied_contract)
+
+    def test_lock_digest_tampering_is_rejected(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            copied_contract = Path(temporary_directory) / "contract"
+            shutil.copytree(CONTRACT_ROOT, copied_contract)
+            manifest_path = copied_contract / "contract.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["side_effects"] = "tampered"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "lock digest mismatch"):
+                verifier.verify_contract(copied_contract)
+
+    def test_lock_cannot_include_itself(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            copied_contract = Path(temporary_directory) / "contract"
+            shutil.copytree(CONTRACT_ROOT, copied_contract)
+            lock_path = copied_contract / "lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock["entries"].append(
+                {"path": "lock.json", "digest_kind": "jcs_sha256", "sha256": "0" * 64}
+            )
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "lock closure mismatch"):
+                verifier.verify_contract(copied_contract)
+
+    def test_fixture_expected_is_not_replayed(self) -> None:
+        verifier = load_verifier()
+        suite = json.loads((CONTRACT_ROOT / "fixtures" / "cases.json").read_text(encoding="utf-8"))
+        case = suite["cases"][0]
+        case["expected"] = {
+            "interface": "agent_profile",
+            "mode": "profile",
+            "object_result": "invalid",
+            "operation_outcome": "succeeded",
+            "issues": [{"code": "agent_profile.invalid_json", "path": "", "severity": "error"}],
+        }
+
+        self.assertNotEqual(verifier.validate_case(case, CONTRACT_ROOT), case["expected"])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

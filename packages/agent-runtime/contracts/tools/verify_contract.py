@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import re
 import sys
@@ -256,8 +257,53 @@ def validate_case(case: dict, root: Path) -> JsonObject:
     return _invalid("profile", "agent_profile.invalid_json", "/input/mode")
 
 
+
+def _locked_json_paths(root: Path) -> list[str]:
+    root_resolved = root.resolve()
+    paths: list[str] = []
+    for path in root_resolved.rglob("*.json"):
+        if not path.is_file():
+            continue
+        resolved = path.resolve()
+        try:
+            relative = resolved.relative_to(root_resolved).as_posix()
+        except ValueError as error:
+            raise ValueError("invalid artifact path") from error
+        if relative == "lock.json":
+            continue
+        if ARTIFACT_PATH.fullmatch(relative) is None:
+            raise ValueError("lock closure mismatch")
+        paths.append(relative)
+    return sorted(paths, key=lambda value: value.encode("utf-8"))
+
+
+def _jcs_sha256(path: Path) -> str:
+    return hashlib.sha256(canonicalize(_load(path))).hexdigest()
+
+
+def _verify_lock(root: Path) -> None:
+    lock_path = _artifact_path(root, "lock.json")
+    if not lock_path.is_file():
+        raise ValueError("lock closure mismatch")
+    lock_schema = _load(_artifact_path(root, "schemas/lock.schema.json"))
+    lock = _load(lock_path)
+    if not is_valid(lock, lock_schema, lock_schema):
+        raise ValueError("invalid lock")
+    entries = lock.get("entries") if isinstance(lock, dict) else None
+    if not isinstance(entries, list):
+        raise ValueError("invalid lock")
+    entry_paths = [entry.get("path") if isinstance(entry, dict) else None for entry in entries]
+    actual_paths = _locked_json_paths(root)
+    if entry_paths != actual_paths:
+        raise ValueError("lock closure mismatch")
+    for entry, relative in zip(entries, actual_paths):
+        if not isinstance(entry, dict) or entry.get("digest_kind") != "jcs_sha256":
+            raise ValueError("lock digest mismatch")
+        if entry.get("sha256") != _jcs_sha256(_artifact_path(root, relative)):
+            raise ValueError("lock digest mismatch")
 def verify_contract(root: Path) -> JsonObject:
     root = root.resolve()
+    _verify_lock(root)
     manifest = _load(root / "contract.json")
     if manifest.get("contract_family") != "agent-profile" or manifest.get("contract_version") != "1.0.0":
         raise ValueError("invalid contract manifest")
