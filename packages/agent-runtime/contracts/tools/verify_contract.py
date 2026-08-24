@@ -5,7 +5,7 @@ import copy
 import json
 import re
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 
@@ -22,6 +22,7 @@ JsonObject = dict[str, Any]
 SAFE_INTEGER = 9_007_199_254_740_991
 UUID_V7 = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+ARTIFACT_PATH = re.compile(r"^[a-z0-9][a-z0-9._/-]*\.json$")
 REQUIRED_FIELDS = [
     "contract_version", "id", "revision", "display_name", "persona", "goals",
     "working_style", "declared_capabilities", "collaboration_preferences", "provenance_refs",
@@ -44,6 +45,34 @@ REQUIRED_SCHEMA_PATHS = {
 def _load(path: Path) -> Any:
     return parse_json_bytes(path.read_bytes())
 
+
+def _artifact_path(root: Path, relative: Any) -> Path:
+    if not isinstance(relative, str) or "\\" in relative or ARTIFACT_PATH.fullmatch(relative) is None:
+        raise ValueError("invalid artifact path")
+    portable = PurePosixPath(relative)
+    if portable.is_absolute() or any(part in {"", ".", ".."} for part in portable.parts):
+        raise ValueError("invalid artifact path")
+    root_resolved = root.resolve()
+    candidate = (root_resolved / Path(*portable.parts)).resolve()
+    try:
+        candidate.relative_to(root_resolved)
+    except ValueError as error:
+        raise ValueError("invalid artifact path") from error
+    return candidate
+
+
+def _is_utf8_encodable(value: Any) -> bool:
+    if isinstance(value, str):
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            return False
+        return True
+    if isinstance(value, list):
+        return all(_is_utf8_encodable(item) for item in value)
+    if isinstance(value, dict):
+        return all(_is_utf8_encodable(key) and _is_utf8_encodable(item) for key, item in value.items())
+    return True
 
 def _issue(code: str, path: str) -> JsonObject:
     return {"code": code, "path": path, "severity": "warning" if code == "agent_profile.compatible_read" else "error"}
@@ -90,9 +119,13 @@ def _schema(root: Path | None = None) -> JsonObject:
     return _load(base / "schemas" / "agent-profile.schema.json")
 
 
+def _reference_schema() -> JsonObject:
+    base = REPOSITORY_ROOT / "packages" / "agent-runtime" / "contracts" / "agent-profile" / "1.0.0"
+    return _load(base / "schemas" / "reference-snapshot.schema.json")
+
 def validate_profile(profile: object, schema: object | None = None) -> JsonObject:
     mode = "profile"
-    if not isinstance(profile, dict):
+    if not isinstance(profile, dict) or not _is_utf8_encodable(profile):
         return _invalid(mode, "agent_profile.invalid_json", "")
     missing = next((field for field in REQUIRED_FIELDS if field not in profile), None)
     if missing is not None:
@@ -140,33 +173,44 @@ def validate_reference_snapshot(profile: object, snapshot: object | None) -> Jso
         return {**profile_result, "mode": "reference"}
     if profile_result["object_result"] == "compatible_read":
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
-    if not isinstance(snapshot, dict):
+    if not isinstance(snapshot, dict) or not _is_utf8_encodable(snapshot):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "")
+    extra = sorted((field for field in snapshot if field not in {"contract_version", "provenance"}), key=lambda field: field.encode("utf-8"))
+    if extra:
+        return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/{extra[0]}")
     if _semver(snapshot.get("contract_version")) != (1, 0, 0):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
-    entries = snapshot.get("provenance")
-    if not isinstance(entries, list) or not entries:
+    snapshot_schema = _reference_schema()
+    if not is_valid(snapshot, snapshot_schema, snapshot_schema):
         return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
-    indexed: dict[str, JsonObject] = {}
-    for entry in entries:
+    entries = snapshot["provenance"]
+    keys: list[bytes] = []
+    indexed: dict[str, tuple[int, JsonObject]] = {}
+    for index, entry in enumerate(entries):
         if not isinstance(entry, dict) or set(entry) != {"ref", "object_result"} or not isinstance(entry.get("ref"), str) or entry.get("object_result") not in {"available", "invalid", "opaque", "compatible_read"}:
-            return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
-        ref = entry["ref"]
-        if ref in indexed:
-            return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
-        indexed[ref] = entry
+            return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/provenance/{index}")
+        key = entry["ref"].encode("utf-8")
+        if key in keys or (keys and key < keys[-1]):
+            return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/provenance/{index}/ref")
+        keys.append(key)
+        indexed[entry["ref"]] = (index, entry)
+    assert isinstance(profile, dict)
     for index, ref in enumerate(profile["provenance_refs"]):
         path = f"/provenance_refs/{index}"
-        entry = indexed.get(ref)
-        if entry is None:
+        item = indexed.get(ref)
+        if item is None:
             return _indeterminate("agent_profile.reference_snapshot_incomplete", path)
+        _, entry = item
         state = entry["object_result"]
         if state == "invalid":
             return _invalid("reference", "agent_profile.dangling_provenance_reference", path)
         if state in {"opaque", "compatible_read"}:
             return _indeterminate("agent_profile.opaque_provenance_reference", path)
+    profile_refs = set(profile["provenance_refs"])
+    for ref, (index, _) in indexed.items():
+        if ref not in profile_refs:
+            return _indeterminate("agent_profile.reference_snapshot_incomplete", f"/provenance/{index}/ref")
     return _result("reference", "valid", "succeeded")
-
 
 def validate_revision_transition(previous: object, candidate: object) -> JsonObject:
     for profile in (previous, candidate):
@@ -220,15 +264,16 @@ def verify_contract(root: Path) -> JsonObject:
     diagnostics = manifest.get("diagnostics")
     if diagnostics != {"agent_profile": "diagnostics/agent-profile.json"}:
         raise ValueError("contract must declare the AgentProfile diagnostic catalog")
-    for relative_path in [*REQUIRED_SCHEMA_PATHS.values(), *diagnostics.values()]:
-        if not (root / relative_path).is_file():
-            raise FileNotFoundError(f"declared contract artifact is missing: {relative_path}")
-    catalog = _load(root / diagnostics["agent_profile"])
+    artifact_paths = [*manifest["schemas"].values(), *diagnostics.values(), manifest.get("fixtures")]
+    resolved_artifacts = [_artifact_path(root, relative_path) for relative_path in artifact_paths]
+    if any(not path.is_file() for path in resolved_artifacts):
+        raise FileNotFoundError("declared contract artifact is missing")
+    catalog = _load(_artifact_path(root, diagnostics["agent_profile"]))
     catalog_codes = {entry.get("code") for entry in catalog.get("codes", []) if isinstance(entry, dict)}
-    suite = _load(root / manifest["fixtures"])
-    fixture_schema = _load(root / "schemas" / "fixture-suite.schema.json")
-    result_schema = _load(root / "schemas" / "validation-result.schema.json")
-    diagnostic_schema = _load(root / "schemas" / "diagnostic.schema.json")
+    suite = _load(_artifact_path(root, manifest["fixtures"]))
+    fixture_schema = _load(_artifact_path(root, manifest["schemas"]["fixture_suite"]))
+    result_schema = _load(_artifact_path(root, manifest["schemas"]["validation_result"]))
+    diagnostic_schema = _load(_artifact_path(root, manifest["schemas"]["diagnostic"]))
     resolved_result_schema = copy.deepcopy(result_schema)
     resolved_result_schema["properties"]["issues"]["items"] = diagnostic_schema
     resolved_fixture_schema = copy.deepcopy(fixture_schema)

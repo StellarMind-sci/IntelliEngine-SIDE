@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
+import tempfile
 import re
 import unittest
 from pathlib import Path
@@ -57,6 +59,59 @@ class AgentProfileContractTests(unittest.TestCase):
             verifier.validate_revision_transition(previous, candidate)["issues"][0]["code"],
             "agent_profile.revision_without_change",
         )
+    def test_manifest_paths_cannot_escape_contract_root(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            copied_contract = temporary_root / "contract"
+            shutil.copytree(CONTRACT_ROOT, copied_contract)
+            manifest = json.loads((copied_contract / "contract.json").read_text(encoding="utf-8"))
+            manifest["fixtures"] = "../outside.json"
+            (copied_contract / "contract.json").write_text(json.dumps(manifest), encoding="utf-8")
+            shutil.copyfile(CONTRACT_ROOT / "fixtures" / "cases.json", temporary_root / "outside.json")
+
+            with self.assertRaisesRegex(ValueError, "artifact path"):
+                verifier.verify_contract(copied_contract)
+
+    def test_reference_snapshot_rejects_unsorted_entries_and_top_level_extra(self) -> None:
+        verifier = load_verifier()
+        profile = {**self.valid_profile(), "provenance_refs": ["provenance://synthetic/a", "provenance://synthetic/b"]}
+        unsorted = {
+            "contract_version": "1.0.0",
+            "provenance": [
+                {"ref": "provenance://synthetic/b", "object_result": "available"},
+                {"ref": "provenance://synthetic/a", "object_result": "available"},
+            ],
+        }
+        with_extra = {
+            "contract_version": "1.0.0",
+            "provenance": [
+                {"ref": "provenance://synthetic/a", "object_result": "available"},
+                {"ref": "provenance://synthetic/b", "object_result": "available"},
+            ],
+            "extra": True,
+        }
+
+        for snapshot in (unsorted, with_extra):
+            result = verifier.validate_reference_snapshot(profile, snapshot)
+            self.assertEqual(result["object_result"], "not_evaluated")
+            self.assertEqual(result["issues"][0]["code"], "agent_profile.reference_snapshot_incomplete")
+
+    def test_profile_handles_unknown_surrogate_key_without_python_exception(self) -> None:
+        verifier = load_verifier()
+        profile = self.valid_profile()
+        profile["bad\ud800"] = True
+
+        result = verifier.validate_profile(profile)
+
+        self.assertEqual(result["object_result"], "invalid")
+        self.assertEqual(result["issues"][0]["code"], "agent_profile.invalid_json")
+
+    def test_fixture_suite_covers_reviewed_raw_and_set_regressions(self) -> None:
+        suite = json.loads((CONTRACT_ROOT / "fixtures" / "cases.json").read_text(encoding="utf-8"))
+        case_ids = {case["case_id"] for case in suite["cases"]}
+
+        self.assertTrue({"raw-unpaired-surrogate", "unsorted-provenance", "duplicate-declared-capabilities"} <= case_ids)
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 
