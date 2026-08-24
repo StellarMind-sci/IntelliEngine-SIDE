@@ -3,5 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "Language-neutral contracts for long-lived AgentProfile identities",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "type": "module"
 }
