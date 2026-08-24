@@ -93,3 +93,14 @@ test("raw revision preserves integer lexical semantics", () => {
     assert.deepEqual(result.issues[0], { code: "agent_profile.invalid_revision", path: "/revision", severity: "error" });
   }
 });
+test("raw escaped revision keys retain numeric tokens", () => {
+  const raw = JSON.stringify(profile());
+  for (const token of ["1.0", "1e0", "-0"]) {
+    const escapedKey = raw.replace('"revision":1', `"\\u0072evision":${token}`);
+    const result = parseAndValidateTransport(Buffer.from(escapedKey), root);
+    assert.deepEqual(result.issues[0], { code: "agent_profile.invalid_revision", path: "/revision", severity: "error" });
+  }
+  const mention = profile(); mention.persona.summary = "A revision: 1.0 note is descriptive text.";
+  const result = parseAndValidateTransport(Buffer.from(JSON.stringify(mention)), root);
+  assert.equal(result.object_result, "valid");
+});

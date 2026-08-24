@@ -147,9 +147,39 @@ export function validateProfile(profile: any, contractRoot?: URL | string): any 
 }
 const rawRevisionIsNonInteger = (raw: Uint8Array) => {
   try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(raw);
-    const match = /"revision"\s*:\s*(-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)/.exec(text);
-    return match !== null && !/^[1-9][0-9]*$/.test(match[1]);
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(raw); let index = 0;
+    const space = () => { while (index < text.length && " \t\r\n".includes(text[index])) index++; };
+    const string = (): string => {
+      if (text[index++] !== '"') throw new Error("string"); let value = "";
+      while (index < text.length) {
+        const character = text[index++]; if (character === '"') return value;
+        if (character !== "\\") { value += character; continue; }
+        const escape = text[index++], named: Record<string, string> = { '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" };
+        if (escape in named) { value += named[escape]; continue; }
+        if (escape !== "u" || !/^[0-9a-fA-F]{4}$/.test(text.slice(index, index + 4))) throw new Error("escape");
+        value += String.fromCharCode(Number.parseInt(text.slice(index, index + 4), 16)); index += 4;
+      }
+      throw new Error("string");
+    };
+    const scalar = () => { const token = /^(?:-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|true|false|null)/.exec(text.slice(index)); if (!token) throw new Error("value"); index += token[0].length; return token[0]; };
+    const value = (): string | undefined => {
+      space(); if (text[index] === '"') { string(); return undefined; }
+      if (text[index] === "{") return object(false);
+      if (text[index] === "[") { index++; space(); if (text[index] === "]") { index++; return undefined; } while (true) { value(); space(); if (text[index] === "]") { index++; return undefined; } if (text[index++] !== ",") throw new Error("array"); } }
+      scalar(); return undefined;
+    };
+    const object = (root: boolean): string | undefined => {
+      if (text[index++] !== "{") throw new Error("object"); space(); if (text[index] === "}") { index++; return undefined; }
+      while (true) {
+        space(); const key = string(); space(); if (text[index++] !== ":") throw new Error("object"); space();
+        if (root && key === "revision") {
+          const match = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(text.slice(index));
+          if (match) return match[0]; value();
+        } else value();
+        space(); if (text[index] === "}") { index++; return undefined; } if (text[index++] !== ",") throw new Error("object");
+      }
+    };
+    space(); const token = object(true); space(); return token !== undefined && !/^[1-9][0-9]*$/.test(token);
   } catch { return false; }
 };export function parseAndValidateTransport(raw: Uint8Array, contractRoot?: URL | string) {
   loaded(contractRoot); if (!(raw instanceof Uint8Array) || raw.length > MAX) return invalid("transport", "agent_profile.invalid_json", "");
