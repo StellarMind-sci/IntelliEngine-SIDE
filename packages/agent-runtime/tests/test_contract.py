@@ -200,6 +200,19 @@ class AgentProfileContractTests(unittest.TestCase):
 
                 with self.assertRaises(ValueError):
                     verifier.verify_contract(copied_contract)
+    def test_verify_contract_rejects_noncanonical_fixture_case_order(self) -> None:
+        verifier = load_verifier()
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            copied_contract = Path(temporary_directory) / "contract"
+            shutil.copytree(CONTRACT_ROOT, copied_contract)
+            fixture_path = copied_contract / "fixtures" / "cases.json"
+            suite = json.loads(fixture_path.read_text(encoding="utf-8"))
+            suite["cases"][0], suite["cases"][1] = suite["cases"][1], suite["cases"][0]
+            fixture_path.write_text(json.dumps(suite), encoding="utf-8")
+            self.refresh_lock(copied_contract, verifier)
+
+            with self.assertRaisesRegex(ValueError, "fixture case IDs"):
+                verifier.verify_contract(copied_contract)
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 
@@ -207,6 +220,23 @@ class AgentProfileContractTests(unittest.TestCase):
 
         self.assertEqual(report["contract_version"], "1.0.0")
 
+    def test_validation_result_schema_closes_result_issue_pairs(self) -> None:
+        verifier = load_verifier()
+        validation = json.loads((CONTRACT_ROOT / "schemas" / "validation-result.schema.json").read_text(encoding="utf-8"))
+        diagnostic = json.loads((CONTRACT_ROOT / "schemas" / "diagnostic.schema.json").read_text(encoding="utf-8"))
+        resolved_validation = json.loads(json.dumps(validation))
+        resolved_validation["properties"]["issues"]["items"] = diagnostic
+        issue = {"code": "agent_profile.invalid_json", "severity": "error", "path": "/"}
+        invalid_results = (
+            {"interface": "agent_profile", "mode": "profile", "object_result": "valid", "operation_outcome": "succeeded", "issues": [issue]},
+            {"interface": "agent_profile", "mode": "profile", "object_result": "invalid", "operation_outcome": "succeeded", "issues": []},
+            {"interface": "agent_profile", "mode": "profile", "object_result": "compatible_read", "operation_outcome": "succeeded", "issues": []},
+            {"interface": "agent_profile", "mode": "reference", "object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": []},
+        )
+
+        for result in invalid_results:
+            with self.subTest(result=result):
+                self.assertFalse(verifier.is_valid(result, resolved_validation, resolved_validation))
     def test_schema_preserves_reviewed_profile_version_identity_and_set_bounds(self) -> None:
         profile = json.loads(
             (CONTRACT_ROOT / "schemas" / "agent-profile.schema.json").read_text(

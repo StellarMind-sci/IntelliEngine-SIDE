@@ -393,6 +393,12 @@ def verify_contract(root: Path) -> JsonObject:
     case_ids = [case.get("case_id") for case in cases if isinstance(case, dict)]
     if len(case_ids) != len(cases) or len(case_ids) != len(set(case_ids)):
         raise ValueError("fixture case IDs are invalid or duplicated")
+    try:
+        canonical_case_ids = sorted(case_ids, key=lambda case_id: case_id.encode("utf-8"))
+    except (AttributeError, UnicodeEncodeError) as error:
+        raise ValueError("fixture case IDs are invalid or noncanonical") from error
+    if case_ids != canonical_case_ids:
+        raise ValueError("fixture case IDs are invalid or noncanonical")
     for case in cases:
         expected = case["expected"]
         if not is_valid(expected, resolved_result_schema, resolved_result_schema):
