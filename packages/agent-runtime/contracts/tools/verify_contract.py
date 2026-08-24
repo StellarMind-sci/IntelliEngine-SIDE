@@ -1,9 +1,35 @@
 from __future__ import annotations
 
+import argparse
+import copy
 import json
+import re
+import sys
 from pathlib import Path
+from typing import Any
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+COGNITIVE_IR_PYTHON = REPOSITORY_ROOT / "packages" / "cognitive-ir" / "python"
+if str(COGNITIVE_IR_PYTHON) not in sys.path:
+    sys.path.insert(0, str(COGNITIVE_IR_PYTHON))
+
+from intelliengine_conformance.json_codec import canonicalize, parse_json_bytes
+from intelliengine_conformance.schema_validation import is_valid
+
+
+JsonObject = dict[str, Any]
+SAFE_INTEGER = 9_007_199_254_740_991
+UUID_V7 = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+SEMVER = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+REQUIRED_FIELDS = [
+    "contract_version", "id", "revision", "display_name", "persona", "goals",
+    "working_style", "declared_capabilities", "collaboration_preferences", "provenance_refs",
+]
+FORBIDDEN_RUNTIME_FIELDS = {
+    "runtime_state", "memory", "private_memory", "model", "model_binding",
+    "permission", "permissions", "team", "project",
+}
 REQUIRED_SCHEMA_PATHS = {
     "agent_profile": "schemas/agent-profile.schema.json",
     "agent_profile_ref": "schemas/agent-profile-ref.schema.json",
@@ -15,16 +41,180 @@ REQUIRED_SCHEMA_PATHS = {
 }
 
 
-def verify_contract(root: Path) -> dict[str, object]:
-    manifest = json.loads((root / "contract.json").read_text(encoding="utf-8"))
-    if manifest.get("contract_family") != "agent-profile":
-        raise ValueError("contract_family must be agent-profile")
-    if manifest.get("contract_version") != "1.0.0":
-        raise ValueError("contract_version must be 1.0.0")
-    if manifest.get("side_effects") != "forbidden":
-        raise ValueError("side_effects must be forbidden")
-    if manifest.get("set_order") != "unsigned-utf8":
-        raise ValueError("set_order must be unsigned-utf8")
+def _load(path: Path) -> Any:
+    return parse_json_bytes(path.read_bytes())
+
+
+def _issue(code: str, path: str) -> JsonObject:
+    return {"code": code, "path": path, "severity": "warning" if code == "agent_profile.compatible_read" else "error"}
+
+
+def _result(mode: str, object_result: str, operation_outcome: str, issue: JsonObject | None = None) -> JsonObject:
+    return {
+        "interface": "agent_profile",
+        "mode": mode,
+        "object_result": object_result,
+        "operation_outcome": operation_outcome,
+        "issues": [] if issue is None else [issue],
+    }
+
+
+def _invalid(mode: str, code: str, path: str) -> JsonObject:
+    return _result(mode, "invalid", "succeeded", _issue(code, path))
+
+
+def _indeterminate(code: str, path: str) -> JsonObject:
+    return _result("reference", "not_evaluated", "indeterminate", _issue(code, path))
+
+
+def _semver(value: Any) -> tuple[int, int, int] | None:
+    if not isinstance(value, str) or (match := SEMVER.fullmatch(value)) is None:
+        return None
+    return tuple(int(part) for part in match.groups())
+
+
+def _canonical_string_set(value: Any, *, required: bool) -> bool | None:
+    if not isinstance(value, list) or (required and not value):
+        return None
+    try:
+        encoded = [item.encode("utf-8") if isinstance(item, str) and item else None for item in value]
+    except UnicodeEncodeError:
+        return None
+    if any(item is None for item in encoded):
+        return None
+    return len(encoded) == len(set(encoded)) and encoded == sorted(encoded)
+
+
+def _schema(root: Path | None = None) -> JsonObject:
+    base = root if root is not None else REPOSITORY_ROOT / "packages" / "agent-runtime" / "contracts" / "agent-profile" / "1.0.0"
+    return _load(base / "schemas" / "agent-profile.schema.json")
+
+
+def validate_profile(profile: object, schema: object | None = None) -> JsonObject:
+    mode = "profile"
+    if not isinstance(profile, dict):
+        return _invalid(mode, "agent_profile.invalid_json", "")
+    missing = next((field for field in REQUIRED_FIELDS if field not in profile), None)
+    if missing is not None:
+        return _invalid(mode, "agent_profile.missing_field", f"/{missing}")
+    unknown = sorted((field for field in profile if field not in REQUIRED_FIELDS), key=lambda value: value.encode("utf-8"))
+    if unknown:
+        field = unknown[0]
+        code = "agent_profile.forbidden_runtime_field" if field in FORBIDDEN_RUNTIME_FIELDS else "agent_profile.invalid_profile_field"
+        return _invalid(mode, code, f"/{field}")
+    version = _semver(profile["contract_version"])
+    if version is None or version[0] != 1:
+        return _invalid(mode, "agent_profile.unsupported_contract_version", "/contract_version")
+    if not isinstance(profile["id"], str) or UUID_V7.fullmatch(profile["id"]) is None:
+        return _invalid(mode, "agent_profile.invalid_id", "/id")
+    revision = profile["revision"]
+    if isinstance(revision, bool) or not isinstance(revision, int) or not 1 <= revision <= SAFE_INTEGER:
+        return _invalid(mode, "agent_profile.invalid_revision", "/revision")
+    for field in ("goals", "declared_capabilities", "provenance_refs"):
+        canonical = _canonical_string_set(profile[field], required=True)
+        if canonical is None:
+            return _invalid(mode, "agent_profile.invalid_profile_field", f"/{field}")
+        if not canonical:
+            return _invalid(mode, "agent_profile.noncanonical_set", f"/{field}")
+    active_schema = schema if schema is not None else _schema()
+    if not is_valid(profile, active_schema, active_schema):
+        first_invalid = next((field for field in REQUIRED_FIELDS if not is_valid(profile[field], active_schema["properties"][field], active_schema)), "")
+        return _invalid(mode, "agent_profile.invalid_profile_field", f"/{first_invalid}" if first_invalid else "")
+    if version > (1, 0, 0):
+        return _result(mode, "compatible_read", "succeeded", _issue("agent_profile.compatible_read", "/contract_version"))
+    return _result(mode, "valid", "succeeded")
+
+
+def validate_raw(raw: bytes, root: Path) -> JsonObject:
+    try:
+        profile = parse_json_bytes(raw)
+    except Exception:
+        return _invalid("transport", "agent_profile.invalid_json", "")
+    result = validate_profile(profile, _schema(root))
+    return {**result, "mode": "transport"}
+
+
+def validate_reference_snapshot(profile: object, snapshot: object | None) -> JsonObject:
+    profile_result = validate_profile(profile)
+    if profile_result["object_result"] == "invalid":
+        return {**profile_result, "mode": "reference"}
+    if profile_result["object_result"] == "compatible_read":
+        return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
+    if not isinstance(snapshot, dict):
+        return _indeterminate("agent_profile.reference_snapshot_incomplete", "")
+    if _semver(snapshot.get("contract_version")) != (1, 0, 0):
+        return _indeterminate("agent_profile.reference_snapshot_incomplete", "/contract_version")
+    entries = snapshot.get("provenance")
+    if not isinstance(entries, list) or not entries:
+        return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
+    indexed: dict[str, JsonObject] = {}
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {"ref", "object_result"} or not isinstance(entry.get("ref"), str) or entry.get("object_result") not in {"available", "invalid", "opaque", "compatible_read"}:
+            return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
+        ref = entry["ref"]
+        if ref in indexed:
+            return _indeterminate("agent_profile.reference_snapshot_incomplete", "/provenance")
+        indexed[ref] = entry
+    for index, ref in enumerate(profile["provenance_refs"]):
+        path = f"/provenance_refs/{index}"
+        entry = indexed.get(ref)
+        if entry is None:
+            return _indeterminate("agent_profile.reference_snapshot_incomplete", path)
+        state = entry["object_result"]
+        if state == "invalid":
+            return _invalid("reference", "agent_profile.dangling_provenance_reference", path)
+        if state in {"opaque", "compatible_read"}:
+            return _indeterminate("agent_profile.opaque_provenance_reference", path)
+    return _result("reference", "valid", "succeeded")
+
+
+def validate_revision_transition(previous: object, candidate: object) -> JsonObject:
+    for profile in (previous, candidate):
+        validation = validate_profile(profile)
+        if validation["object_result"] == "invalid":
+            return {**validation, "mode": "revision_transition"}
+        if validation["object_result"] == "compatible_read":
+            return _invalid("revision_transition", "agent_profile.unsupported_contract_version", "/contract_version")
+    assert isinstance(previous, dict) and isinstance(candidate, dict)
+    if previous["id"] != candidate["id"]:
+        return _invalid("revision_transition", "agent_profile.revision_identity_mismatch", "/id")
+    if candidate["revision"] <= previous["revision"]:
+        return _invalid("revision_transition", "agent_profile.revision_not_increased", "/revision")
+    old_content, new_content = copy.deepcopy(previous), copy.deepcopy(candidate)
+    old_content.pop("revision")
+    new_content.pop("revision")
+    if canonicalize(old_content) == canonicalize(new_content):
+        return _invalid("revision_transition", "agent_profile.revision_without_change", "/revision")
+    return _result("revision_transition", "valid", "succeeded")
+
+
+def validate_case(case: dict, root: Path) -> JsonObject:
+    input_value = case.get("input") if isinstance(case, dict) else None
+    if not isinstance(input_value, dict):
+        return _invalid("profile", "agent_profile.invalid_json", "/input")
+    mode = input_value.get("mode")
+    if mode == "raw":
+        try:
+            raw = bytes.fromhex(input_value["raw_hex"])
+        except (KeyError, TypeError, ValueError):
+            return _invalid("transport", "agent_profile.invalid_json", "/input/raw_hex")
+        return validate_raw(raw, root)
+    if mode == "profile":
+        return validate_profile(input_value.get("profile"), _schema(root))
+    if mode == "reference":
+        return validate_reference_snapshot(input_value.get("profile"), input_value.get("snapshot"))
+    if mode == "revision_transition":
+        return validate_revision_transition(input_value.get("previous"), input_value.get("candidate"))
+    return _invalid("profile", "agent_profile.invalid_json", "/input/mode")
+
+
+def verify_contract(root: Path) -> JsonObject:
+    root = root.resolve()
+    manifest = _load(root / "contract.json")
+    if manifest.get("contract_family") != "agent-profile" or manifest.get("contract_version") != "1.0.0":
+        raise ValueError("invalid contract manifest")
+    if manifest.get("side_effects") != "forbidden" or manifest.get("set_order") != "unsigned-utf8":
+        raise ValueError("invalid contract safety metadata")
     if manifest.get("schemas") != REQUIRED_SCHEMA_PATHS:
         raise ValueError("contract must declare every AgentProfile schema")
     diagnostics = manifest.get("diagnostics")
@@ -33,7 +223,43 @@ def verify_contract(root: Path) -> dict[str, object]:
     for relative_path in [*REQUIRED_SCHEMA_PATHS.values(), *diagnostics.values()]:
         if not (root / relative_path).is_file():
             raise FileNotFoundError(f"declared contract artifact is missing: {relative_path}")
-    fixture_path = root / manifest["fixtures"]
-    if not fixture_path.is_file():
-        raise NotImplementedError("fixture suite verification is not implemented")
-    raise NotImplementedError("AgentProfile verifier behavior is not implemented")
+    catalog = _load(root / diagnostics["agent_profile"])
+    catalog_codes = {entry.get("code") for entry in catalog.get("codes", []) if isinstance(entry, dict)}
+    suite = _load(root / manifest["fixtures"])
+    fixture_schema = _load(root / "schemas" / "fixture-suite.schema.json")
+    result_schema = _load(root / "schemas" / "validation-result.schema.json")
+    diagnostic_schema = _load(root / "schemas" / "diagnostic.schema.json")
+    resolved_result_schema = copy.deepcopy(result_schema)
+    resolved_result_schema["properties"]["issues"]["items"] = diagnostic_schema
+    resolved_fixture_schema = copy.deepcopy(fixture_schema)
+    resolved_fixture_schema["properties"]["cases"]["items"]["properties"]["expected"] = resolved_result_schema
+    if not is_valid(suite, resolved_fixture_schema, resolved_fixture_schema):
+        raise ValueError("fixture suite does not match its machine schema")
+    cases = suite.get("cases") if isinstance(suite, dict) else None
+    if not isinstance(cases, list):
+        raise ValueError("fixture suite is invalid")
+    case_ids = [case.get("case_id") for case in cases if isinstance(case, dict)]
+    if len(case_ids) != len(cases) or len(case_ids) != len(set(case_ids)):
+        raise ValueError("fixture case IDs are invalid or duplicated")
+    for case in cases:
+        expected = case["expected"]
+        if not is_valid(expected, resolved_result_schema, resolved_result_schema):
+            raise ValueError(f"fixture expected result is invalid: {case['case_id']}")
+        computed = validate_case(case, root)
+        if computed != expected:
+            raise ValueError(f"fixture result mismatch: {case['case_id']}: {computed!r}")
+        if any(issue["code"] not in catalog_codes for issue in computed["issues"]):
+            raise ValueError(f"unknown diagnostic: {case['case_id']}")
+    return {"case_count": len(cases), "contract_version": manifest["contract_version"]}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1] / "agent-profile" / "1.0.0")
+    args = parser.parse_args()
+    print(json.dumps(verify_contract(args.root), separators=(",", ":"), sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

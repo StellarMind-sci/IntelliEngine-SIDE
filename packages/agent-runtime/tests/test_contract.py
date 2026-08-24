@@ -22,6 +22,41 @@ def load_verifier():
 
 
 class AgentProfileContractTests(unittest.TestCase):
+    def valid_profile(self) -> dict[str, object]:
+        return {
+            "contract_version": "1.0.0",
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1,
+            "display_name": "Synthetic Algebra Mentor",
+            "persona": {"summary": "Explains algebra through examples.", "principles": ["state assumptions"], "communication_style": "calm"},
+            "goals": ["help learners check algebra"],
+            "working_style": {"planning_preference": "outline", "reasoning_preference": "examples", "verification_preference": "check"},
+            "declared_capabilities": ["algebra.explanation"],
+            "collaboration_preferences": {"interaction_preference": "discuss", "feedback_preference": "concrete corrections"},
+            "provenance_refs": ["provenance://synthetic/algebra-mentor"],
+        }
+
+    def test_profile_rejects_runtime_or_private_memory_fields(self) -> None:
+        verifier = load_verifier()
+        result = verifier.validate_profile({**self.valid_profile(), "runtime_state": "active"})
+        self.assertEqual(result["issues"][0]["code"], "agent_profile.forbidden_runtime_field")
+        self.assertEqual(result["issues"][0]["path"], "/runtime_state")
+
+    def test_missing_snapshot_is_indeterminate_not_invalid(self) -> None:
+        verifier = load_verifier()
+        result = verifier.validate_reference_snapshot(self.valid_profile(), None)
+        self.assertEqual(result["object_result"], "not_evaluated")
+        self.assertEqual(result["operation_outcome"], "indeterminate")
+        self.assertEqual(result["issues"][0]["code"], "agent_profile.reference_snapshot_incomplete")
+
+    def test_revision_must_change_content_and_increase(self) -> None:
+        verifier = load_verifier()
+        previous = self.valid_profile()
+        candidate = {**previous, "revision": 2}
+        self.assertEqual(
+            verifier.validate_revision_transition(previous, candidate)["issues"][0]["code"],
+            "agent_profile.revision_without_change",
+        )
     def test_contract_declares_all_agent_profile_schemas_and_diagnostics(self) -> None:
         verifier = load_verifier()
 
