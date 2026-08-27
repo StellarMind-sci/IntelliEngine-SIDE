@@ -1,0 +1,81 @@
+{
+  "contract_version": "1.0.0",
+  "self_digest": "excluded",
+  "entries": [
+    {
+      "path": "contract.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "7c6b0a21f078727e75a92626dd6dc61fc958f62c49b1ac20985590004fb62a62"
+    },
+    {
+      "path": "diagnostics/agent-runtime-state.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "906389ba9fe2c84df092145e271eb172811508b00e26dbd06865107715f7d0d0"
+    },
+    {
+      "path": "fixtures/cases.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "60b9c2a348f5495f0a3a1d62fe1fa197277499726fd4df6404b41aa509f856c6"
+    },
+    {
+      "path": "schemas/agent-profile-ref.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "93ca388a78f9d3125b1a4eb8cd916b78935bcfd798d194711e489d1efa8e9ea3"
+    },
+    {
+      "path": "schemas/agent-runtime-state-ref.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "b303767c53e1fc2cebe5c577b62f67b5cda1a1e34147c00f3f95a084785e2285"
+    },
+    {
+      "path": "schemas/agent-runtime-state.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "5d2eea1963c4e5e037dbb7cd415faf77380a95ae44a3dac6352dca9951ab5fe6"
+    },
+    {
+      "path": "schemas/aggregate-input.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "777f03fa7ecbf40c9aa1e8adad4a6f4fcc33e4c375e9e39c62898914ef8d97b9"
+    },
+    {
+      "path": "schemas/aggregate-output.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "37203e9515d7ac0e71b0b3bf2a078d2f46850f4cffe3657d1b6693ecb64b1999"
+    },
+    {
+      "path": "schemas/diagnostic.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "3a3e89c1c4d3c24ae67ca7f2b042386ad3cef269df1bc503b0a97561596e127d"
+    },
+    {
+      "path": "schemas/fixture-suite.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "1930b8ef1009b1824af95ab1939f36cd4941a87a3a72c4ed0689050937b49904"
+    },
+    {
+      "path": "schemas/lock.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "0bfa52bdedb46fa86e0dfcaa55abbf48f94c2e5cb3884ed5a2b82bc5741adaf6"
+    },
+    {
+      "path": "schemas/transition-intent.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "1204bf7171bf147d650848e5ee202fde6eb71e40f506536551d67e8604c83770"
+    },
+    {
+      "path": "schemas/transition-plan.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "37b261de998aa0515ce0cd540db31f25cecf5fbb80a0cc7ce62c008d7c116125"
+    },
+    {
+      "path": "schemas/transition-record.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "a5ec151d47761379c19228094f5cf27f4a50dbc3982b491f4b1e774c0cf79ed5"
+    },
+    {
+      "path": "schemas/validation-result.schema.json",
+      "digest_kind": "jcs_sha256",
+      "sha256": "36d47703b5e4e003a3ac289cac79f7f1ac57ba917d633c692fc29810e0851a95"
+    }
+  ]
+}
