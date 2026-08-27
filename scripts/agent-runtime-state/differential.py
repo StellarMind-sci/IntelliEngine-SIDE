@@ -53,15 +53,21 @@ def main() -> int:
             raise RuntimeError(f"AgentRuntimeState consumer result mismatch: {case_id}")
     state = next(item for item in suite["cases"] if item["case_id"] == "state-registered-not-dormant")["input"]["state"]
     raw = json.dumps(state, separators=(",", ":"))
-    expected_raw = {"interface": "agent_runtime_state", "mode": "transport", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": "agent_runtime_state.invalid_state_field", "path": "/state_revision", "severity": "error"}]}
-    for token in ("1.0", "1e0", "-0"):
-        probe = raw.replace('"state_revision":2', f'"state_revision":{token}').encode("utf-8").hex()
-        python_raw = raw_row([*python_command, "--raw-hex", probe], environment)
-        typescript_raw = raw_row([*typescript_command, "--raw-hex", probe], environment)
-        if python_raw != expected_raw or typescript_raw != expected_raw or python_raw != typescript_raw:
-            raise RuntimeError(f"AgentRuntimeState raw transport mismatch: {token}")
+    positions = (
+        ('"state_revision":2', "/state_revision", "agent_runtime_state.invalid_state_field"),
+        ('"activation_epoch":1', "/activation_epoch", "agent_runtime_state.invalid_state_field"),
+        ('"revision":1', "/agent_profile_ref/revision", "agent_runtime_state.invalid_profile_ref"),
+    )
+    for source, path, code in positions:
+        expected_raw = {"interface": "agent_runtime_state", "mode": "transport", "object_result": "invalid", "operation_outcome": "succeeded", "issues": [{"code": code, "path": path, "severity": "error"}]}
+        for token in ("1.0", "1e0", "-0"):
+            probe = raw.replace(source, f'{source.split(":", 1)[0]}:{token}').encode("utf-8").hex()
+            python_raw = raw_row([*python_command, "--raw-hex", probe], environment)
+            typescript_raw = raw_row([*typescript_command, "--raw-hex", probe], environment)
+            if python_raw != expected_raw or typescript_raw != expected_raw or python_raw != typescript_raw:
+                raise RuntimeError(f"AgentRuntimeState raw transport mismatch: {path} {token}")
     report = json.dumps(expected, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    print(json.dumps({"case_count": len(expected), "raw_transport_probe_count": 3, "report_sha256": hashlib.sha256(report).hexdigest(), "status": "passed"}, separators=(",", ":"), sort_keys=True))
+    print(json.dumps({"case_count": len(expected), "raw_transport_probe_count": 9, "report_sha256": hashlib.sha256(report).hexdigest(), "status": "passed"}, separators=(",", ":"), sort_keys=True))
     return 0
 
 

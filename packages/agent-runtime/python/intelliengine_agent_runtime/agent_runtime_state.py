@@ -259,6 +259,94 @@ def validate_state(state: Any, contract_root: Path | str | None = None) -> dict:
         return _invalid("state", "agent_runtime_state.invalid_opaque_ref", "/last_transition_ref")
     return _result("state", "compatible_read", "succeeded", _issue("agent_runtime_state.compatible_read", "/contract_version")) if version == "compatible" else _result("state", "valid", "succeeded")
 
+def _raw_state_integer_issue(raw: bytes) -> tuple[str, str] | None:
+    try:
+        text, index, issue = raw.decode("utf-8", "strict"), 0, None
+        targets = {
+            "/state_revision": "agent_runtime_state.invalid_state_field",
+            "/activation_epoch": "agent_runtime_state.invalid_state_field",
+            "/agent_profile_ref/revision": "agent_runtime_state.invalid_profile_ref",
+        }
+        def space() -> None:
+            nonlocal index
+            while index < len(text) and text[index] in " \t\r\n":
+                index += 1
+        def string() -> str:
+            nonlocal index
+            if text[index] != '"':
+                raise ValueError("string")
+            index += 1; value = ""
+            while index < len(text):
+                character = text[index]; index += 1
+                if character == '"':
+                    return value
+                if character != "\\":
+                    value += character; continue
+                escape = text[index]; index += 1
+                named = {'"': '"', "\\": "\\", "/": "/", "b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t"}
+                if escape in named:
+                    value += named[escape]; continue
+                if escape != "u" or not re.fullmatch(r"[0-9a-fA-F]{4}", text[index:index + 4]):
+                    raise ValueError("escape")
+                value += chr(int(text[index:index + 4], 16)); index += 4
+            raise ValueError("string")
+        def scalar() -> str:
+            nonlocal index
+            match = re.match(r"(?:-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|true|false|null)", text[index:])
+            if match is None:
+                raise ValueError("value")
+            index += len(match.group(0)); return match.group(0)
+        def value(path: str) -> None:
+            space()
+            if text[index] == '"':
+                string(); return
+            if text[index] == "{":
+                object(path); return
+            if text[index] == "[":
+                index_array(); return
+            scalar()
+        def index_array() -> None:
+            nonlocal index
+            index += 1; space()
+            if text[index] == "]":
+                index += 1; return
+            while True:
+                value(""); space()
+                if text[index] == "]":
+                    index += 1; return
+                if text[index] != ",":
+                    raise ValueError("array")
+                index += 1
+        def object(path: str) -> None:
+            nonlocal index, issue
+            index += 1; space()
+            if text[index] == "}":
+                index += 1; return
+            while True:
+                space(); key = string(); child_path = f"{path}/{_pointer(key)}"; space()
+                if text[index] != ":":
+                    raise ValueError("object")
+                index += 1; space()
+                if child_path in targets:
+                    token = re.match(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?", text[index:])
+                    if token is not None:
+                        index += len(token.group(0))
+                        if not re.fullmatch(r"(?:0|[1-9][0-9]*)", token.group(0)) and issue is None:
+                            issue = (targets[child_path], child_path)
+                    else:
+                        value(child_path)
+                else:
+                    value(child_path)
+                space()
+                if text[index] == "}":
+                    index += 1; return
+                if text[index] != ",":
+                    raise ValueError("object")
+                index += 1
+        space(); object(""); space()
+        return issue
+    except (IndexError, UnicodeDecodeError, ValueError):
+        return None
 def parse_and_validate_transport(raw: bytes, contract_root: Path | str | None = None) -> dict:
     _loaded(contract_root)
     if not isinstance(raw, bytes) or len(raw) > MAX:
@@ -267,6 +355,9 @@ def parse_and_validate_transport(raw: bytes, contract_root: Path | str | None = 
         value = parse_json_bytes(raw)
     except Exception:
         return _invalid("transport", "agent_runtime_state.invalid_json", "")
+    lexical = _raw_state_integer_issue(raw)
+    if lexical is not None:
+        return _invalid("transport", *lexical)
     value = validate_state(value, contract_root)
     value["mode"] = "transport"
     return value

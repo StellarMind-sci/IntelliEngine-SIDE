@@ -45,14 +45,20 @@ class AgentRuntimeStatePythonRuntimeTests(unittest.TestCase):
         item["intent"]["target_profile_ref"] = {"revision": ref["revision"], "id": ref["id"]}
         self.assertEqual(plan_transition(item["state"], item["intent"], CONTRACT_ROOT)["plan"]["disposition"], "no_change")
 
-    def test_raw_state_revision_rejects_non_integer_lexical_tokens(self) -> None:
+    def test_raw_state_integer_positions_reject_non_integer_lexical_tokens(self) -> None:
         state = case("state-registered-not-dormant")["input"]["state"]
         raw = json.dumps(state, separators=(",", ":"))
-        for token in ("1.0", "1e0", "-0"):
-            with self.subTest(token=token):
-                result = parse_and_validate_transport(raw.replace('"state_revision":2', f'"state_revision":{token}').encode("utf-8"), CONTRACT_ROOT)
-                self.assertEqual(result["object_result"], "invalid")
-                self.assertEqual(result["issues"][0], {"code": "agent_runtime_state.invalid_state_field", "path": "/state_revision", "severity": "error"})
+        positions = (
+            ('"state_revision":2', "/state_revision", "agent_runtime_state.invalid_state_field"),
+            ('"activation_epoch":1', "/activation_epoch", "agent_runtime_state.invalid_state_field"),
+            ('"revision":1', "/agent_profile_ref/revision", "agent_runtime_state.invalid_profile_ref"),
+        )
+        for source, path, code in positions:
+            for token in ("1.0", "1e0", "-0"):
+                with self.subTest(path=path, token=token):
+                    result = parse_and_validate_transport(raw.replace(source, f'{source.split(":", 1)[0]}:{token}').encode("utf-8"), CONTRACT_ROOT)
+                    self.assertEqual(result["object_result"], "invalid")
+                    self.assertEqual(result["issues"][0], {"code": code, "path": path, "severity": "error"})
 
     def test_locked_contract_rejects_unsafe_root_and_schema_reference_closure(self) -> None:
         def replace_reference(root: Path, reference: str) -> None:
@@ -77,6 +83,10 @@ class AgentRuntimeStatePythonRuntimeTests(unittest.TestCase):
                 replace_reference(root, reference)
                 with self.assertRaises(Exception):
                     state_runtime.load_locked_contract(root)
+    def test_raw_integer_scanner_ignores_string_contents(self) -> None:
+        state = case("state-registered-not-dormant")["input"]["state"]
+        state["last_transition_ref"] = 'agent-runtime-transition: "activation_epoch":1.0'
+        self.assertEqual(parse_and_validate_transport(json.dumps(state, separators=(",", ":")).encode("utf-8"), CONTRACT_ROOT)["object_result"], "valid")
     def test_transport_rejects_duplicate_keys_and_invalid_utf8(self) -> None:
         self.assertEqual(parse_and_validate_transport(b'{"contract_version":"1.0.0","contract_version":"1.0.0"}', CONTRACT_ROOT)["issues"][0]["code"], "agent_runtime_state.invalid_json")
         self.assertEqual(parse_and_validate_transport(b'{"text":"\xed\xa0\x80"}', CONTRACT_ROOT)["issues"][0]["code"], "agent_runtime_state.invalid_json")
@@ -113,7 +123,7 @@ class AgentRuntimeStatePythonRuntimeTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         report = json.loads(completed.stdout)
         self.assertEqual(report["case_count"], 33)
-        self.assertEqual(report["raw_transport_probe_count"], 3)
+        self.assertEqual(report["raw_transport_probe_count"], 9)
     def test_compatible_minor_is_read_only_not_transitionable(self) -> None:
         item = case("summon-increases-local-epoch")["input"]
         state = copy.deepcopy(item["state"])

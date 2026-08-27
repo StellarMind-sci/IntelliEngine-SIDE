@@ -24,6 +24,11 @@ test("executes every locked case using real runtime", () => {
   assert.ok(results.every((item: any) => JSON.stringify(item.actual) === JSON.stringify(item.expected)));
 });
 
+test("raw integer scanner ignores string contents", () => {
+  const state = caseById("state-registered-not-dormant").input.state;
+  state.last_transition_ref = 'agent-runtime-transition: "activation_epoch":1.0';
+  assert.equal(parseAndValidateTransport(Buffer.from(JSON.stringify(state)), root).object_result, "valid");
+});
 test("transport rejects duplicate keys and invalid utf8", () => {
   assert.equal(parseAndValidateTransport(Buffer.from('{"contract_version":"1.0.0","contract_version":"1.0.0"}'), root).issues[0].code, "agent_runtime_state.invalid_json");
   assert.equal(parseAndValidateTransport(Buffer.from([0x7b, 0x22, 0x74, 0x22, 0x3a, 0x22, 0xed, 0xa0, 0x80, 0x22, 0x7d]), root).issues[0].code, "agent_runtime_state.invalid_json");
@@ -65,13 +70,18 @@ test("same profile ref rebind ignores json member order", () => {
   assert.equal(planTransition(input.state, input.intent, root).plan.disposition, "no_change");
 });
 
-test("raw state revision rejects noninteger lexical tokens", () => {
+test("raw state integer positions reject noninteger lexical tokens", () => {
   const state = caseById("state-registered-not-dormant").input.state;
   const raw = JSON.stringify(state);
-  for (const token of ["1.0", "1e0", "-0"]) {
-    const result = parseAndValidateTransport(Buffer.from(raw.replace('"state_revision":2', `"state_revision":${token}`)), root);
+  const positions: Array<[string, string, string]> = [
+    ['"state_revision":2', "/state_revision", "agent_runtime_state.invalid_state_field"],
+    ['"activation_epoch":1', "/activation_epoch", "agent_runtime_state.invalid_state_field"],
+    ['"revision":1', "/agent_profile_ref/revision", "agent_runtime_state.invalid_profile_ref"],
+  ];
+  for (const [source, path, code] of positions) for (const token of ["1.0", "1e0", "-0"]) {
+    const result = parseAndValidateTransport(Buffer.from(raw.replace(source, `${source.split(":", 1)[0]}:${token}`)), root);
     assert.equal(result.object_result, "invalid");
-    assert.deepEqual(result.issues[0], { code: "agent_runtime_state.invalid_state_field", path: "/state_revision", severity: "error" });
+    assert.deepEqual(result.issues[0], { code, path, severity: "error" });
   }
 });
 

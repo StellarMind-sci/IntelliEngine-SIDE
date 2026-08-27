@@ -141,20 +141,22 @@ export function validateState(state: any, contractRoot?: URL | string): any {
   if (!opaque(state.last_transition_ref)) return invalid("state", "agent_runtime_state.invalid_opaque_ref", "/last_transition_ref");
   return stateVersion === "compatible" ? result("state", "compatible_read", "succeeded", issue("agent_runtime_state.compatible_read", "/contract_version")) : result("state", "valid", "succeeded");
 }
-const rawStateRevisionIsNonInteger = (raw: Uint8Array) => {
+const rawStateIntegerIssue = (raw: Uint8Array): { code: string, path: string } | undefined => {
   try {
-    const text = new TextDecoder("utf-8", { fatal: true }).decode(raw); let index = 0;
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(raw); let index = 0, found: { code: string, path: string } | undefined;
+    const targets: Record<string, string> = { "/state_revision": "agent_runtime_state.invalid_state_field", "/activation_epoch": "agent_runtime_state.invalid_state_field", "/agent_profile_ref/revision": "agent_runtime_state.invalid_profile_ref" };
     const space = () => { while (index < text.length && " \t\r\n".includes(text[index])) index++; };
     const string = (): string => { if (text[index++] !== '"') throw new Error("string"); let value = ""; while (index < text.length) { const character = text[index++]; if (character === '"') return value; if (character !== "\\") { value += character; continue; } const escape = text[index++], named: Record<string, string> = { '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" }; if (escape in named) { value += named[escape]; continue; } if (escape !== "u" || !/^[0-9a-fA-F]{4}$/.test(text.slice(index, index + 4))) throw new Error("escape"); value += String.fromCharCode(Number.parseInt(text.slice(index, index + 4), 16)); index += 4; } throw new Error("string"); };
     const scalar = () => { const token = /^(?:-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|true|false|null)/.exec(text.slice(index)); if (!token) throw new Error("value"); index += token[0].length; return token[0]; };
-    const value = (): void => { space(); if (text[index] === '"') { string(); return; } if (text[index] === "{") { object(false); return; } if (text[index] === "[") { index++; space(); if (text[index] === "]") { index++; return; } while (true) { value(); space(); if (text[index] === "]") { index++; return; } if (text[index++] !== ",") throw new Error("array"); } } scalar(); };
-    const object = (root: boolean): string | undefined => { if (text[index++] !== "{") throw new Error("object"); space(); if (text[index] === "}") { index++; return undefined; } while (true) { space(); const key = string(); space(); if (text[index++] !== ":") throw new Error("object"); space(); if (root && key === "state_revision") { const token = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(text.slice(index)); if (token) return token[0]; value(); } else value(); space(); if (text[index] === "}") { index++; return undefined; } if (text[index++] !== ",") throw new Error("object"); } };
-    space(); const token = object(true); space(); return token !== undefined && !/^[1-9][0-9]*$/.test(token);
-  } catch { return false; }
+    const value = (path: string): void => { space(); if (text[index] === '"') { string(); return; } if (text[index] === "{") { object(path); return; } if (text[index] === "[") { array(); return; } scalar(); };
+    const array = (): void => { index++; space(); if (text[index] === "]") { index++; return; } while (true) { value(""); space(); if (text[index] === "]") { index++; return; } if (text[index++] !== ",") throw new Error("array"); } };
+    const object = (path: string): void => { index++; space(); if (text[index] === "}") { index++; return; } while (true) { space(); const key = string(), child = `${path}/${pointer(key)}`; space(); if (text[index++] !== ":") throw new Error("object"); space(); const code = targets[child]; if (code !== undefined) { const token = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/.exec(text.slice(index)); if (token) { index += token[0].length; if (!/^(?:0|[1-9][0-9]*)$/.test(token[0]) && found === undefined) found = { code, path: child }; } else value(child); } else value(child); space(); if (text[index] === "}") { index++; return; } if (text[index++] !== ",") throw new Error("object"); } };
+    space(); object(""); space(); return found;
+  } catch { return undefined; }
 };
 export function parseAndValidateTransport(raw: Uint8Array, contractRoot?: URL | string): any {
   loaded(contractRoot); if (!(raw instanceof Uint8Array) || raw.length > MAX) return invalid("transport", "agent_runtime_state.invalid_json", "");
-  try { const value = strictParse(raw); if (rawStateRevisionIsNonInteger(raw)) return invalid("transport", "agent_runtime_state.invalid_state_field", "/state_revision"); return { ...validateState(value, contractRoot), mode: "transport" }; } catch { return invalid("transport", "agent_runtime_state.invalid_json", ""); }
+  try { const value = strictParse(raw); const lexicalIssue = rawStateIntegerIssue(raw); if (lexicalIssue) return invalid("transport", lexicalIssue.code, lexicalIssue.path); return { ...validateState(value, contractRoot), mode: "transport" }; } catch { return invalid("transport", "agent_runtime_state.invalid_json", ""); }
 }
 const validateIntent = (intent: any): [any | undefined, string] => {
   if (!object(intent) || !scalar(intent) || !limits(intent)) return [invalid("transition", "agent_runtime_state.invalid_transition_intent", "", "rejected"), ""];
