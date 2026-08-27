@@ -1,6 +1,6 @@
 # RFC-005：AgentRuntimeState 生命周期与召唤边界
 
-- 状态：草案
+- 状态：已接受
 - 负责人：StellarMind-sci
 - 创建日期：2026-08-24
 - 关联 Issues：[GitHub Issue #48](https://github.com/StellarMind-sci/IntelliEngine-SIDE/issues/48)
@@ -15,12 +15,12 @@ SIDE 已用 `AgentProfile` 和精确 `AgentProfileRef(id, revision)` 定义长�
 
 ### 目标
 
-1. 定义可版本化、可审计的 `AgentRuntimeState`，精确引用 Profile，支持一个或 N 个长期 Agent。
+1. 定义可版本化、可审计的**局部** `AgentRuntimeState`，精确引用 Profile，并使同一长期 Agent 可在不同项目或会话中独立处于不同状态。
 2. 定义 `active`、`dormant`、`archived` 及创建、召唤、关闭、封存、恢复和显式 rebind。
 3. 定义状态修订、乐观并发、幂等和 activation epoch，使关闭后的旧执行不能继续获准产生副作用。
 4. 分开无副作用读取/预演与未来经 ControlPolicy、ChangeSet、RuntimeKernel 执行的写入。
 5. 保留身份、记忆、能力证据、团队/关系和项目分工；永久删除保持独立高风险操作。
-6. 让后续契约、消费者、控制平面和 IDE 体验无需重新决定产品方向。
+6. 定义只读的全局汇总投影，但不让它取得局部状态写入权、权限或 lease；让后续契约、消费者、控制平面和 IDE 体验无需重新决定产品方向。
 
 ### 非目标
 
@@ -36,11 +36,13 @@ SIDE 已用 `AgentProfile` 和精确 `AgentProfileRef(id, revision)` 定义长�
 
 ### 选择摘要与所有权
 
-本 RFC 推荐“控制域内每个长期 Agent 一份生命周期记录”：状态是稳定对象，引用精确 Profile revision；项目参与和团队角色由独立对象表达。召唤改变该 Agent 在当前控制域中的全局可参与性，不创建短期人格或项目副本。
+本 RFC 接受**方案 C：每个项目或会话上下文一份局部生命周期记录**。状态是稳定对象，引用精确 Profile revision；同一长期 Agent 可以在项目 A 为 `active`、在项目 B 为 `dormant`。召唤、关闭、封存和恢复只改变指定上下文中的局部状态，不创建短期人格或项目副本，也不改写其他上下文。
+
+`packages/agent-runtime` 还可从所有局部记录生成全局 aggregate/projection，供用户查看其**已经获授权读取**的上下文中该 Agent 是否可参与、休眠或封存。aggregate 只能从控制平面显式提供的已授权局部投影集派生；它不得枚举、探测或暴露无权项目/会话的存在、标识或状态。aggregate 只是派生、只读视图：它没有 `state_revision`、`activation_epoch`、写入权或授权含义，不能覆盖任何局部状态，不能授予参与权，也不能把某处 `active` 推论为另一处可用。未来“关闭全部”只能是显式 batch intent，经 ControlPolicy、ChangeSet 和逐记录 CAS 后以原子全成功或清晰的逐 Agent 结果提交；它不能由 aggregate 隐式触发。
 
 `packages/agent-runtime` 拥有状态结构、版本、状态机、只读投影、Profile 绑定、`state_revision`、`activation_epoch` 和诊断。控制平面与 ControlPolicy/ChangeSet 拥有提出、批准、提交和回滚；RuntimeKernel/执行平面拥有 lease、资源和副作用 fencing；模型、记忆、证据、团队、关系、项目和权限由各自契约拥有。
 
-状态可引用控制平面拥有的 opaque `authority_scope_ref`，但它不携带用户身份、权限、策略正文或项目角色，也不能独立授权。
+局部状态同时引用控制平面拥有的 opaque `authority_scope_ref` 和不透明 `runtime_context_ref`（项目或会话上下文）。二者均不携带用户身份、权限、策略正文、项目角色、任务或会话内容，也不能独立授权；项目角色、团队关系和具体会话语义仍由其未来独立对象拥有。
 
 ### 数据草案
 
@@ -50,6 +52,7 @@ SIDE 已用 `AgentProfile` 和精确 `AgentProfileRef(id, revision)` 定义长�
   "state_id": "019...uuidv7",
   "state_revision": 7,
   "authority_scope_ref": "control-scope:...",
+  "runtime_context_ref": "project-or-session:...",
   "agent_profile_ref": { "id": "019...uuidv7", "revision": 3 },
   "status": "active",
   "activation_epoch": 4,
@@ -58,27 +61,29 @@ SIDE 已用 `AgentProfile` 和精确 `AgentProfileRef(id, revision)` 定义长�
 ```
 
 - `contract_version` 是 canonical SemVer；未知 major 拒绝，同 major 较新 minor 仅无副作用兼容读取。
-- `state_id` 是 canonical lowercase UUID，producer 应生成 UUIDv7；不是 Profile、项目、会话或执行 ID。
+- `state_id` 是 canonical lowercase UUID，producer 应生成 UUIDv7；它是某一个局部记录的稳定身份，不是 Profile、项目、会话或执行 ID。
 - `state_revision` 从 1 开始，每次实际转换或 rebind 增加 1；no_change/重放不增加。
-- `authority_scope_ref` 是 opaque 控制域引用。推荐模型下，控制域内同一 `AgentProfile.id` 至多一条现行状态；schema 不能证明存储唯一性。
+- `authority_scope_ref` 是 opaque 控制域引用；`runtime_context_ref` 是 opaque 项目或会话上下文引用。局部状态的存储唯一键是 `(authority_scope_ref, runtime_context_ref, agent_profile_ref.id)`；同一长期 Agent 可以在不同上下文拥有独立记录。schema 不能证明存储唯一性。
 - `agent_profile_ref` 精确到 revision，不得使用 latest、名称、路径或会话 ID。
 - `status` 是闭合集合 `active | dormant | archived`，没有 `deleted`、`busy`、`error` 或角色状态。
 - `activation_epoch` 从 0 开始，每次实际进入 active 增加 1，从不回退或复用。
 - `last_transition_ref` 指向不可变审计记录，完整历史不嵌入投影。
 
-状态不得包含 persona、goals、role、能力、私有记忆、提示词、模型/密钥、团队/项目、策略正文、权限、任务、进程、输出或 UI 状态。
+状态不得包含 persona、goals、role、能力、私有记忆、提示词、模型/密钥、团队/项目语义、策略正文、权限、任务、进程、输出或 UI 状态。
 
-未来写入另定义 `AgentRuntimeTransitionIntent`（request、operation、expected state ref、精确 expected ProfileRef、可选 target ProfileRef、reason/provenance）和不可变 `AgentRuntimeTransitionRecord`（请求摘要、旧/新状态、结果、诊断、actor/Policy/ChangeSet/provenance、时间和回滚关联）。Intent 不是权限凭证，Record 不是可重放命令。
+未来写入另定义 `AgentRuntimeTransitionIntent`（request、operation、`authority_scope_ref`、`runtime_context_ref`、expected state ref、精确 expected ProfileRef、可选 target ProfileRef、reason/provenance）和不可变 `AgentRuntimeTransitionRecord`（请求摘要、局部唯一键、旧/新状态、结果、诊断、actor/Policy/ChangeSet/provenance、时间和回滚关联）。Intent 不是权限凭证，Record 不是可重放命令。
 
 ### 状态语义
 
-- `active`：Agent 已唤醒，可被发现，并在独立有效授权、分工和 lease 下参与工程；可以没有模型、任务、团队或算力。每次进入 active 产生新 epoch，执行 lease 必须绑定 `(state_id, activation_epoch)`。每一次副作用的 admission 和最终 commit 都必须重新读取权威状态，并在同一个不可分割的授权/提交边界中验证 `status == active` 且 lease 的 `(state_id, activation_epoch)` 与权威状态完全相同；只在 admission 检查一次不够。
-- `dormant`：Agent 已关闭，不接收新任务、不主动调用模型或提交新副作用；身份、Profile、记忆、证据、模型绑定、关系和项目记录保留。`close` 必须原子提交 non-active 状态并使旧 epoch 的全部 lease 失效，之后才可报告已提交；因此 epoch 即使只在下一次进入 active 时递增，旧执行也已经无法通过 status/lease 的 commit 校验。进程和会话清理可以重试，但清理成功、失败或重连都不能恢复其 authority。用户仍可发现和召唤它。
-- `archived`：长期封存，默认搜索、推荐、调度、协作和批量召唤排除它；精确 ID 或显式包含归档时可只读检查。它不删除外部对象，不能直接执行、rebind 或进入 active，须先恢复到 dormant。
+- `active`：Agent 在该局部上下文已唤醒，可被发现，并在独立有效授权、分工和 lease 下参与工程；可以没有模型、任务、团队或算力。每次进入 active 产生新 epoch，执行 lease 必须绑定 `(state_id, activation_epoch)`。每一次副作用的 admission 和最终 commit 都必须重新读取权威状态，并在同一个不可分割的授权/提交边界中验证 `status == active` 且 lease 的 `(state_id, activation_epoch)` 与权威状态完全相同；只在 admission 检查一次不够。
+- `dormant`：Agent 在该局部上下文已关闭，不接收该上下文的新任务、不主动调用模型或提交该上下文的新副作用；身份、Profile、记忆、证据、模型绑定、关系和项目记录保留。`close` 必须原子提交 non-active 状态并使旧 epoch 的全部 lease 失效，之后才可报告已提交；因此 epoch 即使只在下一次进入 active 时递增，旧执行也已经无法通过 status/lease 的 commit 校验。进程和会话清理可以重试，但清理成功、失败或重连都不能恢复其 authority。用户仍可发现和召唤它。
+- `archived`：在该局部上下文长期封存，默认搜索、推荐、调度、协作和批量召唤排除它；精确 ID 或显式包含归档时可只读检查。它不删除外部对象，不能直接执行、rebind 或进入 active，须先恢复到 dormant。
 
-Profile 存在但无 RuntimeState 表示尚未在控制域注册，与 dormant 不同，UI 不得混淆。
+Profile 在某个上下文没有局部 RuntimeState，表示尚未在该上下文注册，与该上下文的 dormant 不同，UI 不得混淆；它不影响 Profile 在其他上下文的状态。
 
 ### 转换与 rebind
+
+下表的“当前”始终指同一 `(authority_scope_ref, runtime_context_ref, AgentProfile.id)` 的局部记录；任何转换不得读取、改变或推断其他上下文的状态。
 
 | 操作 | 当前不存在 | 当前 active | 当前 dormant | 当前 archived |
 |---|---|---|---|---|
@@ -95,16 +100,16 @@ Profile 新 revision 出现时状态继续绑定旧 Ref。rebind 必须由显式
 
 ### 幂等、并发、竞态与恢复
 
-`create_state` 必须携带等价于 `expected_state = absent` 的前置条件，并使用 `(authority_scope_ref, agent_profile_ref.id)` 作为存储唯一键；`state_id` 是成功创建后该记录的稳定身份，不参与该唯一键。两个不同 request 并发创建同一唯一键时，只有一个可由 absent 原子变为存在，另一个返回 `conflict`。相同 request 的崩溃重试则由幂等记录返回首次结果。
+`create_state` 必须携带等价于 `expected_state = absent` 的前置条件，并使用 `(authority_scope_ref, runtime_context_ref, agent_profile_ref.id)` 作为局部存储唯一键；`state_id` 是成功创建后该记录的稳定身份，不参与该唯一键。两个不同 request 并发创建同一局部唯一键时，只有一个可由 absent 原子变为存在，另一个返回 `conflict`。不同上下文可并发创建，且彼此不冲突。相同 request 的崩溃重试则由幂等记录返回首次结果。
 
-除 create 外，所有操作必须携带 expected state ref `{ state_id, state_revision }` 以及精确 `expected_profile_ref`。`state_id` 选择生命周期记录，`state_revision` 提供 CAS，Profile ID 只标识长期 Agent；三者不得互相替代。
+除 create 外，所有操作必须携带 expected state ref `{ state_id, state_revision }`、精确 `expected_profile_ref`，以及该局部记录的 `authority_scope_ref` 与 `runtime_context_ref`。这两个 opaque ref 必须和权威记录完全匹配；`state_id` 选择生命周期记录，`state_revision` 提供 CAS，Profile ID 只标识长期 Agent；它们与局部上下文 ref 均不得互相替代。
 
 确定性判定顺序如下：
 
 1. 无法解析或不满足封闭 schema 的输入返回 `rejected`；有效 request 才能形成规范 payload。
 2. 查询 `request_id`：与已存规范 payload 完全一致时返回首次持久结果；同 request 不同 payload 返回 `conflict`。
 3. 校验 contract/Profile refs；非法、跨 Profile ID 或不支持写入的版本返回 `rejected`。
-4. 校验 expected state：create 要求唯一键 absent；其他操作要求 `{state_id,state_revision}`、`expected_profile_ref` 和权威状态完全匹配。不存在、已存在或任一不匹配返回 `conflict`。
+4. 校验 expected state：create 要求局部唯一键 absent；其他操作要求 `{state_id,state_revision}`、`expected_profile_ref`、`authority_scope_ref`、`runtime_context_ref` 和权威状态完全匹配。不存在、已存在或任一不匹配返回 `conflict`。
 5. 按上表判定：合法改变返回状态变更计划；目标已满足返回 `no_change`；禁止转换返回 `rejected`。
 6. 只有状态变更计划继续进入 ControlPolicy、ChangeSet、fencing 和原子提交；`no_change` 不增加 revision/epoch、不创建执行 lease，也不伪装为新的授权。
 
@@ -116,11 +121,11 @@ Profile 新 revision 出现时状态继续绑定旧 Ref。rebind 必须由显式
 4. expected state 正确且目标已满足，返回 `no_change`，不建 revision，也不授予新 lease。
 5. 当前状态、TransitionRecord、幂等结果和 epoch fencing 必须比较并交换、原子可见。
 
-并发 summon/archive、close/rebind、restore/archive 只有一个提交者，失败者重新读取并重新授权，不能自动改 expected state。每个副作用的 admission 与 commit 都再次原子验证权威 `status == active` 和 lease epoch；若状态已提交但进程/会话清理失败，权威状态仍是新状态，旧 epoch 无法提交，清理可重试且不得静默恢复 active。
+同一局部记录上的并发 summon/archive、close/rebind、restore/archive 只有一个提交者，失败者重新读取并重新授权，不能自动改 expected state；不同 runtime_context_ref 的状态转换不互相覆盖或获得彼此的 lease。每个副作用的 admission 与 commit 都再次原子验证权威 `status == active` 和 lease epoch；若状态已提交但进程/会话清理失败，权威状态仍是新状态，旧 epoch 无法提交，清理可重试且不得静默恢复 active。
 
 ### 只读与未来写入数据流
 
-M1 可先实现：原始 bytes 校验、显式固定 Profile 快照引用校验、确定性摘要/可见性、纯函数转换预演，以及记录/revision/epoch 一致性校验。它们不得访问模型、记忆、团队、网络、项目文件或策略服务，也不得创建状态、ChangeSet、lease 或审计事实。
+M1 可先实现：原始 bytes 校验、显式固定 Profile 快照引用校验、确定性局部摘要/可见性、仅消费控制平面已授权局部投影集的全局只读 aggregate、纯函数转换预演，以及记录/revision/epoch 一致性校验。它们不得访问模型、记忆、团队、网络、项目文件或策略服务，也不得创建状态、ChangeSet、lease 或审计事实。
 
 ```text
 TransitionIntent
@@ -138,13 +143,13 @@ TransitionIntent
 
 ### 一个或 N 个 Agent
 
-每个 Agent 有独立 Profile ID、state ID、revision 和 epoch。批量召唤是 N 个独立子变更的受控组合，必须声明原子全成功或逐 Agent 部分结果，不能静默部分成功。Agent 之间不得共享 lease、Profile revision、私有记忆或授权。
+每个局部状态有独立 state ID、revision 和 epoch；同一 Agent 的不同上下文也不共享这些值。每个 Agent 有独立 Profile ID，多个 Agent 不得共享 Profile revision、私有记忆或授权。批量召唤可以覆盖一个或 N 个 Agent 的一个或 N 个显式局部状态，必须声明原子全成功或逐状态部分结果，不能静默部分成功。全局 aggregate 只显示调用者已获授权的局部结果，不参与批量命令的写入或授权。
 
 ## 公共接口
 
 后续 contract Issue 在 `packages/agent-runtime` 分阶段交付：
 
-- State、Ref、TransitionIntent、TransitionRecord JSON Schema；
+- 局部 State、Ref、TransitionIntent、TransitionRecord 与只读 aggregate JSON Schema；State 与 Intent 均须携带 `authority_scope_ref` 和 `runtime_context_ref`；
 - 状态、操作、结果与稳定 `agent_runtime_state.*` 诊断；
 - 显式 Profile reference snapshot、validation result、fixtures、JCS lock；
 - 纯函数 `validate_state`、`validate_profile_reference`、`plan_transition`、`state_summary`，以及 Python/TypeScript 对等 API 与 differential runner。
@@ -154,7 +159,7 @@ TransitionIntent
 ## 安全、溯源与控制策略
 
 - persona、目标、角色、工作风格、能力声明/证据、来源、信任和 active 状态都不授权模型、文件、网络、设备、项目或工具；平台上限优先。
-- 每次参与仍需独立 ProjectAssignment、ControlPolicy、ModelBinding 和 RuntimeKernel lease。
+- 每次参与仍需独立 ProjectAssignment、ControlPolicy、ModelBinding 和 RuntimeKernel lease。`aggregate` 的读取还需要控制平面显式给出可见的局部投影集；它不得成为枚举其他项目/会话或绕过该可见性过滤的旁路。
 - reason、actor/scope refs 和外部字符串不可信；日志不得回显隐私或凭据。
 - applied、no_change、conflict、rejected、indeterminate 都有稳定结果；成功事件关联 actor、Policy、ChangeSet、provenance，无权请求保留最小安全审计。
 - 回滚创建新受控转换，不覆盖历史。永久删除不属于状态机，未来必须有影响预览、显式高风险授权、依赖/保留检查、导出选择、审计和可恢复期；契约缺失时 fail closed。
@@ -174,13 +179,13 @@ TransitionIntent
 
 会话隔离直观，但无法恢复同一长期个体，记忆、证据与关系分裂，不采用。
 
-### C. 每项目或每会话一份 RuntimeState
+### C. 每项目或每会话一份 RuntimeState（已选择）
 
-不同项目可独立 active/dormant，但全局“关闭这个 Agent”没有唯一答案，需聚合多个状态，也易混入 ProjectAssignment/会话。若选择 C，须增加全局 aggregate + 局部 presence 两层契约。
+用户于 2026-08-27 选择本方案。同一长期 Agent 可在多个明确上下文独立 active/dormant/archived；局部状态的唯一键、CAS、审计与 fencing 均留在该上下文。全局 aggregate 只读且仅由调用者已获授权的局部状态投影派生；它不替代 ProjectAssignment、会话、权限或状态写入，也不让“关闭全部”成为隐式操作。
 
-### D. 控制域内每个长期 Agent 一份 RuntimeState（推荐）
+### D. 控制域内每个长期 Agent 一份 RuntimeState（未采用）
 
-全局唤醒状态清晰，项目参与仍由 ProjectAssignment 表达，符合 NPC 式管理；权威并发和 fencing 顺序唯一。项目局部暂停由 assignment/lease 表达。
+该方案便于得到唯一全局唤醒状态，但无法表达同一长期 Agent 在不同工程或会话同时保持不同可参与性；它与已选择的用户管理方式不符。
 
 ### E. 只用 active 布尔值
 
@@ -188,7 +193,7 @@ TransitionIntent
 
 ## 迁移与发布
 
-1. 产品负责人决定粒度并接受/修订 RFC；未接受前不实现。
+1. 产品负责人已于 2026-08-27 选择方案 C 并接受本 RFC；后续 ADR 必须固化局部状态与只读 aggregate 的边界。
 2. 接受后创建 ADR，再拆 contract Issue。
 3. 先交付 schema、诊断、fixtures、lock、无副作用 verifier；审查后实现双语言消费者和差分测试。
 4. 再实现 durable CAS、idempotency journal、ChangeSet、Policy 和 epoch fencing，feature flag 默认关闭。
@@ -200,8 +205,8 @@ TransitionIntent
 
 ## 测试计划
 
-1. 一个/N 个 Agent 的 Profile、state、revision、epoch 独立。
-2. Profile 无状态与 dormant 区分；创建默认 dormant。
+1. 一个/N 个 Agent 的 Profile、局部 state、revision、epoch 独立；同一 Agent 在两个不同 runtime_context_ref 中、或相同 context 而不同 authority_scope_ref 中，可同时具有不同状态，且各处 CAS/epoch/lease 互不影响。
+2. Profile 在某局部上下文无状态与该上下文 dormant 区分；创建默认 dormant，且不改变其在其他上下文的状态。
 3. 合法链 `dormant → active → dormant → archived → dormant → active` 的 revision/epoch 正确。
 4. 直接 active↔archived、非法 rebind、跨 ID、deleted 被拒绝。
 5. 新 Profile revision 不自动 rebind；dormant 显式 rebind 可审计且不改 epoch。
@@ -211,21 +216,18 @@ TransitionIntent
 9. 转换/rebind 不删除或改写 Profile、记忆、证据、模型、团队、关系、项目对象。
 10. persona、角色、能力、来源、信任和 active 不产生权限/模型调用。
 11. 未知 major 拒绝；较新同 major 只读但禁止写入。
-12. 默认导出排除 state；快照导入不自动 active；冲突不静默合并。
+12. 默认导出排除 authority-local state；局部快照导入不自动 active；冲突不静默合并；aggregate 不被导出为可写事实，且 aggregate fixture/summary 只能使用已授权的合成局部投影集，不能泄露无权上下文。
 13. 在预演、状态、审计、清理阶段注入崩溃，恢复后只有一个权威状态/幂等结果。
 14. 模拟会话无法终止和网络分区，证明 epoch fencing 阻断旧副作用。
 15. Policy 缺失、ChangeSet 未批准、Profile 不完整、CAS/审计失败均 fail closed。
-16. Python/TypeScript 对 fixtures、诊断、summary、plan 一致并在 Windows/Linux CI 运行。
+16. Python/TypeScript 对 fixtures、诊断、summary、plan 一致并在 Windows/Linux CI 运行；aggregate 的可见性过滤、空集和无权上下文不得暴露也必须逐字段一致。
 
-## 待产品负责人决定
+## 已接受的产品决定
 
-### 生命周期粒度（唯一重大取舍）
+产品负责人于 2026-08-27 选择方案 C：`AgentRuntimeState` 的权威记录按 `(authority_scope_ref, runtime_context_ref, AgentProfile.id)` 局部唯一；同一长期 Agent 可在不同项目或会话上下文独立 active、dormant 或 archived。全局 aggregate 是仅由控制平面显式提供的已授权局部投影集派生的只读视图，不具有 revision、epoch、lease、权限或写入权，也不得暴露无权上下文。
 
-- **方案 D，推荐**：控制域内每个长期 `AgentProfile.id` 一份权威 RuntimeState；项目局部参与由 ProjectAssignment 和 lease 管理。
-- **方案 C**：每项目/会话一份 RuntimeState；须新增全局 aggregate + 局部 presence 两层模型后再设计契约。
-
-D 可让机器契约直接按本文实施。C 会改变对象身份、唯一性、批量召唤、关闭语义、并发和 UI，必须修订 RFC，不能留到实现阶段。其余安全默认为：创建 dormant；active/archived 必经 dormant；rebind 仅 dormant；导入不自动 active；删除独立高风险。
+其余安全选择为：创建 dormant；active/archived 必经 dormant；rebind 仅 dormant；导入不自动 active；删除独立高风险。
 
 ## 决定
 
-草案阶段保持为空。产品负责人选择生命周期粒度并接受本 RFC 后，创建 ADR，并拆分机器契约、双语言消费者、控制平面写入与 IDE 召唤体验 Issues。
+本 RFC 已接受。下一步创建 ADR，随后拆分机器契约、双语言只读消费者、控制平面写入与 IDE 召唤体验 Issues；在这些独立 Issue 完成前，本 RFC 不实现状态切换。
