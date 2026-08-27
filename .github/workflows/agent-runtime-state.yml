@@ -1,0 +1,42 @@
+name: AgentRuntimeState read-only consumers
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/agent-runtime-state.yml"
+      - "packages/agent-runtime/**"
+      - "scripts/agent-runtime-state/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/agent-runtime-state.yml"
+      - "packages/agent-runtime/**"
+      - "scripts/agent-runtime-state/**"
+
+permissions:
+  contents: read
+
+jobs:
+  consumers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONNOUSERSITE: "1"
+      npm_config_offline: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: python -B -m unittest packages/agent-runtime/tests/test_agent_runtime_state_contract.py
+      - run: python -B -m unittest packages/agent-runtime/tests/python/test_agent_runtime_state_runtime.py
+      - run: node --test packages/agent-runtime/tests/ts/agent-runtime-state-runtime.test.ts
+      - run: python -B packages/agent-runtime/contracts/tools/verify_agent_runtime_state_contract.py --root packages/agent-runtime/contracts/agent-runtime-state/1.0.0
+      - run: python -B scripts/agent-runtime-state/differential.py
