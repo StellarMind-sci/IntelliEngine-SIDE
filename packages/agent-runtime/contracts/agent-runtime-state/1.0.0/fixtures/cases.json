@@ -145,6 +145,69 @@
       }
     },
     {
+      "case_id": "archive-dormant-change",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+          "state_revision": 1,
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "status": "dormant",
+          "activation_epoch": 0,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c1",
+          "operation": "archive",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": [],
+        "plan": {
+          "operation": "archive",
+          "disposition": "change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
+          "target_status": "archived",
+          "state_revision": 2,
+          "activation_epoch": 0
+        }
+      }
+    },
+    {
       "case_id": "create-default-dormant",
       "input": {
         "mode": "transition",
@@ -171,6 +234,13 @@
         "plan": {
           "operation": "create_state",
           "disposition": "change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": null,
           "target_status": "dormant",
           "state_revision": 1,
           "activation_epoch": 0
@@ -407,10 +477,188 @@
         "plan": {
           "operation": "close",
           "disposition": "no_change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
           "target_status": "dormant",
           "state_revision": 1,
           "activation_epoch": 0
         }
+      }
+    },
+    {
+      "case_id": "rebind-active-rejected",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+          "state_revision": 2,
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "status": "active",
+          "activation_epoch": 1,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c4",
+          "operation": "rebind_profile",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 2
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "target_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 2
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "valid",
+        "operation_outcome": "rejected",
+        "issues": [
+          {
+            "code": "agent_runtime_state.forbidden_transition",
+            "path": "/operation",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "rebind-archived-rejected",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a3",
+          "state_revision": 3,
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "session:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          },
+          "status": "archived",
+          "activation_epoch": 1,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c5",
+          "operation": "rebind_profile",
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "session:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a3",
+            "state_revision": 3
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          },
+          "target_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 2
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "valid",
+        "operation_outcome": "rejected",
+        "issues": [
+          {
+            "code": "agent_runtime_state.forbidden_transition",
+            "path": "/operation",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "rebind-cross-profile-id-rejected",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+          "state_revision": 1,
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "status": "dormant",
+          "activation_epoch": 0,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c6",
+          "operation": "rebind_profile",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "target_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "invalid",
+        "operation_outcome": "rejected",
+        "issues": [
+          {
+            "code": "agent_runtime_state.invalid_rebind",
+            "path": "/target_profile_ref",
+            "severity": "error"
+          }
+        ]
       }
     },
     {
@@ -464,6 +712,16 @@
         "plan": {
           "operation": "rebind_profile",
           "disposition": "change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
           "target_status": "dormant",
           "state_revision": 2,
           "activation_epoch": 0,
@@ -525,6 +783,16 @@
         "plan": {
           "operation": "rebind_profile",
           "disposition": "no_change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
           "target_status": "dormant",
           "state_revision": 1,
           "activation_epoch": 0,
@@ -532,6 +800,236 @@
             "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
             "revision": 1
           }
+        }
+      }
+    },
+    {
+      "case_id": "record-local-key-mismatch",
+      "input": {
+        "mode": "record",
+        "record": {
+          "contract_version": "1.0.0",
+          "record_id": "019f5e3a-7abc-7def-8abc-0123456789d3",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789d2",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "operation": "close",
+          "outcome": "applied",
+          "before_state": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 2,
+            "status": "active",
+            "authority_scope_ref": "control-scope:alpha",
+            "runtime_context_ref": "project:algebra",
+            "agent_profile_ref": {
+              "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+              "revision": 1
+            }
+          },
+          "after_state": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 3,
+            "status": "dormant",
+            "authority_scope_ref": "control-scope:alpha",
+            "runtime_context_ref": "project:algebra",
+            "agent_profile_ref": {
+              "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+              "revision": 1
+            }
+          },
+          "provenance_ref": "provenance:synthetic"
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "record",
+        "object_result": "invalid",
+        "operation_outcome": "succeeded",
+        "issues": [
+          {
+            "code": "agent_runtime_state.record_local_mismatch",
+            "path": "/before_state",
+            "severity": "error"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "record-valid-local-transition",
+      "input": {
+        "mode": "record",
+        "record": {
+          "contract_version": "1.0.0",
+          "record_id": "019f5e3a-7abc-7def-8abc-0123456789d1",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789d2",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "operation": "close",
+          "outcome": "applied",
+          "before_state": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 2,
+            "status": "active",
+            "authority_scope_ref": "control-scope:alpha",
+            "runtime_context_ref": "project:algebra",
+            "agent_profile_ref": {
+              "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+              "revision": 1
+            }
+          },
+          "after_state": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 3,
+            "status": "dormant",
+            "authority_scope_ref": "control-scope:alpha",
+            "runtime_context_ref": "project:algebra",
+            "agent_profile_ref": {
+              "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+              "revision": 1
+            }
+          },
+          "provenance_ref": "provenance:synthetic"
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "record",
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": []
+      }
+    },
+    {
+      "case_id": "restore-archived-change",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a3",
+          "state_revision": 3,
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "session:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          },
+          "status": "archived",
+          "activation_epoch": 1,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c2",
+          "operation": "restore",
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "session:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a3",
+            "state_revision": 3
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": [],
+        "plan": {
+          "operation": "restore",
+          "disposition": "change",
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "session:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ac",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a3",
+            "state_revision": 3
+          },
+          "target_status": "dormant",
+          "state_revision": 4,
+          "activation_epoch": 1
+        }
+      }
+    },
+    {
+      "case_id": "same-context-different-scope-independent",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a4",
+          "state_revision": 1,
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "status": "dormant",
+          "activation_epoch": 0,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c7",
+          "operation": "summon",
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a4",
+            "state_revision": 1
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": [],
+        "plan": {
+          "operation": "summon",
+          "disposition": "change",
+          "authority_scope_ref": "control-scope:beta",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a4",
+            "state_revision": 1
+          },
+          "target_status": "active",
+          "state_revision": 2,
+          "activation_epoch": 1
         }
       }
     },
@@ -681,6 +1179,69 @@
       }
     },
     {
+      "case_id": "summon-active-no-change",
+      "input": {
+        "mode": "transition",
+        "state": {
+          "contract_version": "1.0.0",
+          "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+          "state_revision": 2,
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "status": "active",
+          "activation_epoch": 1,
+          "last_transition_ref": "agent-runtime-transition:synthetic"
+        },
+        "intent": {
+          "contract_version": "1.0.0",
+          "request_id": "019f5e3a-7abc-7def-8abc-0123456789c3",
+          "operation": "summon",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "expected_state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 2
+          },
+          "expected_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          }
+        }
+      },
+      "expected": {
+        "interface": "agent_runtime_state",
+        "mode": "transition",
+        "object_result": "valid",
+        "operation_outcome": "succeeded",
+        "issues": [],
+        "plan": {
+          "operation": "summon",
+          "disposition": "no_change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:algebra",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1",
+            "state_revision": 2
+          },
+          "target_status": "active",
+          "state_revision": 2,
+          "activation_epoch": 1
+        }
+      }
+    },
+    {
       "case_id": "summon-increases-local-epoch",
       "input": {
         "mode": "transition",
@@ -727,6 +1288,16 @@
         "plan": {
           "operation": "summon",
           "disposition": "change",
+          "authority_scope_ref": "control-scope:alpha",
+          "runtime_context_ref": "project:geometry",
+          "agent_profile_ref": {
+            "id": "018f5e3a-7abc-7def-8abc-0123456789ab",
+            "revision": 1
+          },
+          "state_ref": {
+            "state_id": "019f5e3a-7abc-7def-8abc-0123456789a2",
+            "state_revision": 1
+          },
           "target_status": "active",
           "state_revision": 2,
           "activation_epoch": 1

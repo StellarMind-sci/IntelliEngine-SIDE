@@ -10,12 +10,12 @@
     {
       "path": "diagnostics/agent-runtime-state.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "906389ba9fe2c84df092145e271eb172811508b00e26dbd06865107715f7d0d0"
+      "sha256": "37ac94a8de54d468d698cd374d9610d08378a4b01da6ae5f967f0050b734373d"
     },
     {
       "path": "fixtures/cases.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "60b9c2a348f5495f0a3a1d62fe1fa197277499726fd4df6404b41aa509f856c6"
+      "sha256": "aa93ddeb1d85d037231d7c98eba5a5784850731aaf0b15c870e6fe3d76085843"
     },
     {
       "path": "schemas/agent-profile-ref.schema.json",
@@ -65,17 +65,17 @@
     {
       "path": "schemas/transition-plan.schema.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "37b261de998aa0515ce0cd540db31f25cecf5fbb80a0cc7ce62c008d7c116125"
+      "sha256": "b30c04ce8445ed60da0f428059ea3e59fa4d44d529d8bbd80872569e92a54e0e"
     },
     {
       "path": "schemas/transition-record.schema.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "a5ec151d47761379c19228094f5cf27f4a50dbc3982b491f4b1e774c0cf79ed5"
+      "sha256": "c0334ad04cba39c729fb6bb929bc5802fa6722e8753046c6836bc6ee87279818"
     },
     {
       "path": "schemas/validation-result.schema.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "36d47703b5e4e003a3ac289cac79f7f1ac57ba917d633c692fc29810e0851a95"
+      "sha256": "85c91610401f36cd2be3252520aab3c528593489b39d0c5ac93fbea539bba2dc"
     }
   ]
 }

@@ -49,14 +49,16 @@ class AgentRuntimeStateContractTests(unittest.TestCase):
     def test_contract_is_a_closed_offline_machine_profile(self) -> None:
         report = self.verifier.verify_contract(CONTRACT_ROOT)
 
-        self.assertEqual(report, {"case_count": 18, "contract_version": "1.0.0"})
+        self.assertEqual(report, {"case_count": 27, "contract_version": "1.0.0"})
 
     def test_local_transitions_are_pure_and_keep_contexts_independent(self) -> None:
         summon = self.verifier.validate_case(self.case("summon-increases-local-epoch"), CONTRACT_ROOT)
         rebind = self.verifier.validate_case(self.case("rebind-dormant-next-revision"), CONTRACT_ROOT)
         mismatch = self.verifier.validate_case(self.case("local-key-mismatch"), CONTRACT_ROOT)
 
-        self.assertEqual(summon["plan"], {"operation": "summon", "disposition": "change", "target_status": "active", "state_revision": 2, "activation_epoch": 1})
+        self.assertEqual({key: summon["plan"][key] for key in ("operation", "disposition", "target_status", "state_revision", "activation_epoch")}, {"operation": "summon", "disposition": "change", "target_status": "active", "state_revision": 2, "activation_epoch": 1})
+        self.assertEqual(summon["plan"]["runtime_context_ref"], "project:geometry")
+        self.assertEqual(summon["plan"]["state_ref"]["state_revision"], 1)
         self.assertEqual(rebind["plan"]["activation_epoch"], 0)
         self.assertEqual(rebind["plan"]["target_profile_ref"]["revision"], 2)
         self.assertEqual(mismatch["operation_outcome"], "conflict")
@@ -108,6 +110,45 @@ class AgentRuntimeStateContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "lock closure mismatch"):
                 self.verifier.verify_contract(copied)
 
+    def test_verifier_rejects_missing_local_pointer_and_remote_schema_ref(self) -> None:
+        for reference in ("#/does-not-exist", "https://example.invalid/remote.json"):
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as temporary_directory:
+                copied = Path(temporary_directory) / "contract"
+                shutil.copytree(CONTRACT_ROOT, copied)
+                schema_path = copied / "schemas" / "agent-runtime-state.schema.json"
+                schema = json.loads(schema_path.read_text(encoding="utf-8"))
+                schema["properties"]["status"]["$ref"] = reference
+                schema_path.write_text(json.dumps(schema), encoding="utf-8")
+                self.refresh_lock(copied)
+                with self.assertRaisesRegex(ValueError, "invalid schema reference"):
+                    self.verifier.verify_contract(copied)
+
+    def test_plan_and_record_schema_bind_the_scoped_local_identity(self) -> None:
+        plan_schema = json.loads((CONTRACT_ROOT / "schemas" / "transition-plan.schema.json").read_text(encoding="utf-8"))
+        record_schema = json.loads((CONTRACT_ROOT / "schemas" / "transition-record.schema.json").read_text(encoding="utf-8"))
+        bare_plan = {"operation": "close", "disposition": "change", "target_status": "dormant", "state_revision": 3, "activation_epoch": 1}
+        bare_record = {"contract_version": "1.0.0", "record_id": "019f5e3a-7abc-7def-8abc-0123456789d1", "request_id": "019f5e3a-7abc-7def-8abc-0123456789d2", "state_id": "019f5e3a-7abc-7def-8abc-0123456789a1", "operation": "close", "outcome": "applied", "provenance_ref": "provenance:synthetic"}
+        self.assertFalse(self.verifier.is_valid(bare_plan, plan_schema, plan_schema))
+        self.assertFalse(self.verifier.is_valid(bare_record, record_schema, record_schema))
+
+    def test_transition_rejects_compatible_read_state_for_write_previews(self) -> None:
+        state = copy.deepcopy(self.case("state-compatible-read")["input"]["state"])
+        intent = copy.deepcopy(self.case("no-change-close-dormant")["input"]["intent"])
+        intent["expected_state_ref"] = {"state_id": state["state_id"], "state_revision": state["state_revision"]}
+        result = self.verifier.plan_transition(state, intent)
+        self.assertEqual((result["object_result"], result["operation_outcome"]), ("invalid", "rejected"))
+        self.assertEqual(result["issues"][0]["code"], "agent_runtime_state.unsupported_contract_version")
+
+    def test_aggregate_applies_global_i_json_budget_before_per_state_iteration(self) -> None:
+        base = copy.deepcopy(self.case("state-registered-not-dormant")["input"]["state"])
+        visible_states = []
+        for index in range(3000):
+            state = copy.deepcopy(base)
+            state["state_id"] = f"019f5e3a-7abc-7def-8abc-{index:012x}"
+            state["runtime_context_ref"] = f"project:budget-{index:05d}" + ("x" * 230)
+            visible_states.append(state)
+        result = self.verifier.aggregate_visible_states({"contract_version": "1.0.0", "visible_states": visible_states})
+        self.assertEqual(result["issues"][0]["code"], "agent_runtime_state.invalid_aggregate_input")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

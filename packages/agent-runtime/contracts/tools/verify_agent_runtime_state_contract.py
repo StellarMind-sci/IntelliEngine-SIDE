@@ -224,10 +224,11 @@ def _intent_error(intent: Any) -> tuple[str, str] | None:
     return None
 
 
-def _plan(operation: str, disposition: str, before: JsonObject | None, *, target_status: str | None = None, target_profile_ref: JsonObject | None = None) -> JsonObject:
+def _plan(intent: JsonObject, disposition: str, before: JsonObject | None, *, target_status: str | None = None, target_profile_ref: JsonObject | None = None) -> JsonObject:
+    operation = intent["operation"]
     if before is None:
-        return {"operation": operation, "disposition": disposition, "target_status": target_status, "state_revision": 1, "activation_epoch": 0}
-    return {"operation": operation, "disposition": disposition, "target_status": target_status or before["status"], "state_revision": before["state_revision"] + (1 if disposition == "change" else 0), "activation_epoch": before["activation_epoch"] + (1 if disposition == "change" and target_status == "active" else 0), **({"target_profile_ref": target_profile_ref} if target_profile_ref is not None else {})}
+        return {"operation": operation, "disposition": disposition, "authority_scope_ref": intent["authority_scope_ref"], "runtime_context_ref": intent["runtime_context_ref"], "agent_profile_ref": intent["agent_profile_ref"], "state_ref": None, "target_status": target_status, "state_revision": 1, "activation_epoch": 0}
+    return {"operation": operation, "disposition": disposition, "authority_scope_ref": intent["authority_scope_ref"], "runtime_context_ref": intent["runtime_context_ref"], "agent_profile_ref": intent["agent_profile_ref"], "state_ref": _state_ref(before), "target_status": target_status or before["status"], "state_revision": before["state_revision"] + (1 if disposition == "change" else 0), "activation_epoch": before["activation_epoch"] + (1 if disposition == "change" and target_status == "active" else 0), **({"target_profile_ref": target_profile_ref} if target_profile_ref is not None else {})}
 
 
 def plan_transition(state: object | None, intent: object, schema: object | None = None) -> JsonObject:
@@ -237,10 +238,12 @@ def plan_transition(state: object | None, intent: object, schema: object | None 
     operation = intent["operation"]
     if operation == "create_state":
         if state is not None: return _result("transition", "valid", "conflict", _issue("agent_runtime_state.local_state_exists", "/expected_state"))
-        return _result("transition", "valid", plan=_plan(operation, "change", None, target_status="dormant"))
+        return _result("transition", "valid", plan=_plan(intent, "change", None, target_status="dormant"))
     validation = validate_state(state, schema)
+    if validation["object_result"] == "compatible_read":
+        return _result("transition", "invalid", "rejected", _issue("agent_runtime_state.unsupported_contract_version", "/contract_version"))
     if validation["object_result"] != "valid":
-        return _result("transition", validation["object_result"], "rejected", validation["issues"][0] if validation["issues"] else None)
+        return _result("transition", "invalid", "rejected", validation["issues"][0] if validation["issues"] else None)
     assert isinstance(state, dict)
     if any(intent[name] != state[name] for name in ("authority_scope_ref", "runtime_context_ref")):
         return _result("transition", "valid", "conflict", _issue("agent_runtime_state.local_state_mismatch", "/runtime_context_ref"))
@@ -258,16 +261,16 @@ def plan_transition(state: object | None, intent: object, schema: object | None 
     if operation == "rebind_profile":
         if status != "dormant": return _result("transition", "valid", "rejected", _issue("agent_runtime_state.forbidden_transition", "/operation"))
         target = intent["target_profile_ref"]
-        if target == state["agent_profile_ref"]: return _result("transition", "valid", plan=_plan(operation, "no_change", state, target_profile_ref=target))
-        return _result("transition", "valid", plan=_plan(operation, "change", state, target_profile_ref=target))
+        if target == state["agent_profile_ref"]: return _result("transition", "valid", plan=_plan(intent, "no_change", state, target_profile_ref=target))
+        return _result("transition", "valid", plan=_plan(intent, "change", state, target_profile_ref=target))
     outcome = transitions[operation][status]
     if outcome == "rejected": return _result("transition", "valid", "rejected", _issue("agent_runtime_state.forbidden_transition", "/operation"))
     target = {"summon": "active", "close": "dormant", "archive": "archived", "restore": "dormant"}[operation]
-    return _result("transition", "valid", plan=_plan(operation, outcome, state, target_status=target))
+    return _result("transition", "valid", plan=_plan(intent, outcome, state, target_status=target))
 
 
 def aggregate_visible_states(value: object, schema: object | None = None) -> JsonObject:
-    if not isinstance(value, dict) or set(value) != {"contract_version", "visible_states"} or _semver(value.get("contract_version")) is None:
+    if not isinstance(value, dict) or not _within_limits(value) or set(value) != {"contract_version", "visible_states"} or _semver(value.get("contract_version")) is None:
         return _invalid("aggregate", "agent_runtime_state.invalid_aggregate_input", "")
     version = _semver(value["contract_version"])
     if version is None or version[0] != 1:
@@ -287,6 +290,33 @@ def aggregate_visible_states(value: object, schema: object | None = None) -> Jso
     return _result("aggregate", "valid", aggregate={"contract_version": "1.0.0", "visible_state_count": len(states), "active_count": counts["active"], "dormant_count": counts["dormant"], "archived_count": counts["archived"]})
 
 
+def validate_transition_record(record: object, schema: object | None = None) -> JsonObject:
+    mode = "record"
+    fields = {"contract_version", "record_id", "request_id", "authority_scope_ref", "runtime_context_ref", "agent_profile_ref", "operation", "outcome", "before_state", "after_state", "provenance_ref"}
+    if not isinstance(record, dict) or not _within_limits(record):
+        return _invalid(mode, "agent_runtime_state.invalid_json", "")
+    if set(record) != fields or _semver(record.get("contract_version")) != (1, 0, 0):
+        return _invalid(mode, "agent_runtime_state.invalid_transition_record", "")
+    if not all(isinstance(record.get(name), str) and UUID_V7.fullmatch(record[name]) is not None for name in ("record_id", "request_id")):
+        return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/record_id")
+    if not all(isinstance(record.get(name), str) and record[name] for name in ("authority_scope_ref", "runtime_context_ref", "provenance_ref")) or not _profile_ref_valid(record.get("agent_profile_ref")):
+        return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/authority_scope_ref")
+    if record.get("operation") not in {"create_state", "summon", "close", "archive", "restore", "rebind_profile"} or record.get("outcome") not in {"applied", "no_change", "conflict", "rejected"}:
+        return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/operation")
+    snapshots = []
+    for name in ("before_state", "after_state"):
+        snapshot = record[name]
+        if snapshot is None:
+            snapshots.append(None); continue
+        required = {"state_id", "state_revision", "status", "authority_scope_ref", "runtime_context_ref", "agent_profile_ref"}
+        if not isinstance(snapshot, dict) or set(snapshot) != required or not isinstance(snapshot.get("state_id"), str) or UUID_V7.fullmatch(snapshot["state_id"]) is None or isinstance(snapshot.get("state_revision"), bool) or not isinstance(snapshot.get("state_revision"), int) or snapshot["state_revision"] < 1 or snapshot.get("status") not in {"active", "dormant", "archived"} or not _profile_ref_valid(snapshot.get("agent_profile_ref")):
+            return _invalid(mode, "agent_runtime_state.invalid_transition_record", f"/{name}")
+        if any(snapshot[key] != record[key] for key in ("authority_scope_ref", "runtime_context_ref", "agent_profile_ref")):
+            return _invalid(mode, "agent_runtime_state.record_local_mismatch", f"/{name}")
+        snapshots.append(snapshot)
+    if snapshots[0] is not None and snapshots[1] is not None and snapshots[0]["state_id"] != snapshots[1]["state_id"]:
+        return _invalid(mode, "agent_runtime_state.record_local_mismatch", "/after_state/state_id")
+    return _result(mode, "valid")
 def validate_case(case: dict, root: Path) -> JsonObject:
     value = case.get("input") if isinstance(case, dict) else None
     if not isinstance(value, dict): return _invalid("state", "agent_runtime_state.invalid_json", "/input")
@@ -297,6 +327,7 @@ def validate_case(case: dict, root: Path) -> JsonObject:
     if mode == "state": return validate_state(value.get("state"), _state_schema(root))
     if mode == "transition": return plan_transition(value.get("state"), value.get("intent"), _state_schema(root))
     if mode == "aggregate": return aggregate_visible_states(value.get("aggregate_input"), _state_schema(root))
+    if mode == "record": return validate_transition_record(value.get("record"))
     return _invalid("state", "agent_runtime_state.invalid_json", "/input/mode")
 
 
@@ -324,14 +355,48 @@ def _verify_lock(root: Path) -> None:
         if not isinstance(entry, dict) or set(entry) != {"path", "digest_kind", "sha256"} or entry.get("digest_kind") != "jcs_sha256" or entry.get("sha256") != _jcs_sha256(_artifact_path(root, relative)): raise ValueError("lock digest mismatch")
 
 
-def _validate_schema_refs(value: Any) -> None:
+def _json_pointer_exists(document: Any, fragment: str) -> bool:
+    if fragment == "":
+        return True
+    if not fragment.startswith("/"):
+        return False
+    current = document
+    for token in fragment[1:].split("/"):
+        token = token.replace("~1", "/").replace("~0", "~")
+        if isinstance(current, dict) and token in current:
+            current = current[token]
+        elif isinstance(current, list) and token.isdigit() and (token == "0" or not token.startswith("0")) and int(token) < len(current):
+            current = current[int(token)]
+        else:
+            return False
+    return True
+
+
+def _validate_schema_refs(value: Any, root: Path, source_relative: str, declared: set[str]) -> None:
     if isinstance(value, list):
-        for item in value: _validate_schema_refs(item)
-    elif isinstance(value, dict):
-        reference = value.get("$ref")
-        if reference is not None and (not isinstance(reference, str) or not reference.startswith("#")):
+        for item in value:
+            _validate_schema_refs(item, root, source_relative, declared)
+        return
+    if not isinstance(value, dict):
+        return
+    reference = value.get("$ref")
+    if reference is not None:
+        if not isinstance(reference, str):
             raise ValueError("invalid schema reference")
-        for item in value.values(): _validate_schema_refs(item)
+        if reference.startswith("#"):
+            target_relative, fragment = source_relative, reference[1:]
+        else:
+            target, separator, fragment = reference.partition("#")
+            if not target or not separator or ":" in target or "\\" in target:
+                raise ValueError("invalid schema reference")
+            candidate = (PurePosixPath(source_relative).parent / PurePosixPath(target)).as_posix()
+            if candidate not in declared:
+                raise ValueError("invalid schema reference")
+            target_relative = candidate
+        if not _json_pointer_exists(_load(_artifact_path(root, target_relative)), fragment):
+            raise ValueError("invalid schema reference")
+    for item in value.values():
+        _validate_schema_refs(item, root, source_relative, declared)
 
 
 def _validate_catalog(catalog: Any) -> dict[str, JsonObject]:
@@ -354,7 +419,7 @@ def verify_contract(root: Path) -> JsonObject:
     for relative in REQUIRED_SCHEMA_PATHS.values():
         schema = _load(_artifact_path(root, relative))
         if not isinstance(schema, dict) or schema.get("type") != "object" or schema.get("additionalProperties") is not False: raise ValueError("invalid contract schema")
-        _validate_schema_refs(schema)
+        _validate_schema_refs(schema, root, relative, set(REQUIRED_SCHEMA_PATHS.values()))
     catalog = _validate_catalog(_load(_artifact_path(root, manifest["diagnostics"]["agent_runtime_state"])))
     suite = _load(_artifact_path(root, manifest["fixtures"])); cases = suite.get("cases") if isinstance(suite, dict) else None; probes = suite.get("schema_probes") if isinstance(suite, dict) else None
     if not isinstance(suite, dict) or set(suite) != {"contract_version", "cases", "schema_probes"} or suite.get("contract_version") != "1.0.0" or not isinstance(cases, list) or not isinstance(probes, list) or not cases: raise ValueError("fixture suite is invalid")
