@@ -10,12 +10,12 @@
     {
       "path": "diagnostics/agent-runtime-state.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "37ac94a8de54d468d698cd374d9610d08378a4b01da6ae5f967f0050b734373d"
+      "sha256": "4f90d15b8b37ae9aa3dd3879f7679be6a89cba702931a85656ea257c24d48040"
     },
     {
       "path": "fixtures/cases.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "aa93ddeb1d85d037231d7c98eba5a5784850731aaf0b15c870e6fe3d76085843"
+      "sha256": "af07364ed0f2164ea7729fb7ce8f8341198fa540aa996e335e0c7ae60735c9f8"
     },
     {
       "path": "schemas/agent-profile-ref.schema.json",
@@ -70,7 +70,7 @@
     {
       "path": "schemas/transition-record.schema.json",
       "digest_kind": "jcs_sha256",
-      "sha256": "c0334ad04cba39c729fb6bb929bc5802fa6722e8753046c6836bc6ee87279818"
+      "sha256": "eacfec838ed568a1424ae4a1c7ed6a9ad240f2907662e9d5879a013e3cb064a2"
     },
     {
       "path": "schemas/validation-result.schema.json",

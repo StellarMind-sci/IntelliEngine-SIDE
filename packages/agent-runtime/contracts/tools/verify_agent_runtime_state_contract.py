@@ -292,15 +292,15 @@ def aggregate_visible_states(value: object, schema: object | None = None) -> Jso
 
 def validate_transition_record(record: object, schema: object | None = None) -> JsonObject:
     mode = "record"
-    fields = {"contract_version", "record_id", "request_id", "authority_scope_ref", "runtime_context_ref", "agent_profile_ref", "operation", "outcome", "before_state", "after_state", "provenance_ref"}
+    fields = {"contract_version", "record_id", "request_id", "authority_scope_ref", "runtime_context_ref", "agent_profile_id", "operation", "outcome", "before_state", "after_state", "provenance_ref"}
     if not isinstance(record, dict) or not _within_limits(record):
         return _invalid(mode, "agent_runtime_state.invalid_json", "")
     if set(record) != fields or _semver(record.get("contract_version")) != (1, 0, 0):
         return _invalid(mode, "agent_runtime_state.invalid_transition_record", "")
     if not all(isinstance(record.get(name), str) and UUID_V7.fullmatch(record[name]) is not None for name in ("record_id", "request_id")):
         return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/record_id")
-    if not all(isinstance(record.get(name), str) and record[name] for name in ("authority_scope_ref", "runtime_context_ref", "provenance_ref")) or not _profile_ref_valid(record.get("agent_profile_ref")):
-        return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/authority_scope_ref")
+    if not all(isinstance(record.get(name), str) and record[name] for name in ("authority_scope_ref", "runtime_context_ref", "provenance_ref")) or not isinstance(record.get("agent_profile_id"), str) or UUID_V7.fullmatch(record["agent_profile_id"]) is None:
+        return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/agent_profile_id")
     if record.get("operation") not in {"create_state", "summon", "close", "archive", "restore", "rebind_profile"} or record.get("outcome") not in {"applied", "no_change", "conflict", "rejected"}:
         return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/operation")
     snapshots = []
@@ -311,11 +311,22 @@ def validate_transition_record(record: object, schema: object | None = None) -> 
         required = {"state_id", "state_revision", "status", "authority_scope_ref", "runtime_context_ref", "agent_profile_ref"}
         if not isinstance(snapshot, dict) or set(snapshot) != required or not isinstance(snapshot.get("state_id"), str) or UUID_V7.fullmatch(snapshot["state_id"]) is None or isinstance(snapshot.get("state_revision"), bool) or not isinstance(snapshot.get("state_revision"), int) or snapshot["state_revision"] < 1 or snapshot.get("status") not in {"active", "dormant", "archived"} or not _profile_ref_valid(snapshot.get("agent_profile_ref")):
             return _invalid(mode, "agent_runtime_state.invalid_transition_record", f"/{name}")
-        if any(snapshot[key] != record[key] for key in ("authority_scope_ref", "runtime_context_ref", "agent_profile_ref")):
+        if any(snapshot[key] != record[key] for key in ("authority_scope_ref", "runtime_context_ref")) or snapshot["agent_profile_ref"]["id"] != record["agent_profile_id"]:
             return _invalid(mode, "agent_runtime_state.record_local_mismatch", f"/{name}")
         snapshots.append(snapshot)
-    if snapshots[0] is not None and snapshots[1] is not None and snapshots[0]["state_id"] != snapshots[1]["state_id"]:
-        return _invalid(mode, "agent_runtime_state.record_local_mismatch", "/after_state/state_id")
+    before, after = snapshots
+    if before is not None and after is not None:
+        if before["state_id"] != after["state_id"]:
+            return _invalid(mode, "agent_runtime_state.record_local_mismatch", "/after_state/state_id")
+        if record["operation"] == "rebind_profile":
+            if before["status"] != "dormant" or after["status"] != "dormant":
+                return _invalid(mode, "agent_runtime_state.invalid_transition_record", "/operation")
+        elif before["agent_profile_ref"] != after["agent_profile_ref"]:
+            return _invalid(mode, "agent_runtime_state.record_local_mismatch", "/after_state/agent_profile_ref")
+        if record["outcome"] == "applied" and after["state_revision"] != before["state_revision"] + 1:
+            return _invalid(mode, "agent_runtime_state.record_state_mismatch", "/after_state/state_revision")
+        if record["outcome"] == "no_change" and after["state_revision"] != before["state_revision"]:
+            return _invalid(mode, "agent_runtime_state.record_state_mismatch", "/after_state/state_revision")
     return _result(mode, "valid")
 def validate_case(case: dict, root: Path) -> JsonObject:
     value = case.get("input") if isinstance(case, dict) else None

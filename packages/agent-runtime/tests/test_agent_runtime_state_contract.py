@@ -49,7 +49,7 @@ class AgentRuntimeStateContractTests(unittest.TestCase):
     def test_contract_is_a_closed_offline_machine_profile(self) -> None:
         report = self.verifier.verify_contract(CONTRACT_ROOT)
 
-        self.assertEqual(report, {"case_count": 27, "contract_version": "1.0.0"})
+        self.assertEqual(report, {"case_count": 33, "contract_version": "1.0.0"})
 
     def test_local_transitions_are_pure_and_keep_contexts_independent(self) -> None:
         summon = self.verifier.validate_case(self.case("summon-increases-local-epoch"), CONTRACT_ROOT)
@@ -149,6 +149,19 @@ class AgentRuntimeStateContractTests(unittest.TestCase):
             visible_states.append(state)
         result = self.verifier.aggregate_visible_states({"contract_version": "1.0.0", "visible_states": visible_states})
         self.assertEqual(result["issues"][0]["code"], "agent_runtime_state.invalid_aggregate_input")
+    def test_record_rebind_uses_logical_profile_id_and_preserves_exact_snapshot_refs(self) -> None:
+        record = copy.deepcopy(self.case("record-valid-local-transition")["input"]["record"])
+        record.pop("agent_profile_ref", None)
+        record["agent_profile_id"] = record["before_state"]["agent_profile_ref"]["id"]
+        record["operation"] = "rebind_profile"
+        record["before_state"]["status"] = "dormant"
+        record["after_state"]["status"] = "dormant"
+        record["after_state"]["agent_profile_ref"]["revision"] = 2
+        valid = self.verifier.validate_transition_record(record)
+        self.assertEqual((valid["object_result"], valid["operation_outcome"]), ("valid", "succeeded"))
+        cross_id = copy.deepcopy(record)
+        cross_id["after_state"]["agent_profile_ref"]["id"] = "018f5e3a-7abc-7def-8abc-0123456789ac"
+        self.assertEqual(self.verifier.validate_transition_record(cross_id)["issues"][0]["code"], "agent_runtime_state.record_local_mismatch")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
