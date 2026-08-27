@@ -111,7 +111,7 @@ class AgentRuntimeStateContractTests(unittest.TestCase):
                 self.verifier.verify_contract(copied)
 
     def test_verifier_rejects_missing_local_pointer_and_remote_schema_ref(self) -> None:
-        for reference in ("#/does-not-exist", "https://example.invalid/remote.json"):
+        for reference in ("#/does-not-exist", "../escape.json#/state", "https://example.invalid/remote.json"):
             with self.subTest(reference=reference), tempfile.TemporaryDirectory() as temporary_directory:
                 copied = Path(temporary_directory) / "contract"
                 shutil.copytree(CONTRACT_ROOT, copied)
