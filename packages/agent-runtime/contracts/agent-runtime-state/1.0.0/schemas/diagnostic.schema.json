@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["code","path","severity"],"properties":{"code":{"type":"string","pattern":"^agent_runtime_state\\.[a-z][a-z0-9_]*$"},"path":{"type":"string"},"severity":{"enum":["error","warning"]}}}

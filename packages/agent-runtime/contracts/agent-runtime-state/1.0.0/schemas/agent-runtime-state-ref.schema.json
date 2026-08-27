@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["state_id","state_revision"],"properties":{"state_id":{"type":"string","pattern":"^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"},"state_revision":{"type":"integer","minimum":1,"maximum":9007199254740991}}}
