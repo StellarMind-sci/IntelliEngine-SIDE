@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { tmpdir } from "node:os";
 import test from "node:test";
 import {
   aggregateVisibleStates,
@@ -7,7 +9,10 @@ import {
   parseAndValidateTransport,
   planTransition,
   validateState,
+  loadLockedContract,
 } from "../../src/agent-runtime-state/runtime.ts";
+
+import { canonicalize } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
 
 const root = new URL("../../contracts/agent-runtime-state/1.0.0/", import.meta.url);
 const suite = JSON.parse(readFileSync(new URL("fixtures/cases.json", root), "utf8"));
@@ -52,4 +57,41 @@ test("compatible minor is read only not transitionable", () => {
   assert.equal(result.object_result, "invalid");
   assert.equal(result.operation_outcome, "rejected");
   assert.equal(result.issues[0].code, "agent_runtime_state.unsupported_contract_version");
+});
+test("same profile ref rebind ignores json member order", () => {
+  const input = caseById("rebind-same-ref-no-change").input;
+  const ref = input.intent.target_profile_ref;
+  input.intent.target_profile_ref = { revision: ref.revision, id: ref.id };
+  assert.equal(planTransition(input.state, input.intent, root).plan.disposition, "no_change");
+});
+
+test("raw state revision rejects noninteger lexical tokens", () => {
+  const state = caseById("state-registered-not-dormant").input.state;
+  const raw = JSON.stringify(state);
+  for (const token of ["1.0", "1e0", "-0"]) {
+    const result = parseAndValidateTransport(Buffer.from(raw.replace('"state_revision":2', `"state_revision":${token}`)), root);
+    assert.equal(result.object_result, "invalid");
+    assert.deepEqual(result.issues[0], { code: "agent_runtime_state.invalid_state_field", path: "/state_revision", severity: "error" });
+  }
+});
+
+test("locked contract rejects unsafe root and schema reference closure", () => {
+  assert.throws(() => loadLockedContract(new URL("../../contracts/agent-runtime-state/", import.meta.url)));
+  for (const reference of ["#/~2", "../diagnostics/agent-runtime-state.json", "file:///tmp/outside.json", "https://example.invalid/schema.json", "unlisted.json"]) {
+    const directory = mkdtempSync(`${tmpdir()}/agent-runtime-state-ref-`);
+    try {
+      const contract = `${directory}/agent-runtime-state/1.0.0`;
+      cpSync(root, contract, { recursive: true });
+      const schemaPath = `${contract}/schemas/agent-runtime-state.schema.json`;
+      const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
+      schema.$ref = reference;
+      writeFileSync(schemaPath, JSON.stringify(schema));
+      const lockPath = `${contract}/lock.json`, lock = JSON.parse(readFileSync(lockPath, "utf8"));
+      lock.entries.find((entry: any) => entry.path === "schemas/agent-runtime-state.schema.json").sha256 = createHash("sha256").update(canonicalize(schema)).digest("hex");
+      writeFileSync(lockPath, JSON.stringify(lock));
+      assert.throws(() => loadLockedContract(contract));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  }
 });

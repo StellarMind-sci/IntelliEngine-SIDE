@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -11,6 +14,7 @@ sys.path.insert(0, str(PACKAGE_ROOT / "python"))
 
 import intelliengine_agent_runtime as package
 
+import intelliengine_agent_runtime.agent_runtime_state as state_runtime
 from intelliengine_agent_runtime.agent_runtime_state import (  # noqa: E402
     aggregate_visible_states,
     execute_fixture_suite,
@@ -35,6 +39,44 @@ class AgentRuntimeStatePythonRuntimeTests(unittest.TestCase):
         self.assertEqual(len(results), 33)
         self.assertTrue(all(item["actual"] == item["expected"] for item in results))
 
+    def test_same_profile_ref_rebind_ignores_json_member_order(self) -> None:
+        item = case("rebind-same-ref-no-change")["input"]
+        ref = item["intent"]["target_profile_ref"]
+        item["intent"]["target_profile_ref"] = {"revision": ref["revision"], "id": ref["id"]}
+        self.assertEqual(plan_transition(item["state"], item["intent"], CONTRACT_ROOT)["plan"]["disposition"], "no_change")
+
+    def test_raw_state_revision_rejects_non_integer_lexical_tokens(self) -> None:
+        state = case("state-registered-not-dormant")["input"]["state"]
+        raw = json.dumps(state, separators=(",", ":"))
+        for token in ("1.0", "1e0", "-0"):
+            with self.subTest(token=token):
+                result = parse_and_validate_transport(raw.replace('"state_revision":2', f'"state_revision":{token}').encode("utf-8"), CONTRACT_ROOT)
+                self.assertEqual(result["object_result"], "invalid")
+                self.assertEqual(result["issues"][0], {"code": "agent_runtime_state.invalid_state_field", "path": "/state_revision", "severity": "error"})
+
+    def test_locked_contract_rejects_unsafe_root_and_schema_reference_closure(self) -> None:
+        def replace_reference(root: Path, reference: str) -> None:
+            schema_path = root / "schemas" / "agent-runtime-state.schema.json"
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            schema["$ref"] = reference
+            schema_path.write_text(json.dumps(schema, separators=(",", ":")), encoding="utf-8")
+            lock_path = root / "lock.json"
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            for entry in lock["entries"]:
+                if entry["path"] == "schemas/agent-runtime-state.schema.json":
+                    entry["sha256"] = hashlib.sha256(state_runtime.canonicalize(schema)).hexdigest()
+            lock_path.write_text(json.dumps(lock, separators=(",", ":")), encoding="utf-8")
+
+        with self.assertRaises(Exception):
+            state_runtime.load_locked_contract(CONTRACT_ROOT.parent)
+        for reference in ("#/~2", "../diagnostics/agent-runtime-state.json", "file:///tmp/outside.json", "https://example.invalid/schema.json", "unlisted.json"):
+            with self.subTest(reference=reference), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / "agent-runtime-state" / "1.0.0"
+                root.parent.mkdir(parents=True)
+                shutil.copytree(CONTRACT_ROOT, root)
+                replace_reference(root, reference)
+                with self.assertRaises(Exception):
+                    state_runtime.load_locked_contract(root)
     def test_transport_rejects_duplicate_keys_and_invalid_utf8(self) -> None:
         self.assertEqual(parse_and_validate_transport(b'{"contract_version":"1.0.0","contract_version":"1.0.0"}', CONTRACT_ROOT)["issues"][0]["code"], "agent_runtime_state.invalid_json")
         self.assertEqual(parse_and_validate_transport(b'{"text":"\xed\xa0\x80"}', CONTRACT_ROOT)["issues"][0]["code"], "agent_runtime_state.invalid_json")
@@ -69,7 +111,9 @@ class AgentRuntimeStatePythonRuntimeTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(json.loads(completed.stdout)["case_count"], 33)
+        report = json.loads(completed.stdout)
+        self.assertEqual(report["case_count"], 33)
+        self.assertEqual(report["raw_transport_probe_count"], 3)
     def test_compatible_minor_is_read_only_not_transitionable(self) -> None:
         item = case("summon-increases-local-epoch")["input"]
         state = copy.deepcopy(item["state"])
