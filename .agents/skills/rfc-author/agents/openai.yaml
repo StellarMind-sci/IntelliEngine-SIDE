@@ -1,4 +1,0 @@
-interface:
-  display_name: "RFC 编写器"
-  short_description: "编写可决策的架构 RFC"
-  default_prompt: "使用 $rfc-author 为这项架构变更编写可决策的 RFC。"

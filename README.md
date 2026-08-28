@@ -1,22 +1,13 @@
 # 认知工程 IDE
 
-这是“认知工程 IDE”的治理与实现仓库。
+SIDE 将资料、知识、模型、思维链、长期 Agent、验证与工程成果连接为可运行的认知工程环境。
 
-仓库、测试、ADR 和公共契约是长期事实来源；单个 Codex 任务只是一次可替换的执行单元，
-不应承载整个项目的记忆。
-
-建议从以下文件开始阅读：
+开发只从两份文件开始：
 
 - [产品愿景](docs/product/vision.md)
-- [系统架构](docs/architecture/system-context.md)
-- [项目里程碑](docs/roadmap/milestones.md)
-- [完整开发流程](docs/runbooks/development.md)
-- [面向 Codex 的开发指导](docs/runbooks/codex-development-guide.md)
-- [大阶段完成日志](docs/roadmap/stage-log.md)
-- [贡献与开发流程](CONTRIBUTING.md)
-- [给 Codex 的仓库规则](AGENTS.md)
+- [日常开发流程](docs/runbooks/development.md)
 
-提交 Pull Request 前，运行：
+普通功能完成后应可测试并交付演示；高风险功能在测试后交付人工审查。运行核心治理检查：
 
 ```powershell
 python scripts/verify_governance.py

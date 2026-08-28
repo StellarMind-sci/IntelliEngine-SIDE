@@ -1,4 +1,0 @@
-interface:
-  display_name: "发布验证器"
-  short_description: "验证发布与回滚准备"
-  default_prompt: "使用 $release-verifier 验证这个发布候选及其回滚准备情况。"
