@@ -285,7 +285,7 @@ def _validate_rollback(value: object) -> dict[str, object]:
         if rollback["compensation_operation_class"] != "agent_runtime.transition.compensation" or rollback["reason_code"] is not None:
             reject("change_set.rollback_inconsistent", "invalid compensation declaration")
     elif rollback["strategy"] == "not_automatically_reversible":
-        if rollback["compensation_operation_class"] is not None or rollback["reason_code"] not in REASON_CODES:
+        if rollback["compensation_operation_class"] is not None or not isinstance(rollback["reason_code"], str) or rollback["reason_code"] not in REASON_CODES:
             reject("change_set.rollback_inconsistent", "automatic rollback exclusion must be explicit")
     else:
         reject("change_set.rollback_inconsistent", "unknown rollback strategy")

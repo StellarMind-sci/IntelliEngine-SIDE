@@ -222,6 +222,42 @@ class ChangeSetContractTests(unittest.TestCase):
                     self.verifier.validate_binding_bytes(raw_change_sets, self.value["reference"], request, self.value["validation_time"])["status"],
                     "rejected",
                 )
+        rollback_hostile = copy.deepcopy(self.value["change_sets"][0])
+        rollback_hostile["rollback"] = {
+            "compensation_operation_class": None,
+            "overwrites_history": False,
+            "reason_code": [],
+            "requires_new_approved_change_set": True,
+            "strategy": "not_automatically_reversible",
+        }
+        rollback_hostile["change_set_digest"] = self.verifier.change_set_digest(rollback_hostile)
+        rollback_reference = self.verifier.exact_reference(rollback_hostile)
+        raw_rollback_hostile = json.dumps(rollback_hostile, separators=(",", ":")).encode()
+        expected = {"status": "rejected", "diagnostic": "change_set.rollback_inconsistent"}
+        entrypoints = (
+            ("read", lambda: self.verifier.read_change_set_bytes(raw_rollback_hostile)),
+            (
+                "binding",
+                lambda: self.verifier.validate_binding(
+                    [rollback_hostile],
+                    rollback_reference,
+                    self.value["request"],
+                    self.value["validation_time"],
+                ),
+            ),
+            (
+                "raw_binding",
+                lambda: self.verifier.validate_binding_bytes(
+                    [raw_rollback_hostile],
+                    rollback_reference,
+                    raw_request,
+                    self.value["validation_time"],
+                ),
+            ),
+        )
+        for entrypoint, callback in entrypoints:
+            with self.subTest(entrypoint=entrypoint):
+                self.assertEqual(callback(), expected)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
