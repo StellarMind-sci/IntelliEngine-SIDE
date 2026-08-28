@@ -95,8 +95,12 @@ AgentProfile 逻辑 ID 和操作类别，判断调用者能否对受保护局部
 
 纯计划确认 `no_change` 时即终结稳定结果：不得增加 `state_revision` 或
 `activation_epoch`，不得创建 lease、授予权限、进入 Policy/ChangeSet/fence 链或产生执行
-outbox。CAS conflict、pure rejected 和 no_change 可以形成最小不可变权威记录以支持已获准请求的
-审计，但都不能改写 State。
+outbox。对于通过非泄露准入的请求，CAS conflict、pure rejected、no_change、Provenance
+validation denied、Policy denied、ChangeSet denied 和 fence preparation denied 这七类稳定终态，
+都必须建立与 stable journal 最终结果一致的最小不可变
+`AgentRuntimeAuthorityTransitionRecord`。这些终态不得改写 State，不得生成 lease、outbox 或执行权，
+Record 只保留当前阶段可披露的最小证据摘要。`request_id_reused` 不新建 Record，只保留原请求既有的
+最终 Record；pending 与 `indeterminate` 不得补写孤立 Record。
 
 只有纯计划确认存在 actual change 后，才按固定顺序消费证据：
 
