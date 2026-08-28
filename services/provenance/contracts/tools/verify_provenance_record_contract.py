@@ -19,11 +19,11 @@ LOCK_PATH = DIRECTORY / "lock.json"
 SAFE_INTEGER = 9_007_199_254_740_991
 HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
-OPAQUE_REF = re.compile(r"^[a-z][a-z0-9-]{0,31}/[A-Za-z0-9._:@/-]{1,160}$")
+OPAQUE_REF = re.compile(r"^[a-z][a-z0-9-]{0,31}/[a-z][a-z0-9-]{0,63}$")
 RFC3339_UTC = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$")
 REFERENCE = re.compile(r"^provenance-record/([0-9]+)\.([0-9]+)\.([0-9]+)/([0-9a-f-]{36})@sha256:([0-9a-f]{64})$")
 REQUIRED_DIAGNOSTICS = {"provenance.binding_actor_mismatch", "provenance.binding_context_mismatch", "provenance.binding_fingerprint_mismatch", "provenance.binding_intent_mismatch", "provenance.binding_scope_mismatch", "provenance.binding_subject_mismatch", "provenance.derivation_cycle", "provenance.expired", "provenance.invalid_json_bytes", "provenance.lock_digest_mismatch", "provenance.lock_unsafe_path", "provenance.missing_record", "provenance.protected_content", "provenance.revoked", "provenance.unknown_field", "provenance.unsupported_major"}
-SENSITIVE_WORDS = ("credential", "secret", "password", "prompt", "memory", "source_text", "original_content", "content_body")
+SENSITIVE_WORDS = ("credential", "secret", "password", "prompt", "memory", "source_text", "original_content", "content_body", "access-token", "bearer")
 PUBLIC_FAILURE_CODES = REQUIRED_DIAGNOSTICS | {"provenance.invalid_contract", "provenance.invalid_diagnostics", "provenance.invalid_fixtures", "provenance.invalid_lock", "provenance.invalid_record"}
 
 class VerificationError(Exception):
@@ -137,7 +137,7 @@ def compatibility_state(version: object) -> str:
     return "supported" if minor == 0 else "compatible_read"
 
 def _opaque_ref(value: object) -> None:
-    if not isinstance(value, str) or len(value) > 192 or value.endswith("/") or ".." in value or "//" in value or OPAQUE_REF.fullmatch(value) is None:
+    if not isinstance(value, str) or len(value) > 96 or OPAQUE_REF.fullmatch(value) is None:
         reject("provenance.invalid_record", "invalid opaque reference")
     if any(word in value.lower() for word in SENSITIVE_WORDS):
         reject("provenance.protected_content", "protected content is forbidden")
@@ -194,9 +194,10 @@ def validate_binding_bytes(raw_records: list[bytes], reference: object, raw_requ
         request = parse_json_bytes(raw_request, "request")
         if not all(isinstance(record, dict) for record in records) or not isinstance(request, dict):
             reject("provenance.invalid_json_bytes", "binding bytes must encode objects")
+        _closed(request, {"subject_ref", "actor_ref", "authority_scope_ref", "runtime_context_ref", "intent_digest", "fingerprint"}, "provenance.invalid_record")
+        return validate_binding(records, reference, request, validation_time)
     except VerificationError as error:
         return _rejected(error.code)
-    return validate_binding(records, reference, request, validation_time)
 
 def read_record_bytes(raw: bytes) -> dict[str, str]:
     try:
@@ -251,6 +252,17 @@ def validate_lock(root: Path) -> None:
     actual = {path.relative_to(root).as_posix() for path in (root / DIRECTORY).rglob("*.json") if path.relative_to(root).as_posix() != LOCK_PATH.as_posix()}
     if locked != actual: reject("provenance.invalid_lock", "lock coverage mismatch")
 
+def validate_schemas(root: Path) -> None:
+    names = {path.name for path in (root / DIRECTORY / "schemas").glob("*.json")}
+    required = {"contract.schema.json", "record.schema.json", "binding-request.schema.json", "binding-result.schema.json", "diagnostic.schema.json"}
+    if names != required: reject("provenance.invalid_contract", "schema catalog differs")
+    schemas = {name: _closed(load_json(root / DIRECTORY / "schemas" / name), {"$schema", "additionalProperties", "properties", "required", "type"}, "provenance.invalid_contract") for name in names}
+    for schema in schemas.values():
+        if schema["$schema"] != "https://json-schema.org/draft/2020-12/schema" or schema["type"] != "object" or schema["additionalProperties"] is not False:
+            reject("provenance.invalid_contract", "schema root differs")
+    binding = schemas["binding-request.schema.json"]
+    if set(binding["required"]) != {"subject_ref", "actor_ref", "authority_scope_ref", "runtime_context_ref", "intent_digest", "fingerprint"}:
+        reject("provenance.invalid_contract", "binding schema differs")
 def verify(root: Path) -> None:
     root = root.resolve()
     contract = _closed(load_json(root / CONTRACT_PATH), {"family", "record", "side_effects", "version"}, "provenance.invalid_contract")
@@ -260,13 +272,20 @@ def verify(root: Path) -> None:
     if diagnostics["version"] != VERSION or not isinstance(diagnostics["diagnostics"], list) or {item.get("code") for item in diagnostics["diagnostics"] if isinstance(item, dict)} != PUBLIC_FAILURE_CODES: reject("provenance.invalid_diagnostics", "catalog differs")
     fixtures = _closed(load_json(root / FIXTURES_PATH), {"cases", "version"}, "provenance.invalid_fixtures")
     if fixtures["version"] != VERSION or not isinstance(fixtures["cases"], list): reject("provenance.invalid_fixtures", "invalid fixtures")
-    if {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"raw-duplicate-key", "newer-minor", "unknown-field"}: reject("provenance.invalid_fixtures", "fixture coverage differs")
+    if {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"raw-duplicate-key", "newer-minor", "unknown-field", "raw-binding-duplicate-actor"}: reject("provenance.invalid_fixtures", "fixture coverage differs")
     for case in fixtures["cases"]:
-        case = _closed(case, {"case_id", "expected", "input_raw"}, "provenance.invalid_fixtures")
-        expected = _closed(case["expected"], {"diagnostic", "status"}, "provenance.invalid_fixtures")
-        if not isinstance(case["input_raw"], str) or read_record_bytes(case["input_raw"].encode("utf-8")) != expected:
-            reject("provenance.invalid_fixtures", "fixture result differs")
-    validate_derivation([record]); validate_lock(root)
+        if not isinstance(case, dict): reject("provenance.invalid_fixtures", "invalid fixture")
+        if case.get("case_id") == "raw-binding-duplicate-actor":
+            case = _closed(case, {"case_id", "expected", "records_raw", "reference", "request_raw", "validation_time"}, "provenance.invalid_fixtures")
+            expected = _closed(case["expected"], {"diagnostic", "status"}, "provenance.invalid_fixtures")
+            if not isinstance(case["records_raw"], list) or not all(isinstance(raw, str) for raw in case["records_raw"]) or not isinstance(case["request_raw"], str) or validate_binding_bytes([raw.encode("utf-8") for raw in case["records_raw"]], case["reference"], case["request_raw"].encode("utf-8"), case["validation_time"]) != expected:
+                reject("provenance.invalid_fixtures", "fixture result differs")
+        else:
+            case = _closed(case, {"case_id", "expected", "input_raw"}, "provenance.invalid_fixtures")
+            expected = _closed(case["expected"], {"diagnostic", "status"}, "provenance.invalid_fixtures")
+            if not isinstance(case["input_raw"], str) or read_record_bytes(case["input_raw"].encode("utf-8")) != expected:
+                reject("provenance.invalid_fixtures", "fixture result differs")
+    validate_derivation([record]); validate_schemas(root); validate_lock(root)
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Verify provenance-record 1.0.0")

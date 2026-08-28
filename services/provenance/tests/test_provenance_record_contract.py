@@ -176,7 +176,7 @@ class ProvenanceRecordContractTests(unittest.TestCase):
 
     def test_raw_binding_rejects_duplicate_request_member_before_binding(self) -> None:
         raw_record = json.dumps(self.record, separators=(",", ":")).encode("utf-8")
-        raw_request = (b'{"subject_ref":"agent-profile/1.0.0/agent-a@1","actor_ref":"actor/mallory",'
+        raw_request = (b'{"subject_ref":"agent-profile/agent-a","actor_ref":"actor/mallory",'
                        b'"actor_ref":"actor/alice","authority_scope_ref":"scope/project-a",'
                        b'"runtime_context_ref":"context/session-a","intent_digest":"' + self.record["intent_digest"].encode() + b'","fingerprint":"' + self.record["fingerprint"].encode() + b'"}')
         self.assertEqual(self.verifier.validate_binding_bytes([raw_record], self.reference, raw_request, "2027-01-01T00:00:00Z"), {"status": "rejected", "diagnostic": "provenance.invalid_json_bytes"})
@@ -194,5 +194,35 @@ class ProvenanceRecordContractTests(unittest.TestCase):
         record["actor_ref"] = "actor/a/"
         record["record_digest"] = self.verifier.record_digest(record)
         self.assert_rejected(lambda: self.verifier.validate_record(record), "provenance.invalid_record")
+    def test_raw_binding_rejects_extra_request_fields_and_never_raises(self) -> None:
+        raw_record = json.dumps(self.record, separators=(",", ":")).encode("utf-8")
+        request = dict(self.request, note="unexpected")
+        raw_request = json.dumps(request, separators=(",", ":")).encode("utf-8")
+        self.assertEqual(self.verifier.validate_binding_bytes([raw_record], self.reference, raw_request, "2027-01-01T00:00:00Z"), {"status": "rejected", "diagnostic": "provenance.unknown_field"})
+        self.assertEqual(self.verifier.validate_binding_bytes([raw_record], "bad-ref", raw_request, "2027-01-01T00:00:00Z")["status"], "rejected")
+
+    def test_opaque_refs_are_single_segment_family_ids(self) -> None:
+        for value in ("actor/a/b", "actor/a.b", "actor/access-token", "actor/credential"):
+            with self.subTest(value=value):
+                record = copy.deepcopy(self.record)
+                record["actor_ref"] = value
+                record["record_digest"] = self.verifier.record_digest(record)
+                self.assert_rejected(lambda record=record: self.verifier.validate_record(record), "provenance.protected_content" if "credential" in value or "token" in value else "provenance.invalid_record")
+
+    def test_verifier_semantically_rejects_tampered_binding_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = self.copy_contracts(Path(directory))
+            schema_path = copied / "provenance-record/1.0.0/schemas/binding-request.schema.json"
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            schema["type"] = "array"
+            write_json(schema_path, schema)
+            lock_path = copied / LOCK
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            entry = next(item for item in lock["entries"] if item["path"].endswith("binding-request.schema.json"))
+            entry["sha256"] = hashlib.sha256(self.verifier.jcs_bytes(schema)).hexdigest()
+            write_json(lock_path, lock)
+            result = self.run_verifier(copied)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("provenance.invalid_contract", result.stderr)
 if __name__ == "__main__":
     unittest.main()
