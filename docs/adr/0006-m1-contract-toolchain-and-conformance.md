@@ -5,6 +5,9 @@
 - 替代的旧 ADR：无
 - 关联 RFC/Issues：[RFC-002：M1 公共契约工具链与跨语言一致性基线](../rfc/0002-m1-contract-toolchain-and-conformance.md)、[GitHub Issue #7](https://github.com/StellarMind-sci/IntelliEngine-SIDE/issues/7)、[GitHub Issue #9](https://github.com/StellarMind-sci/IntelliEngine-SIDE/issues/9)
 
+> **2026-08-29 范围调整。** 本 ADR 保留对已发布或将发布的可移植、跨语言公共契约的技术约束：严格格式、双消费者、兼容、写入与发布安全。
+> 它不再要求先完成全部 11 个契约，也不要求普通产品任务运行其工具链。内部实现、UI、只读解析、可视化和实验可按日常开发流程直接推进；只有实际创建或修改这类公共契约时，才适用本 ADR 的相关门禁。
+
 ## 背景
 
 M1 将依次稳定 11 个公共契约。若每个契约或语言实现自行选择 JSON 解析、Schema 求值、正则、

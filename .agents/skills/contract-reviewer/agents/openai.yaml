@@ -1,4 +1,0 @@
-interface:
-  display_name: "契约审查器"
-  short_description: "审查公共契约兼容性与安全性"
-  default_prompt: "使用 $contract-reviewer 审查这项公共契约变更的兼容性和安全性。"

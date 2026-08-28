@@ -1,0 +1,30 @@
+name: 高风险任务卡
+description: 仅用于权限、写入、凭据、外部系统、不可逆操作、生产发布或安全隔离。
+title: "[高风险] "
+labels: ["high-risk"]
+body:
+  - type: textarea
+    id: product
+    attributes:
+      label: 用户/产品问题与预期结果
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围、非目标与允许修改范围
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: 风险提示
+      description: 安全影响、权限边界、兼容性/迁移、数据影响和回滚。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 审核测试与人工审查条件
+    validations:
+      required: true
