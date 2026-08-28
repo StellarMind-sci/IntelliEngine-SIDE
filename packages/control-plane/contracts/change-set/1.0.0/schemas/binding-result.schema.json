@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"diagnostic":{"pattern":"^$|^change_set\\.[a-z_]+$","type":"string"},"status":{"enum":["compatible_read","not_evaluated","rejected","valid"]}},"required":["diagnostic","status"],"type":"object"}

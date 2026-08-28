@@ -1,0 +1,35 @@
+name: Change set contract
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/change-set.yml"
+      - "packages/control-plane/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/change-set.yml"
+      - "packages/control-plane/**"
+
+permissions:
+  contents: read
+
+jobs:
+  change-set:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify standalone change-set contract
+        run: python -B packages/control-plane/contracts/tools/verify_change_set_contract.py
+      - name: Verify change-set contract
+        run: python -B packages/control-plane/tests/test_change_set_contract.py
