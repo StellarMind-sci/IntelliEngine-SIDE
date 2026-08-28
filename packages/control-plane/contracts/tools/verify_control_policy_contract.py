@@ -107,6 +107,7 @@ def _closed(value: object, keys: set[str], code: str) -> dict[str, object]:
     if not isinstance(value, dict): reject(code, "must be object")
     extra = set(value) - keys
     if extra:
+        if not all(isinstance(key, str) for key in extra): reject(code, "unknown fields are forbidden")
         if any(any(word in key.lower() for word in SENSITIVE) for key in extra): reject("control_policy.protected_content", "protected content is forbidden")
         reject("control_policy.unknown_field", "unknown fields are forbidden")
     if set(value) != keys: reject(code, "required closed fields differ")
