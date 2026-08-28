@@ -25,6 +25,16 @@ REFERENCE = re.compile(r"^provenance-record/([0-9]+)\.([0-9]+)\.([0-9]+)/([0-9a-
 REQUIRED_DIAGNOSTICS = {"provenance.binding_actor_mismatch", "provenance.binding_context_mismatch", "provenance.binding_fingerprint_mismatch", "provenance.binding_intent_mismatch", "provenance.binding_scope_mismatch", "provenance.binding_subject_mismatch", "provenance.derivation_cycle", "provenance.expired", "provenance.invalid_json_bytes", "provenance.lock_digest_mismatch", "provenance.lock_unsafe_path", "provenance.missing_record", "provenance.protected_content", "provenance.revoked", "provenance.unknown_field", "provenance.unsupported_major"}
 SENSITIVE_WORDS = ("credential", "secret", "password", "prompt", "memory", "source_text", "original_content", "content_body", "access-token", "bearer")
 PUBLIC_FAILURE_CODES = REQUIRED_DIAGNOSTICS | {"provenance.invalid_contract", "provenance.invalid_diagnostics", "provenance.invalid_fixtures", "provenance.invalid_lock", "provenance.invalid_record"}
+EXPECTED_LOCKED_ARTIFACTS = {
+    "provenance-record/1.0.0/contract.json",
+    "provenance-record/1.0.0/diagnostics/diagnostics.json",
+    "provenance-record/1.0.0/fixtures/cases.json",
+    "provenance-record/1.0.0/schemas/binding-request.schema.json",
+    "provenance-record/1.0.0/schemas/binding-result.schema.json",
+    "provenance-record/1.0.0/schemas/contract.schema.json",
+    "provenance-record/1.0.0/schemas/diagnostic.schema.json",
+    "provenance-record/1.0.0/schemas/record.schema.json",
+}
 SCHEMA_SEMANTIC_DIGESTS = {
     "binding-request.schema.json": "92348951a7fdde52d92eaef0d5c9644fa5c681449c72aae8a58a20f4ba800867",
     "binding-result.schema.json": "78b60cebcf8490a38aca680cf458032dfa0e67690d9586a324e70af9c6a7e761",
@@ -219,45 +229,55 @@ def read_record_bytes(raw: bytes) -> dict[str, str]:
         return _rejected(error.code)
     return {"status": "valid", "diagnostic": ""}
 def validate_binding(records: list[dict[str, object]], reference: object, request: object, validation_time: object) -> dict[str, str]:
-    record_id, digest = parse_reference(reference)
-    if not isinstance(request, dict): reject("provenance.missing_record", "invalid binding request")
-    validation_time = _timestamp(validation_time)
     try:
+        _closed(request, {"subject_ref", "actor_ref", "authority_scope_ref", "runtime_context_ref", "intent_digest", "fingerprint"}, "provenance.invalid_record")
+        record_id, digest = parse_reference(reference)
+        validation_time = _timestamp(validation_time)
         normalized = [validate_record(record) for record in records]
         validate_derivation(normalized)
+        candidates = [record for record in normalized if record["record_id"] == record_id and record["record_digest"] == digest]
+        if len(candidates) != 1: return _rejected("provenance.missing_record")
+        record = candidates[0]
+        if record["revoked"]: return _rejected("provenance.revoked")
+        if not (record["valid_from"] <= validation_time < record["expires_at"]): return _rejected("provenance.expired")
+        expected = {"subject_ref": "provenance.binding_subject_mismatch", "actor_ref": "provenance.binding_actor_mismatch", "authority_scope_ref": "provenance.binding_scope_mismatch", "runtime_context_ref": "provenance.binding_context_mismatch", "intent_digest": "provenance.binding_intent_mismatch", "fingerprint": "provenance.binding_fingerprint_mismatch"}
+        for key, code in expected.items():
+            if request.get(key) != record[key]: return _rejected(code)
+        return {"status": "accepted", "diagnostic": ""}
     except VerificationError as error:
-        return {"status": "rejected", "diagnostic": error.code}
-    candidates = [record for record in normalized if record["record_id"] == record_id and record["record_digest"] == digest]
-    if len(candidates) != 1: return {"status": "rejected", "diagnostic": "provenance.missing_record"}
-    record = candidates[0]
-    if record["revoked"]: return {"status": "rejected", "diagnostic": "provenance.revoked"}
-    if not (record["valid_from"] <= validation_time < record["expires_at"]): return {"status": "rejected", "diagnostic": "provenance.expired"}
-    expected = {"subject_ref": "provenance.binding_subject_mismatch", "actor_ref": "provenance.binding_actor_mismatch", "authority_scope_ref": "provenance.binding_scope_mismatch", "runtime_context_ref": "provenance.binding_context_mismatch", "intent_digest": "provenance.binding_intent_mismatch", "fingerprint": "provenance.binding_fingerprint_mismatch"}
-    for key, code in expected.items():
-        if request.get(key) != record[key]: return {"status": "rejected", "diagnostic": code}
-    return {"status": "accepted", "diagnostic": ""}
-
+        return _rejected(error.code)
 def _safe_path(root: Path, path: object) -> tuple[str, Path]:
-    if not isinstance(path, str) or not path or "\\" in path: reject("provenance.lock_unsafe_path", "non-POSIX lock path")
+    if not isinstance(path, str) or not path or "\\" in path:
+        reject("provenance.lock_unsafe_path", "non-POSIX lock path")
+    if any(segment in {"", ".", ".."} for segment in path.split("/")):
+        reject("provenance.lock_unsafe_path", "non-canonical lock path")
     pure = PurePosixPath(path)
-    if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts) or pure.parts[:2] != ("provenance-record", VERSION): reject("provenance.lock_unsafe_path", "unsafe lock path")
+    if pure.is_absolute() or pure.as_posix() != path or pure.parts[:2] != ("provenance-record", VERSION):
+        reject("provenance.lock_unsafe_path", "unsafe lock path")
     candidate = (root / Path(*pure.parts)).resolve()
-    try: candidate.relative_to(root.resolve())
-    except ValueError: reject("provenance.lock_unsafe_path", "lock path escapes contract root")
-    return pure.as_posix(), candidate
+    try:
+        candidate.relative_to(root.resolve())
+    except ValueError:
+        reject("provenance.lock_unsafe_path", "lock path escapes contract root")
+    return path, candidate
 
 def validate_lock(root: Path) -> None:
     lock = _closed(load_json(root / LOCK_PATH), {"entries", "version", "self_digest"}, "provenance.invalid_lock")
-    if lock["version"] != VERSION or lock["self_digest"] != "excluded" or not isinstance(lock["entries"], list): reject("provenance.invalid_lock", "invalid lock header")
+    if lock["version"] != VERSION or lock["self_digest"] != "excluded" or not isinstance(lock["entries"], list):
+        reject("provenance.invalid_lock", "invalid lock header")
     locked: set[str] = set()
     for entry in lock["entries"]:
         entry = _closed(entry, {"digest_kind", "path", "sha256"}, "provenance.invalid_lock")
         relative, artifact = _safe_path(root, entry["path"])
-        if relative == LOCK_PATH.as_posix() or relative in locked or entry["digest_kind"] != "jcs_sha256" or not isinstance(entry["sha256"], str) or HEX_64.fullmatch(entry["sha256"]) is None: reject("provenance.invalid_lock", "invalid lock entry")
+        if relative not in EXPECTED_LOCKED_ARTIFACTS or relative in locked or entry["digest_kind"] != "jcs_sha256" or not isinstance(entry["sha256"], str) or HEX_64.fullmatch(entry["sha256"]) is None:
+            reject("provenance.invalid_lock", "invalid lock entry")
         locked.add(relative)
-        if hashlib.sha256(jcs_bytes(load_json(artifact))).hexdigest() != entry["sha256"]: reject("provenance.lock_digest_mismatch", "lock digest mismatch")
-    actual = {path.relative_to(root).as_posix() for path in (root / DIRECTORY).rglob("*.json") if path.relative_to(root).as_posix() != LOCK_PATH.as_posix()}
-    if locked != actual: reject("provenance.invalid_lock", "lock coverage mismatch")
+        if hashlib.sha256(jcs_bytes(load_json(artifact))).hexdigest() != entry["sha256"]:
+            reject("provenance.lock_digest_mismatch", "lock digest mismatch")
+    actual = {artifact.relative_to(root).as_posix() for artifact in (root / DIRECTORY).rglob("*") if artifact.is_file()}
+    allowed = EXPECTED_LOCKED_ARTIFACTS | {LOCK_PATH.as_posix()}
+    if actual != allowed or locked != EXPECTED_LOCKED_ARTIFACTS:
+        reject("provenance.invalid_lock", "lock coverage mismatch")
 
 def validate_schemas(root: Path) -> None:
     names = {path.name for path in (root / DIRECTORY / "schemas").glob("*.json")}

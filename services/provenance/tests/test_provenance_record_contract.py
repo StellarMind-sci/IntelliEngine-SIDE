@@ -255,5 +255,40 @@ class ProvenanceRecordContractTests(unittest.TestCase):
             result = self.run_verifier(copied)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("provenance.invalid_diagnostics", result.stderr)
+    def test_verifier_rejects_relocked_extra_contract_tree_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = self.copy_contracts(Path(directory))
+            extra = copied / "provenance-record/1.0.0/private-memory.json"
+            write_json(extra, {"note": "extra"})
+            lock_path = copied / LOCK
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            lock["entries"].append({"digest_kind": "jcs_sha256", "path": "provenance-record/1.0.0/private-memory.json", "sha256": hashlib.sha256(self.verifier.jcs_bytes({"note": "extra"})).hexdigest()})
+            write_json(lock_path, lock)
+            result = self.run_verifier(copied)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("provenance.invalid_lock", result.stderr)
+        with tempfile.TemporaryDirectory() as directory:
+            copied = self.copy_contracts(Path(directory))
+            (copied / "provenance-record/1.0.0/prompt.txt").write_text("private", encoding="utf-8")
+            result = self.run_verifier(copied)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("provenance.invalid_lock", result.stderr)
+
+    def test_verifier_rejects_noncanonical_relocked_paths(self) -> None:
+        for path in ("provenance-record/1.0.0/./contract.json", "provenance-record//1.0.0/contract.json"):
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                copied = self.copy_contracts(Path(directory))
+                lock_path = copied / LOCK
+                lock = json.loads(lock_path.read_text(encoding="utf-8"))
+                lock["entries"][0]["path"] = path
+                write_json(lock_path, lock)
+                result = self.run_verifier(copied)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("provenance.lock_unsafe_path", result.stderr)
+
+    def test_direct_binding_is_closed_and_never_raises(self) -> None:
+        prompt_request = dict(self.request, prompt="private")
+        self.assertEqual(self.verifier.validate_binding([self.record], self.reference, prompt_request, "2027-01-01T00:00:00Z"), {"status": "rejected", "diagnostic": "provenance.protected_content"})
+        self.assertEqual(self.verifier.validate_binding([self.record], "bad-ref", self.request, "2027-01-01T00:00:00Z")["status"], "rejected")
 if __name__ == "__main__":
     unittest.main()
