@@ -27,8 +27,13 @@ SENSITIVE = ("credential", "secret", "password", "prompt", "memory", "source_tex
 STATUSES = {"proposed", "approved", "rejected", "revoked", "expired", "indeterminate"}
 EFFECT_CLASSES = {"authority-state", "resource-cleanup", "runtime-lifecycle"}
 REASON_CODES = {"manual_recovery_required", "irreversible_external_effect"}
-REQUEST_KEYS = {"actor_ref", "authority_scope_ref", "command_fingerprint", "control_policy_ref", "operation_class", "provenance_record_ref", "pure_plan", "runtime_context_ref", "target_ref"}
-CHANGE_SET_KEYS = REQUEST_KEYS | {"change_set_digest", "change_set_id", "expires_at", "family", "impact_summary", "rollback", "status", "valid_from", "version"}
+POLICY_SAFETY_CAPS = ["no-device", "no-file", "no-final-commit", "no-model", "no-network", "no-runtime-lease"]
+AUTHORITY_BINDING_KEYS = {"actor_ref", "authority_scope_ref", "command_fingerprint", "control_policy_ref", "operation_class", "provenance_record_ref", "pure_plan", "runtime_context_ref", "target_ref"}
+REQUEST_KEYS = AUTHORITY_BINDING_KEYS | {"policy_snapshot"}
+CHANGE_SET_KEYS = AUTHORITY_BINDING_KEYS | {"change_set_digest", "change_set_id", "expires_at", "family", "impact_summary", "rollback", "status", "valid_from", "version"}
+POLICY_SNAPSHOT_KEYS = {"decision", "decision_ref"}
+POLICY_DECISION_KEYS = {"actor_ref", "authority_scope_ref", "command_fingerprint", "constraints", "decision_digest", "decision_id", "expires_at", "family", "operation_class", "outcome", "policy_digest", "policy_id", "provenance_record_ref", "pure_plan_digest", "revoked", "runtime_context_ref", "target_ref", "valid_from", "version"}
+POLICY_CONSTRAINT_KEYS = {"platform_safety_caps", "requires_changeset", "requires_fence"}
 SCHEMAS = {
     "binding_request": "schemas/binding-request.schema.json",
     "binding_result": "schemas/binding-result.schema.json",
@@ -43,6 +48,15 @@ REQUIRED_DIAGNOSTICS = {
     "change_set.binding_plan_mismatch", "change_set.binding_policy_mismatch",
     "change_set.binding_provenance_mismatch", "change_set.binding_scope_mismatch",
     "change_set.binding_target_mismatch", "change_set.expired",
+    "change_set.approval_resolution_required",
+    "change_set.invalid_policy_snapshot",
+    "change_set.policy_denied",
+    "change_set.policy_digest_mismatch",
+    "change_set.policy_expired",
+    "change_set.policy_indeterminate",
+    "change_set.policy_not_yet_valid",
+    "change_set.policy_revoked",
+    "change_set.policy_safety_cap_mismatch",
     "change_set.impact_unbounded", "change_set.indeterminate",
     "change_set.invalid_change_set", "change_set.invalid_contract",
     "change_set.invalid_diagnostics", "change_set.invalid_fixtures",
@@ -66,13 +80,13 @@ EXPECTED_LOCKED_ARTIFACTS = {
     "change-set/1.0.0/schemas/diagnostic.schema.json",
 }
 SCHEMA_PROJECTIONS = {
-    "schemas/binding-request.schema.json": "c843e4a522e200afce5ec1667133cc433bd4918b0b391715d7fe27aa6285cfcd",
-    "schemas/binding-result.schema.json": "63988e744dd6a9faf0c96ca1396f5125a9685990de8d76c4c5b46d2632d87573",
+    "schemas/binding-request.schema.json": "1fcd772b073cf3194cb1281b8695387404d0dfbceb8a900d5e538fc25b1d0428",
+    "schemas/binding-result.schema.json": "cd33c971e81a4c612d65b8e59f40035fc122103598a78fc545dc1615ccceb01a",
     "schemas/change-set.schema.json": "87b946971bd7c182a655f9e1d69419c51a013796529d48f5c8dab19971b43152",
     "schemas/contract.schema.json": "78839a18ecaf7955c7ff3589e065f81dafe5e9d9988d61126b3e80d2a9119399",
     "schemas/diagnostic.schema.json": "dc6fe9ddc367f5dac32f491aabec9755946fe64231e4734c37bc3e4eb82f95d7",
 }
-FIXTURE_CASES_PROJECTION = "33e336201911a954c0c609307a6717a379eb1229b6889a4acb6713e0c96131a5"
+FIXTURE_CASES_PROJECTION = "25abeb71865fffd91292aaea69cb1230cc931f16d52dfce13bc0a428366e4250"
 
 
 class VerificationError(Exception):
@@ -300,6 +314,92 @@ def exact_reference(change_set: dict[str, object]) -> str:
     return f"change-set/{VERSION}/{change_set['change_set_id']}@sha256:{change_set['change_set_digest']}"
 
 
+def policy_decision_digest(decision: dict[str, object]) -> str:
+    return hashlib.sha256(jcs_bytes({key: value for key, value in decision.items() if key != "decision_digest"})).hexdigest()
+
+
+def exact_policy_reference(decision: dict[str, object]) -> str:
+    return f"control-policy/{VERSION}/decision/{decision['decision_id']}@sha256:{decision['decision_digest']}"
+
+
+def _policy_timestamp(value: object) -> str:
+    if not isinstance(value, str) or TIMESTAMP.fullmatch(value) is None:
+        reject("change_set.invalid_policy_snapshot", "invalid policy UTC timestamp")
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        reject("change_set.invalid_policy_snapshot", "invalid policy UTC timestamp")
+    return value
+
+
+def _validate_policy_snapshot(value: object, request: dict[str, object], validation_time: str) -> dict[str, object]:
+    snapshot = _closed(value, POLICY_SNAPSHOT_KEYS, "change_set.invalid_policy_snapshot")
+    decision_ref = snapshot["decision_ref"]
+    if not isinstance(decision_ref, str) or POLICY_REF.fullmatch(decision_ref) is None:
+        reject("change_set.invalid_policy_snapshot", "policy decision reference must be exact 1.0.0")
+    if decision_ref != request["control_policy_ref"]:
+        reject("change_set.binding_policy_mismatch", "policy snapshot reference differs from request")
+
+    decision = _closed(snapshot["decision"], POLICY_DECISION_KEYS, "change_set.invalid_policy_snapshot")
+    if decision["family"] != "control-policy" or decision["version"] != VERSION:
+        reject("change_set.invalid_policy_snapshot", "policy decision must be exact 1.0.0")
+    for key in ("decision_id", "policy_id"):
+        if not isinstance(decision[key], str) or UUID.fullmatch(decision[key]) is None:
+            reject("change_set.invalid_policy_snapshot", "invalid policy UUID")
+    for key in ("decision_digest", "policy_digest", "command_fingerprint", "pure_plan_digest"):
+        if not isinstance(decision[key], str) or HEX_64.fullmatch(decision[key]) is None:
+            reject("change_set.invalid_policy_snapshot", "invalid policy digest")
+    for key in ("actor_ref", "authority_scope_ref", "runtime_context_ref", "target_ref"):
+        if not isinstance(decision[key], str) or len(decision[key]) > 96 or OPAQUE_REF.fullmatch(decision[key]) is None:
+            reject("change_set.invalid_policy_snapshot", "invalid policy opaque reference")
+    if not isinstance(decision["provenance_record_ref"], str) or PROVENANCE_REF.fullmatch(decision["provenance_record_ref"]) is None:
+        reject("change_set.invalid_policy_snapshot", "invalid policy provenance reference")
+    if not isinstance(decision["operation_class"], str) or not isinstance(decision["outcome"], str) or decision["outcome"] not in {"allow", "deny", "indeterminate"} or not isinstance(decision["revoked"], bool):
+        reject("change_set.invalid_policy_snapshot", "invalid policy decision fields")
+
+    constraints = _closed(decision["constraints"], POLICY_CONSTRAINT_KEYS, "change_set.invalid_policy_snapshot")
+    caps = constraints["platform_safety_caps"]
+    if not isinstance(caps, list) or not all(isinstance(cap, str) for cap in caps):
+        reject("change_set.invalid_policy_snapshot", "policy safety caps must be strings")
+    if caps != POLICY_SAFETY_CAPS or constraints["requires_changeset"] is not True or constraints["requires_fence"] is not True:
+        reject("change_set.policy_safety_cap_mismatch", "policy safety constraints differ")
+
+    valid_from = _policy_timestamp(decision["valid_from"])
+    expires_at = _policy_timestamp(decision["expires_at"])
+    if _timestamp_key(expires_at) <= _timestamp_key(valid_from):
+        reject("change_set.invalid_policy_snapshot", "policy validity interval must be non-empty")
+    if decision["decision_digest"] != policy_decision_digest(decision):
+        reject("change_set.policy_digest_mismatch", "policy decision digest mismatch")
+    if decision_ref != exact_policy_reference(decision):
+        reject("change_set.binding_policy_mismatch", "policy decision reference differs from snapshot")
+
+    mismatches = {
+        "actor_ref": "change_set.binding_actor_mismatch",
+        "authority_scope_ref": "change_set.binding_scope_mismatch",
+        "runtime_context_ref": "change_set.binding_context_mismatch",
+        "target_ref": "change_set.binding_target_mismatch",
+        "operation_class": "change_set.binding_operation_mismatch",
+        "command_fingerprint": "change_set.binding_fingerprint_mismatch",
+        "provenance_record_ref": "change_set.binding_provenance_mismatch",
+    }
+    for key, diagnostic in mismatches.items():
+        if decision[key] != request[key]:
+            reject(diagnostic, "policy decision binding mismatch")
+    if decision["pure_plan_digest"] != request["pure_plan"]["plan_digest"]:
+        reject("change_set.binding_plan_mismatch", "policy decision plan binding mismatch")
+
+    if decision["revoked"]:
+        reject("change_set.policy_revoked", "policy decision is revoked")
+    now = _timestamp_key(validation_time)
+    if now < _timestamp_key(valid_from):
+        reject("change_set.policy_not_yet_valid", "policy decision is not yet valid")
+    if now >= _timestamp_key(expires_at):
+        reject("change_set.policy_expired", "policy decision is expired")
+    if decision["outcome"] != "allow":
+        reject("change_set.policy_denied" if decision["outcome"] == "deny" else "change_set.policy_indeterminate", "policy decision does not allow")
+    return decision
+
+
 def _parse_reference(value: object) -> tuple[str, str]:
     if not isinstance(value, str) or (match := REFERENCE.fullmatch(value)) is None:
         reject("change_set.missing_change_set", "reference must be exact")
@@ -399,9 +499,10 @@ def validate_binding(change_sets: object, reference: object, request: object, va
         for key, diagnostic in (("before_digest", "change_set.binding_before_mismatch"), ("after_digest", "change_set.binding_after_mismatch"), ("plan_digest", "change_set.binding_plan_mismatch")):
             if change_set["pure_plan"][key] != request["pure_plan"][key]:
                 reject(diagnostic, "plan binding mismatch")
+        _validate_policy_snapshot(request["policy_snapshot"], request, validation_time)
     except VerificationError as error:
         return _rejected(error.code)
-    return {"status": "accepted", "diagnostic": ""}
+    return {"status": "not_evaluated", "diagnostic": "change_set.approval_resolution_required"}
 
 
 def validate_binding_bytes(raw_change_sets: object, reference: object, raw_request: object, validation_time: object) -> dict[str, str]:
