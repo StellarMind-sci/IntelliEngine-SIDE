@@ -124,6 +124,11 @@ def _timestamp(value: object) -> str:
     except ValueError: reject("control_policy.invalid_decision", "invalid UTC timestamp")
     return value
 
+def _timestamp_key(value: str) -> tuple[datetime, int]:
+    base = datetime.fromisoformat(value[:19] + "+00:00")
+    fractional = value[20:-1] if len(value) > 20 else ""
+    return base, int((fractional + "0" * 9)[:9]) if fractional else 0
+
 def decision_digest(decision: dict[str, object]) -> str:
     return hashlib.sha256(jcs_bytes({key: value for key, value in decision.items() if key != "decision_digest"})).hexdigest()
 
@@ -151,7 +156,7 @@ def validate_decision(value: object) -> dict[str, object]:
     if decision["operation_class"] != "agent_runtime.transition" or decision["outcome"] not in {"allow", "deny", "indeterminate"} or not isinstance(decision["revoked"], bool): reject("control_policy.invalid_decision", "invalid decision fields")
     _reference(decision["provenance_record_ref"], PROVENANCE_REF)
     decision["valid_from"], decision["expires_at"] = _timestamp(decision["valid_from"]), _timestamp(decision["expires_at"])
-    if decision["expires_at"] <= decision["valid_from"]: reject("control_policy.invalid_decision", "invalid validity interval")
+    if _timestamp_key(decision["expires_at"]) <= _timestamp_key(decision["valid_from"]): reject("control_policy.invalid_decision", "invalid validity interval")
     constraints = _closed(decision["constraints"], {"platform_safety_caps", "requires_changeset", "requires_fence"}, "control_policy.invalid_decision")
     if constraints["platform_safety_caps"] != SAFETY_CAPS or constraints["requires_changeset"] is not True or constraints["requires_fence"] is not True: reject("control_policy.safety_cap_mismatch", "platform safety cap may not be weakened")
     if decision["decision_digest"] != decision_digest(decision): reject("control_policy.lock_digest_mismatch", "decision digest mismatch")
@@ -180,7 +185,7 @@ def validate_binding(decisions: list[dict[str, object]], reference: object, requ
         if len(candidates) != 1: return _rejected("control_policy.missing_decision")
         decision = candidates[0]
         if decision["revoked"]: return _rejected("control_policy.revoked")
-        if not (decision["valid_from"] <= validation_time < decision["expires_at"]): return _rejected("control_policy.expired")
+        if not (_timestamp_key(decision["valid_from"]) <= _timestamp_key(validation_time) < _timestamp_key(decision["expires_at"])): return _rejected("control_policy.expired")
         if decision["outcome"] != "allow": return _rejected("control_policy.denied" if decision["outcome"] == "deny" else "control_policy.indeterminate")
         expected = {"actor_ref":"control_policy.binding_actor_mismatch", "authority_scope_ref":"control_policy.binding_scope_mismatch", "runtime_context_ref":"control_policy.binding_context_mismatch", "target_ref":"control_policy.binding_target_mismatch", "operation_class":"control_policy.binding_operation_mismatch", "command_fingerprint":"control_policy.binding_fingerprint_mismatch", "pure_plan_digest":"control_policy.binding_plan_mismatch", "provenance_record_ref":"control_policy.binding_provenance_mismatch"}
         for key, code in expected.items():

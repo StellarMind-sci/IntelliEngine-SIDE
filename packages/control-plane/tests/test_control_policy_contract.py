@@ -163,5 +163,16 @@ class ControlPolicyContractTests(unittest.TestCase):
             self.relock(verifier, copied)
             with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
         self.assertEqual(raised.exception.code, "control_policy.invalid_fixtures")
+    def test_fractional_timestamp_intervals_are_exact_and_half_open(self) -> None:
+        verifier, value = self.verifier(), self.valid_inputs()
+        expiry = copy.deepcopy(value["decisions"][0]); expiry["expires_at"] = "2027-01-01T00:00:00Z"; expiry["decision_digest"] = verifier.decision_digest(expiry)
+        self.assertEqual(verifier.validate_binding([expiry], verifier.exact_reference(expiry), value["request"], "2027-01-01T00:00:00.5Z")["diagnostic"], "control_policy.expired")
+        reverse = copy.deepcopy(value["decisions"][0]); reverse["valid_from"] = "2027-01-01T00:00:00.5Z"; reverse["expires_at"] = "2027-01-01T00:00:00Z"; reverse["decision_digest"] = verifier.decision_digest(reverse)
+        with self.assertRaises(verifier.VerificationError) as raised: verifier.validate_decision(reverse)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_decision")
+        bounded = copy.deepcopy(value["decisions"][0]); bounded["valid_from"] = "2027-01-01T00:00:00.500000001Z"; bounded["expires_at"] = "2027-01-01T00:00:00.7Z"; bounded["decision_digest"] = verifier.decision_digest(bounded)
+        reference = verifier.exact_reference(bounded)
+        self.assertEqual(verifier.validate_binding([bounded], reference, value["request"], "2027-01-01T00:00:00.500000001Z")["status"], "accepted")
+        self.assertEqual(verifier.validate_binding([bounded], reference, value["request"], "2027-01-01T00:00:00.700000000Z")["diagnostic"], "control_policy.expired")
 if __name__ == "__main__":
     unittest.main(verbosity=2)
