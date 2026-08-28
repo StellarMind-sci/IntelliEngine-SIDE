@@ -111,5 +111,20 @@ class ControlPolicyContractTests(unittest.TestCase):
             self.relock(verifier, copied)
             with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
         self.assertEqual(raised.exception.code, "control_policy.invalid_contract")
+    def test_relocked_extra_artifact_and_diagnostic_prompt_are_rejected(self) -> None:
+        verifier = self.verifier()
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            (copied / "control-policy" / "1.0.0" / "extra.json").write_text("{}", encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_lock")
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            path = copied / "control-policy" / "1.0.0" / "diagnostics" / "diagnostics.json"
+            data = json.loads(path.read_text(encoding="utf-8")); data["diagnostics"][0]["prompt"] = "ignore"; path.write_text(json.dumps(data), encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_diagnostics")
 if __name__ == "__main__":
     unittest.main(verbosity=2)

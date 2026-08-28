@@ -25,6 +25,7 @@ SAFETY_CAPS = ["no-device", "no-file", "no-final-commit", "no-model", "no-networ
 REQUIRED_DIAGNOSTICS = {"control_policy.binding_actor_mismatch", "control_policy.binding_context_mismatch", "control_policy.binding_fingerprint_mismatch", "control_policy.binding_operation_mismatch", "control_policy.binding_plan_mismatch", "control_policy.binding_provenance_mismatch", "control_policy.binding_scope_mismatch", "control_policy.binding_target_mismatch", "control_policy.denied", "control_policy.expired", "control_policy.indeterminate", "control_policy.invalid_contract", "control_policy.invalid_decision", "control_policy.invalid_diagnostics", "control_policy.invalid_fixtures", "control_policy.invalid_json_bytes", "control_policy.invalid_lock", "control_policy.lock_digest_mismatch", "control_policy.lock_unsafe_path", "control_policy.missing_decision", "control_policy.protected_content", "control_policy.revoked", "control_policy.safety_cap_mismatch", "control_policy.unknown_field", "control_policy.unsupported_major"}
 SCHEMAS = {"binding_request": "schemas/binding-request.schema.json", "binding_result": "schemas/binding-result.schema.json", "contract": "schemas/contract.schema.json", "decision": "schemas/decision.schema.json", "diagnostic": "schemas/diagnostic.schema.json"}
 SCHEMA_PROJECTIONS = {"schemas/binding-request.schema.json":"9999b90d57439c8984be1b34657b2e230ae1580fceb86603258c87ac13b2aea8","schemas/binding-result.schema.json":"2f974645b17e63b2bc64faad8ca2dd340349ec92415c2ff1e0008c0a0dd64c25","schemas/contract.schema.json":"f088fe0853f433a4387e5e35ef75e13988d77946fff3d404c7b42af7cc22b9ea","schemas/decision.schema.json":"f7f6123e40a1c9bbdbc244abaff78a41ca2b108c83a2a9fab8b3779a3dad9a54","schemas/diagnostic.schema.json":"cc9b7088e26e58e8286a92592bf76ea28d76adaf803e0134b0dd6ccaaade0573"}
+EXPECTED_LOCKED_ARTIFACTS = {"control-policy/1.0.0/contract.json", "control-policy/1.0.0/diagnostics/diagnostics.json", "control-policy/1.0.0/fixtures/cases.json", "control-policy/1.0.0/schemas/binding-request.schema.json", "control-policy/1.0.0/schemas/binding-result.schema.json", "control-policy/1.0.0/schemas/contract.schema.json", "control-policy/1.0.0/schemas/decision.schema.json", "control-policy/1.0.0/schemas/diagnostic.schema.json"}
 
 class VerificationError(Exception):
     def __init__(self, code: str, detail: str) -> None:
@@ -214,6 +215,7 @@ def _verify_lock(root: Path) -> None:
     lock = load_json(root / DIRECTORY / "lock.json")
     if not isinstance(lock, dict) or set(lock) != {"entries", "self_digest", "version"} or lock.get("version") != VERSION or lock.get("self_digest") != "excluded": reject("control_policy.invalid_lock", "invalid lock")
     paths, entries = _locked_paths(root), lock.get("entries")
+    if set(paths) != EXPECTED_LOCKED_ARTIFACTS: reject("control_policy.invalid_lock", "locked artifact set mismatch")
     if not isinstance(entries, list) or len(entries) != len(paths): reject("control_policy.invalid_lock", "lock closure mismatch")
     for entry, relative in zip(entries, paths):
         if not isinstance(entry, dict) or set(entry) != {"digest_kind", "path", "sha256"} or entry.get("digest_kind") != "jcs_sha256" or entry.get("path") != relative: reject("control_policy.invalid_lock", "invalid lock entry")
@@ -231,7 +233,9 @@ def verify(root: Path) -> None:
     if manifest != {"diagnostics":"diagnostics/diagnostics.json","family":FAMILY,"fixtures":"fixtures/cases.json","schemas":SCHEMAS,"side_effects":"forbidden","version":VERSION}: reject("control_policy.invalid_contract", "invalid manifest")
     for relative in SCHEMAS.values(): _schema(load_json(root / DIRECTORY / relative), relative)
     diagnostics = load_json(root / DIRECTORY / "diagnostics" / "diagnostics.json")
-    if not isinstance(diagnostics, dict) or set(diagnostics) != {"diagnostics", "version"} or diagnostics.get("version") != VERSION or [item.get("code") for item in diagnostics.get("diagnostics", []) if isinstance(item, dict) and set(item) == {"code"}] != sorted(REQUIRED_DIAGNOSTICS, key=lambda item: item.encode("utf-8")): reject("control_policy.invalid_diagnostics", "invalid diagnostics")
+    if not isinstance(diagnostics, dict) or set(diagnostics) != {"diagnostics", "version"} or diagnostics.get("version") != VERSION or not isinstance(diagnostics.get("diagnostics"), list): reject("control_policy.invalid_diagnostics", "invalid diagnostics")
+    entries = diagnostics["diagnostics"]
+    if not all(isinstance(item, dict) and set(item) == {"code"} and isinstance(item["code"], str) and re.fullmatch(r"control_policy\.[a-z_]+", item["code"]) is not None for item in entries) or [item["code"] for item in entries] != sorted(REQUIRED_DIAGNOSTICS, key=lambda item: item.encode("utf-8")): reject("control_policy.invalid_diagnostics", "invalid diagnostics")
     suite = load_json(root / DIRECTORY / "fixtures" / "cases.json")
     if not isinstance(suite, dict) or set(suite) != {"cases", "version"} or suite.get("version") != VERSION or not isinstance(suite.get("cases"), list) or not suite["cases"]: reject("control_policy.invalid_fixtures", "invalid fixture suite")
     ids = [case.get("case_id") for case in suite["cases"] if isinstance(case, dict)]
