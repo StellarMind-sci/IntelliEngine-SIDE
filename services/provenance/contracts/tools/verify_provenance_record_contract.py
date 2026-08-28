@@ -50,7 +50,7 @@ def _integer(token: str) -> int:
 
 def _float(token: str) -> float:
     value = float(token)
-    if not math.isfinite(value) or ("." in token and value.is_integer() and abs(value) > SAFE_INTEGER):
+    if not math.isfinite(value) or (value.is_integer() and abs(value) > SAFE_INTEGER):
         reject("provenance.invalid_json_bytes", "invalid JSON number")
     return value
 
@@ -137,13 +137,15 @@ def compatibility_state(version: object) -> str:
     return "supported" if minor == 0 else "compatible_read"
 
 def _opaque_ref(value: object) -> None:
-    if not isinstance(value, str) or len(value) > 192 or ".." in value or "//" in value or OPAQUE_REF.fullmatch(value) is None:
+    if not isinstance(value, str) or len(value) > 192 or value.endswith("/") or ".." in value or "//" in value or OPAQUE_REF.fullmatch(value) is None:
         reject("provenance.invalid_record", "invalid opaque reference")
     if any(word in value.lower() for word in SENSITIVE_WORDS):
         reject("provenance.protected_content", "protected content is forbidden")
 
 def _timestamp(value: object) -> str:
     if not isinstance(value, str) or RFC3339_UTC.fullmatch(value) is None:
+        reject("provenance.invalid_record", "invalid UTC timestamp")
+    if int(value[11:13]) > 23 or int(value[14:16]) > 59 or int(value[17:19]) > 59:
         reject("provenance.invalid_record", "invalid UTC timestamp")
     try:
         from datetime import datetime
@@ -183,6 +185,31 @@ def validate_derivation(records: list[dict[str, object]]) -> None:
     seen: set[str] = set()
     for node in graph: visit(node, seen, set())
 
+def _rejected(code: str) -> dict[str, str]:
+    return {"status": "rejected", "diagnostic": code if code in PUBLIC_FAILURE_CODES else "provenance.invalid_json_bytes"}
+
+def validate_binding_bytes(raw_records: list[bytes], reference: object, raw_request: bytes, validation_time: object) -> dict[str, str]:
+    try:
+        records = [parse_json_bytes(raw, "record") for raw in raw_records]
+        request = parse_json_bytes(raw_request, "request")
+        if not all(isinstance(record, dict) for record in records) or not isinstance(request, dict):
+            reject("provenance.invalid_json_bytes", "binding bytes must encode objects")
+    except VerificationError as error:
+        return _rejected(error.code)
+    return validate_binding(records, reference, request, validation_time)
+
+def read_record_bytes(raw: bytes) -> dict[str, str]:
+    try:
+        value = parse_json_bytes(raw, "record")
+        if not isinstance(value, dict): reject("provenance.invalid_json_bytes", "record bytes must encode object")
+        version = value.get("version")
+        state = compatibility_state(version)
+        if state == "compatible_read": return {"status": "compatible_read", "diagnostic": ""}
+        if state != "supported": return _rejected("provenance.unsupported_major")
+        validate_record(value)
+    except VerificationError as error:
+        return _rejected(error.code)
+    return {"status": "valid", "diagnostic": ""}
 def validate_binding(records: list[dict[str, object]], reference: object, request: object, validation_time: object) -> dict[str, str]:
     record_id, digest = parse_reference(reference)
     if not isinstance(request, dict): reject("provenance.missing_record", "invalid binding request")
@@ -232,7 +259,13 @@ def verify(root: Path) -> None:
     diagnostics = _closed(load_json(root / DIAGNOSTICS_PATH), {"diagnostics", "version"}, "provenance.invalid_diagnostics")
     if diagnostics["version"] != VERSION or not isinstance(diagnostics["diagnostics"], list) or {item.get("code") for item in diagnostics["diagnostics"] if isinstance(item, dict)} != PUBLIC_FAILURE_CODES: reject("provenance.invalid_diagnostics", "catalog differs")
     fixtures = _closed(load_json(root / FIXTURES_PATH), {"cases", "version"}, "provenance.invalid_fixtures")
-    if fixtures["version"] != VERSION or not isinstance(fixtures["cases"], list) or {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"baseline", "missing", "expired", "revoked", "actor", "scope", "context", "intent", "fingerprint", "unknown-major", "newer-minor", "unknown-field"}: reject("provenance.invalid_fixtures", "coverage differs")
+    if fixtures["version"] != VERSION or not isinstance(fixtures["cases"], list): reject("provenance.invalid_fixtures", "invalid fixtures")
+    if {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"raw-duplicate-key", "newer-minor", "unknown-field"}: reject("provenance.invalid_fixtures", "fixture coverage differs")
+    for case in fixtures["cases"]:
+        case = _closed(case, {"case_id", "expected", "input_raw"}, "provenance.invalid_fixtures")
+        expected = _closed(case["expected"], {"diagnostic", "status"}, "provenance.invalid_fixtures")
+        if not isinstance(case["input_raw"], str) or read_record_bytes(case["input_raw"].encode("utf-8")) != expected:
+            reject("provenance.invalid_fixtures", "fixture result differs")
     validate_derivation([record]); validate_lock(root)
 
 def main() -> int:

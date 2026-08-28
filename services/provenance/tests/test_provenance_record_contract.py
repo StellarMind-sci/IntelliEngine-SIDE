@@ -161,5 +161,38 @@ class ProvenanceRecordContractTests(unittest.TestCase):
         with self.assertRaises(self.verifier.VerificationError) as raised:
             self.verifier._safe_path(CONTRACT_ROOT, "provenance-record/1.0.0/../credential-secret")
         self.assertNotIn("credential", raised.exception.detail)
+    def test_parser_rejects_unsafe_integral_float_exponents(self) -> None:
+        for raw in (b'{"n":9007199254740992e0}', b'{"n":9007199254740992e-0}', b'{"n":-9007199254740992e+0}'):
+            with self.subTest(raw=raw):
+                self.assert_rejected(lambda raw=raw: self.verifier.parse_json_bytes(raw), "provenance.invalid_json_bytes")
+
+    def test_timestamps_reject_rfc3339_out_of_range_values(self) -> None:
+        for timestamp in ("2026-01-01T24:00:00Z", "2026-02-30T00:00:00Z", "2026-01-01T00:60:00Z", "2026-01-01T00:00:60Z"):
+            with self.subTest(timestamp=timestamp):
+                record = copy.deepcopy(self.record)
+                record["valid_from"] = timestamp
+                record["record_digest"] = self.verifier.record_digest(record)
+                self.assert_rejected(lambda record=record: self.verifier.validate_record(record), "provenance.invalid_record")
+
+    def test_raw_binding_rejects_duplicate_request_member_before_binding(self) -> None:
+        raw_record = json.dumps(self.record, separators=(",", ":")).encode("utf-8")
+        raw_request = (b'{"subject_ref":"agent-profile/1.0.0/agent-a@1","actor_ref":"actor/mallory",'
+                       b'"actor_ref":"actor/alice","authority_scope_ref":"scope/project-a",'
+                       b'"runtime_context_ref":"context/session-a","intent_digest":"' + self.record["intent_digest"].encode() + b'","fingerprint":"' + self.record["fingerprint"].encode() + b'"}')
+        self.assertEqual(self.verifier.validate_binding_bytes([raw_record], self.reference, raw_request, "2027-01-01T00:00:00Z"), {"status": "rejected", "diagnostic": "provenance.invalid_json_bytes"})
+
+    def test_newer_minor_is_compatible_read_but_never_binding_accepted(self) -> None:
+        record = copy.deepcopy(self.record)
+        record["version"] = "1.1.0"
+        record["record_digest"] = self.verifier.record_digest(record)
+        raw = json.dumps(record, separators=(",", ":")).encode("utf-8")
+        self.assertEqual(self.verifier.read_record_bytes(raw), {"status": "compatible_read", "diagnostic": ""})
+        self.assertEqual(self.verifier.validate_binding([record], self.reference, self.request, "2027-01-01T00:00:00Z")["status"], "rejected")
+
+    def test_opaque_ref_rejects_alias_path_syntax(self) -> None:
+        record = copy.deepcopy(self.record)
+        record["actor_ref"] = "actor/a/"
+        record["record_digest"] = self.verifier.record_digest(record)
+        self.assert_rejected(lambda: self.verifier.validate_record(record), "provenance.invalid_record")
 if __name__ == "__main__":
     unittest.main()
