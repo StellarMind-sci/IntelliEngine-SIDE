@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"family":{"const":"provenance-record"},"record":{"$ref":"record.schema.json"},"side_effects":{"const":"forbidden"},"version":{"const":"1.0.0"}},"required":["family","record","side_effects","version"],"type":"object"}

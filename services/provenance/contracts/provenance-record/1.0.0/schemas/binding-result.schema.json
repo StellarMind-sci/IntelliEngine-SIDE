@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"properties":{"diagnostic":{"type":"string"},"status":{"enum":["accepted","compatible_read","rejected","valid"]}},"required":["diagnostic","status"],"type":"object"}
