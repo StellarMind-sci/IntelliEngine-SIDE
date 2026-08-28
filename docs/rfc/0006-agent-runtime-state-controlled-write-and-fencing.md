@@ -96,13 +96,14 @@ fingerprint 至少覆盖命令 contract family/version、局部唯一键、精�
 | CAS conflict | 创建/终结为稳定 conflict 并重放 | 否 | 是，记录已获准目标与最小冲突事实，不复制无关 State | 否 | 否 | 否 | 否 |
 | pure rejected | 创建/终结为稳定 rejected 并重放 | 否 | 是 | 否 | 否 | 否 | 否 |
 | no_change | 创建/终结为稳定 no_change 并重放 | 否；revision/epoch 不变 | 是 | 否 | 否 | 否；不创建 lease | 否 |
+| Provenance validation denied | 创建/终结为稳定 rejected 并重放 | 否 | 是，仅记录最小拒绝事实与可安全披露的 provenance 验证摘要 | 否；不得调用或创建 | 否；不得调用或创建 | 否；不得准备 fence | 否 |
 | proposed change：Policy denied | 创建/终结为稳定 rejected 并重放 | 否 | 是，引用决策摘要 | 是 | 否 | 否 | 否 |
 | ChangeSet denied | 创建/终结为稳定 rejected 并重放 | 否 | 是，引用 Policy/ChangeSet 摘要 | 是 | 是 | 否 | 否 |
 | fence preparation denied | 创建/终结为稳定 rejected 并重放 | 否 | 是，引用前三项证据摘要 | 是 | 是 | 是 | 否 |
 | committed change | 原子终结为 stable committed 并重放 | 是，且仅一次 CAS | 是，与 State/result 原子可见 | 是 | 是 | 是 | 仅在契约声明 post-commit work 时原子追加 |
 | indeterminate / post-commit cleanup | 不新建；只能以原 `request_id` 恢复既有 pending/final；indeterminate 不是可重解释最终结果 | 不得二次写；依据 commit marker 判定旧/新权威状态 | 不得补写孤立 Record；只读取同一原子提交中的 Record | 不重新解释；只验证恢复所需的既有证据 | 同左 | 同左；旧 epoch 始终受栅栏 | 只消费已提交 outbox；cleanup 可重试但不得恢复 authority |
 
-若 barrier 未能证明提交与否，响应保持 `indeterminate`，不得换 request ID 或重新执行实际变化；恢复器只能完成同一已持久 pending/事务，或证明 marker 未越过后保留旧 State。`no_change` 绝不增加 revision、epoch、lease、Record 以外的副作用事实或 outbox；只有 pure plan 确认存在 actual change 时才进入完整 Policy、ChangeSet、fence preparation 与原子提交链。
+若 barrier 未能证明提交与否，响应保持 `indeterminate`，不得换 request ID 或重新执行实际变化；恢复器只能完成同一已持久 pending/事务，或证明 marker 未越过后保留旧 State。`no_change` 绝不增加 revision、epoch、lease、Record 以外的副作用事实或 outbox；只有 pure plan 确认存在 actual change 时才验证 `ProvenanceRecord`。provenance 验证失败必须终结为可稳定重放的 `rejected` journal 与最小 `AgentRuntimeAuthorityTransitionRecord`，不得改变 State，不得调用或创建 Policy、ChangeSet、fence preparation 或 outbox；同一已获准请求只能重放这一结果。未经非泄露准入的路径仍不得借该分支获知局部 State 或 `request_id` 是否存在。provenance 验证成功后，才依次进入 Policy、ChangeSet、fence preparation 与原子提交链。
 
 ### durable CAS 与原子事务
 
@@ -237,12 +238,12 @@ RFC-006 + ADR
 3. 新 family 严格输入、引用闭包、版本、canonical bytes/fingerprint 和 Python/TypeScript 差分；`rebind_profile.target_profile_ref(id,revision)` 的省略、字段变化、跨 ID、非 dormant、与 plan/CAS evidence 不一致均被拒绝；
 4. 相同 request_id 同 fingerprint 只执行一次、不同 fingerprint conflict、最终结果稳定重放、pending/timeout 后仅以原 ID 恢复；
 5. 同一局部前置版本竞争时唯一 CAS 成功，不同 scope/context 独立并发，aggregate 不可作 CAS；
-6. 按结果矩阵验证 transport/pre-authorization/pending/conflict/pure rejected/no_change/三类证据拒绝/committed/indeterminate/cleanup 的 journal、State、Record、Policy、ChangeSet、fence 与 outbox 写入集合；
+6. 按结果矩阵验证 transport/pre-authorization/pending/conflict/pure rejected/no_change/Provenance validation denied/Policy denied/ChangeSet denied/fence preparation denied/committed/indeterminate/cleanup 的 journal、State、Record、Policy、ChangeSet、fence 与 outbox 写入集合；provenance 验证失败必须产生稳定 rejected journal 与最小 AuthorityTransitionRecord，并证明未改变 State、未调用或创建 Policy/ChangeSet、未准备 fence、未创建 outbox；
 7. 在 journal 占位、State、AuthorityTransitionRecord、result、outbox、commit response、worker 与清理各故障点注入崩溃，恢复后没有两个权威状态、孤立可见 State、无结果 committed 或可执行未提交 outbox；
-8. 缺失/过期/撤销/错 actor、错 scope 或不匹配 `ProvenanceRecord` 的 Policy、ChangeSet、provenance 与 fence 一律拒绝；ProvenanceRecord 原件正文不得复制到命令、journal 或 Record；
+8. `ProvenanceRecord` 缺失、过期、撤销、错 actor、错 scope/context 或与 command/fingerprint/意图不匹配时，必须在 pure plan 后、Policy 前停止，并覆盖稳定重放与无权路径不泄露局部 State；Policy、ChangeSet 与 fence 的缺失、过期、撤销或绑定不匹配也分别拒绝；ProvenanceRecord 原件正文不得复制到命令、journal 或 Record；
 9. admission 后 close、重新 summon、晚到模型/工具回调或重复 outbox 时，旧 state/epoch/fence 不能提交；close 先 durable dormant，清理失败不恢复 active，安全清理可重试；
 10. feature flag 默认拒绝增加 authority 且没有调试旁路；读取权限、Profile、persona、role、ability 或 aggregate 均不能升级为命令权限；
-11. 端到端演练：Profile→局部 dormant→新 Command→非泄露准入→pure plan→Policy→ChangeSet→ProvenanceRecord/fence 验证→atomic active→受控输出→close→atomic dormant→旧输出阻断→cleanup recovery→request result 查询。
+11. 端到端演练：Profile→局部 dormant→新 Command→非泄露准入→pure plan→ProvenanceRecord validation（无效即停止）→Policy→ChangeSet→fence preparation→atomic active→受控输出→close→atomic dormant→旧输出阻断→cleanup recovery→request result 查询。
 
 ## 已接受事实、推荐、仍待产品负责人决定的事项
 
