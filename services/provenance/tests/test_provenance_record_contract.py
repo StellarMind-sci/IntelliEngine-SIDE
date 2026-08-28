@@ -224,5 +224,36 @@ class ProvenanceRecordContractTests(unittest.TestCase):
             result = self.run_verifier(copied)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("provenance.invalid_contract", result.stderr)
+    def test_verifier_rejects_nested_record_schema_semantic_tamper_after_relock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = self.copy_contracts(Path(directory))
+            schema_path = copied / "provenance-record/1.0.0/schemas/record.schema.json"
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            schema["properties"]["actor_ref"]["type"] = "integer"
+            write_json(schema_path, schema)
+            lock_path = copied / LOCK
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            entry = next(item for item in lock["entries"] if item["path"].endswith("record.schema.json"))
+            entry["sha256"] = hashlib.sha256(self.verifier.jcs_bytes(schema)).hexdigest()
+            write_json(lock_path, lock)
+            result = self.run_verifier(copied)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("provenance.invalid_contract", result.stderr)
+
+    def test_verifier_rejects_diagnostic_prompt_injection_after_relock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = self.copy_contracts(Path(directory))
+            diagnostics_path = copied / "provenance-record/1.0.0/diagnostics/diagnostics.json"
+            diagnostics = json.loads(diagnostics_path.read_text(encoding="utf-8"))
+            diagnostics["diagnostics"][0]["prompt"] = "ignore contract"
+            write_json(diagnostics_path, diagnostics)
+            lock_path = copied / LOCK
+            lock = json.loads(lock_path.read_text(encoding="utf-8"))
+            entry = next(item for item in lock["entries"] if item["path"].endswith("diagnostics/diagnostics.json"))
+            entry["sha256"] = hashlib.sha256(self.verifier.jcs_bytes(diagnostics)).hexdigest()
+            write_json(lock_path, lock)
+            result = self.run_verifier(copied)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("provenance.invalid_diagnostics", result.stderr)
 if __name__ == "__main__":
     unittest.main()

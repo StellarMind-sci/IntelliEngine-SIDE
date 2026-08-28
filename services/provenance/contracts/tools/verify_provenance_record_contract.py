@@ -25,6 +25,13 @@ REFERENCE = re.compile(r"^provenance-record/([0-9]+)\.([0-9]+)\.([0-9]+)/([0-9a-
 REQUIRED_DIAGNOSTICS = {"provenance.binding_actor_mismatch", "provenance.binding_context_mismatch", "provenance.binding_fingerprint_mismatch", "provenance.binding_intent_mismatch", "provenance.binding_scope_mismatch", "provenance.binding_subject_mismatch", "provenance.derivation_cycle", "provenance.expired", "provenance.invalid_json_bytes", "provenance.lock_digest_mismatch", "provenance.lock_unsafe_path", "provenance.missing_record", "provenance.protected_content", "provenance.revoked", "provenance.unknown_field", "provenance.unsupported_major"}
 SENSITIVE_WORDS = ("credential", "secret", "password", "prompt", "memory", "source_text", "original_content", "content_body", "access-token", "bearer")
 PUBLIC_FAILURE_CODES = REQUIRED_DIAGNOSTICS | {"provenance.invalid_contract", "provenance.invalid_diagnostics", "provenance.invalid_fixtures", "provenance.invalid_lock", "provenance.invalid_record"}
+SCHEMA_SEMANTIC_DIGESTS = {
+    "binding-request.schema.json": "92348951a7fdde52d92eaef0d5c9644fa5c681449c72aae8a58a20f4ba800867",
+    "binding-result.schema.json": "78b60cebcf8490a38aca680cf458032dfa0e67690d9586a324e70af9c6a7e761",
+    "contract.schema.json": "24d79ba8336a46703058e696a502be84d38c6c181530a9a3cfa0fa38aa11eb54",
+    "diagnostic.schema.json": "9b66b1f280432e5bf18d8197b51182f078638861adc951e93376650fe67c439e",
+    "record.schema.json": "40c7e0ed41ba7fe1b7b73d961bb69419e58ff27f14bd1660ade51af276571a41",
+}
 
 class VerificationError(Exception):
     def __init__(self, code: str, detail: str) -> None:
@@ -260,16 +267,24 @@ def validate_schemas(root: Path) -> None:
     for schema in schemas.values():
         if schema["$schema"] != "https://json-schema.org/draft/2020-12/schema" or schema["type"] != "object" or schema["additionalProperties"] is not False:
             reject("provenance.invalid_contract", "schema root differs")
-    binding = schemas["binding-request.schema.json"]
-    if set(binding["required"]) != {"subject_ref", "actor_ref", "authority_scope_ref", "runtime_context_ref", "intent_digest", "fingerprint"}:
-        reject("provenance.invalid_contract", "binding schema differs")
+    for name, schema in schemas.items():
+        if hashlib.sha256(jcs_bytes(schema)).hexdigest() != SCHEMA_SEMANTIC_DIGESTS[name]:
+            reject("provenance.invalid_contract", "schema semantic projection differs")
 def verify(root: Path) -> None:
     root = root.resolve()
     contract = _closed(load_json(root / CONTRACT_PATH), {"family", "record", "side_effects", "version"}, "provenance.invalid_contract")
     if contract["family"] != "provenance-record" or contract["version"] != VERSION or contract["side_effects"] != "forbidden": reject("provenance.invalid_contract", "identity/side effects differ")
     record = validate_record(contract["record"])
     diagnostics = _closed(load_json(root / DIAGNOSTICS_PATH), {"diagnostics", "version"}, "provenance.invalid_diagnostics")
-    if diagnostics["version"] != VERSION or not isinstance(diagnostics["diagnostics"], list) or {item.get("code") for item in diagnostics["diagnostics"] if isinstance(item, dict)} != PUBLIC_FAILURE_CODES: reject("provenance.invalid_diagnostics", "catalog differs")
+    if diagnostics["version"] != VERSION or not isinstance(diagnostics["diagnostics"], list): reject("provenance.invalid_diagnostics", "catalog differs")
+    codes: set[str] = set()
+    for item in diagnostics["diagnostics"]:
+        if not isinstance(item, dict) or set(item) != {"code"}: reject("provenance.invalid_diagnostics", "diagnostic entry differs")
+        item = _closed(item, {"code"}, "provenance.invalid_diagnostics")
+        code = item["code"]
+        if not isinstance(code, str) or code in codes: reject("provenance.invalid_diagnostics", "diagnostic entry differs")
+        codes.add(code)
+    if codes != PUBLIC_FAILURE_CODES: reject("provenance.invalid_diagnostics", "catalog differs")
     fixtures = _closed(load_json(root / FIXTURES_PATH), {"cases", "version"}, "provenance.invalid_fixtures")
     if fixtures["version"] != VERSION or not isinstance(fixtures["cases"], list): reject("provenance.invalid_fixtures", "invalid fixtures")
     if {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"raw-duplicate-key", "newer-minor", "unknown-field", "raw-binding-duplicate-actor"}: reject("provenance.invalid_fixtures", "fixture coverage differs")
