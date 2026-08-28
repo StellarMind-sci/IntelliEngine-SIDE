@@ -201,7 +201,7 @@ def _locked_paths(root: Path) -> list[str]:
     for path in base.rglob("*"):
         if path.is_dir(): continue
         relative = path.relative_to(root).as_posix()
-        if path.name == "lock.json": continue
+        if relative == f"{FAMILY}/{VERSION}/lock.json": continue
         if path.suffix != ".json": reject("control_policy.invalid_lock", "closed tree contains unsupported file")
         paths.append(relative)
     return sorted(paths, key=lambda path: path.encode("utf-8"))

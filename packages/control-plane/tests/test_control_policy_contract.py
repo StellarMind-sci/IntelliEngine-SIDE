@@ -138,5 +138,14 @@ class ControlPolicyContractTests(unittest.TestCase):
         for raw in (None, {}, 1):
             with self.subTest(raw=repr(raw)):
                 self.assertEqual(verifier.read_decision_bytes(raw)["status"], "rejected")
+    def test_nonstring_request_keys_and_nested_lock_fail_closed(self) -> None:
+        verifier, value = self.verifier(), self.valid_inputs()
+        self.assertEqual(verifier.validate_binding(value["decisions"], value["reference"], {1:"x"}, value["validation_time"])["status"], "rejected")
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            nested = copied / "control-policy" / "1.0.0" / "schemas" / "nested"; nested.mkdir()
+            (nested / "lock.json").write_text("{}", encoding="utf-8")
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_lock")
 if __name__ == "__main__":
     unittest.main(verbosity=2)
