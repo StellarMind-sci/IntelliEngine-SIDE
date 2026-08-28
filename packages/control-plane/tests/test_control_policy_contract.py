@@ -147,5 +147,21 @@ class ControlPolicyContractTests(unittest.TestCase):
             (nested / "lock.json").write_text("{}", encoding="utf-8")
             with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
         self.assertEqual(raised.exception.code, "control_policy.invalid_lock")
+    def test_relocked_fixture_corpus_deletion_and_joint_mutation_are_rejected(self) -> None:
+        verifier = self.verifier()
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            path = copied / "control-policy" / "1.0.0" / "fixtures" / "cases.json"
+            suite = json.loads(path.read_text(encoding="utf-8")); suite["cases"] = [next(case for case in suite["cases"] if case["case_id"] == "allow-bound-decision")]; path.write_text(json.dumps(suite), encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_fixtures")
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            path = copied / "control-policy" / "1.0.0" / "fixtures" / "cases.json"
+            suite = json.loads(path.read_text(encoding="utf-8")); case = next(case for case in suite["cases"] if case["case_id"] == "allow-bound-decision"); case["input"]["request"]["actor_ref"] = "actor/mallory"; case["input"]["decisions"][0]["actor_ref"] = "actor/mallory"; case["input"]["decisions"][0]["decision_digest"] = verifier.decision_digest(case["input"]["decisions"][0]); case["input"]["reference"] = verifier.exact_reference(case["input"]["decisions"][0]); path.write_text(json.dumps(suite), encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_fixtures")
 if __name__ == "__main__":
     unittest.main(verbosity=2)

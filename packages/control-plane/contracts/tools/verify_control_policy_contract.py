@@ -26,6 +26,7 @@ REQUIRED_DIAGNOSTICS = {"control_policy.binding_actor_mismatch", "control_policy
 SCHEMAS = {"binding_request": "schemas/binding-request.schema.json", "binding_result": "schemas/binding-result.schema.json", "contract": "schemas/contract.schema.json", "decision": "schemas/decision.schema.json", "diagnostic": "schemas/diagnostic.schema.json"}
 SCHEMA_PROJECTIONS = {"schemas/binding-request.schema.json":"9999b90d57439c8984be1b34657b2e230ae1580fceb86603258c87ac13b2aea8","schemas/binding-result.schema.json":"2f974645b17e63b2bc64faad8ca2dd340349ec92415c2ff1e0008c0a0dd64c25","schemas/contract.schema.json":"f088fe0853f433a4387e5e35ef75e13988d77946fff3d404c7b42af7cc22b9ea","schemas/decision.schema.json":"f7f6123e40a1c9bbdbc244abaff78a41ca2b108c83a2a9fab8b3779a3dad9a54","schemas/diagnostic.schema.json":"cc9b7088e26e58e8286a92592bf76ea28d76adaf803e0134b0dd6ccaaade0573"}
 EXPECTED_LOCKED_ARTIFACTS = {"control-policy/1.0.0/contract.json", "control-policy/1.0.0/diagnostics/diagnostics.json", "control-policy/1.0.0/fixtures/cases.json", "control-policy/1.0.0/schemas/binding-request.schema.json", "control-policy/1.0.0/schemas/binding-result.schema.json", "control-policy/1.0.0/schemas/contract.schema.json", "control-policy/1.0.0/schemas/decision.schema.json", "control-policy/1.0.0/schemas/diagnostic.schema.json"}
+FIXTURE_CASES_PROJECTION = "cc54cd696f8f209c31fcbb67620b7c06e48c4015945bb47ff5c772323ec3a81e"
 
 class VerificationError(Exception):
     def __init__(self, code: str, detail: str) -> None:
@@ -243,6 +244,7 @@ def verify(root: Path) -> None:
     if not all(isinstance(item, dict) and set(item) == {"code"} and isinstance(item["code"], str) and re.fullmatch(r"control_policy\.[a-z_]+", item["code"]) is not None for item in entries) or [item["code"] for item in entries] != sorted(REQUIRED_DIAGNOSTICS, key=lambda item: item.encode("utf-8")): reject("control_policy.invalid_diagnostics", "invalid diagnostics")
     suite = load_json(root / DIRECTORY / "fixtures" / "cases.json")
     if not isinstance(suite, dict) or set(suite) != {"cases", "version"} or suite.get("version") != VERSION or not isinstance(suite.get("cases"), list) or not suite["cases"]: reject("control_policy.invalid_fixtures", "invalid fixture suite")
+    if hashlib.sha256(jcs_bytes(suite["cases"])).hexdigest() != FIXTURE_CASES_PROJECTION: reject("control_policy.invalid_fixtures", "fixture semantic projection mismatch")
     ids = [case.get("case_id") for case in suite["cases"] if isinstance(case, dict)]
     if not all(isinstance(item, str) for item in ids) or ids != sorted(ids, key=lambda item: item.encode("utf-8")) or len(set(ids)) != len(ids) or len(ids) != len(suite["cases"]): reject("control_policy.invalid_fixtures", "invalid fixture IDs")
     for case in suite["cases"]:
