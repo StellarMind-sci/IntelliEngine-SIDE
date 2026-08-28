@@ -1,6 +1,6 @@
 # RFC-006：AgentRuntimeState 受控写入与执行栅栏
 
-- 状态：草案
+- 状态：已接受
 - 负责人：StellarMind-sci
 - 创建日期：2026-08-28
 - 关联 Issues：[GitHub Issue #56](https://github.com/StellarMind-sci/IntelliEngine-SIDE/issues/56)
@@ -265,15 +265,17 @@ RFC-006 + ADR
 6. 允许经过同等故障测试的 commit-marker barrier 适配器；
 7. 首个真实预览仅限单项目、单 RuntimeKernel、dormant↔active、默认关闭且无外部工具/高风险网络能力。
 
-### 仍待产品负责人决定的事项
+### 已接受的产品决定
 
-1. 是否接受方案 A 作为权威存储根边界（推荐接受）。
-2. 是否把通过非泄露准入后的 conflict、Policy/ChangeSet/fence 拒绝和 no_change 持久化为不可重解释的最终 request 结果（推荐是；pre-authorization denial 排除）。
-3. AgentRuntimeAuthorityTransitionRecord、完整幂等结果和防复用墓碑的保留/匿名化期限（推荐审计记录按项目溯源策略，完整结果保留恢复期，后保留最小墓碑）。
-4. 常规写入关闭后，已提交 close 的 lease 撤销/资源清理能否走独立安全通道（推荐能）。
-5. 不具同物理事务的存储是否接受严格等价 barrier 适配器（推荐接受，但必须通过同等故障测试）。
-6. 首个内部预览是否限于单本地项目、单 RuntimeKernel、dormant/active 和默认关闭（推荐是）。
+产品负责人于 2026-08-28 接受以下六项推荐，作为后续 ADR 与任务拆分的约束：
+
+1. **权威存储模型。** 采用方案 A：事务型 authority ledger，作为 AgentRuntimeState 受控写入的唯一权威根边界。
+2. **稳定请求结果。** 通过非泄露准入后的 `conflict`、Policy/ChangeSet/fence `rejected` 与 `no_change` 均持久化为不可重解释的最终 request 结果；pre-authorization denial 不进入局部 journal。
+3. **留存与隐私。** AgentRuntimeAuthorityTransitionRecord 按项目审计与溯源策略保留；完整幂等结果保留在可重试和恢复周期；之后保留只含 request_id、fingerprint 摘要、最终结果摘要和版本的最小墓碑，非权威附属信息可按合规策略匿名化。
+4. **功能开关与安全清理。** 关闭常规写入后，已经提交的 close、lease 撤销和资源清理可在独立安全通道继续执行；该通道不得增加运行权限。
+5. **跨存储 barrier。** 不具同一物理事务的存储可以使用 pending/commit-marker/outbox 的严格等价 barrier 适配器，但必须通过与单事务实现相同的原子性、崩溃恢复与并发测试；不能证明等价时不得发布。
+6. **首个内部预览范围。** 仅支持单本地项目、单 RuntimeKernel、既有 `dormant ↔ active` 合法转换、默认关闭，不接外部工具和高风险网络能力。
 
 ## 决定
 
-草案阶段保持为空。接受后创建 ADR，并按上述依赖图创建独立契约、模块、集成与 UI Issue；在这些独立 Issue 通过前，不实现真实状态转换。
+本 RFC 已于 2026-08-28 接受。后续必须先创建 ADR 固化上述边界，再按依赖图分别建立 ProvenanceRecord、ControlPolicy、ChangeSet、RuntimeKernel fencing、状态写入 command/authority-record family、authority ledger、跨模块集成与 IDE 体验 Issue。在独立契约、实现、审查与集成验证完成前，不实现真实状态转换。
