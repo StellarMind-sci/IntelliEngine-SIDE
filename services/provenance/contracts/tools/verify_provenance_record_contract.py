@@ -81,7 +81,7 @@ def _number(value: int | float) -> str:
     if isinstance(value, int): return str(value)
     if not math.isfinite(value): reject("provenance.invalid_json_bytes", "non-finite number")
     if value == 0: return "0"
-    text = repr(value).lower()
+    text = json.dumps(value, allow_nan=False, ensure_ascii=True, separators=(",", ":")).lower()
     sign = "-" if text.startswith("-") else ""
     text = text[len(sign):]
     if "e" not in text: return sign + (text[:-2] if text.endswith(".0") else text)
