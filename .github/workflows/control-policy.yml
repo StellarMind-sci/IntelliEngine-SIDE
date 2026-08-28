@@ -31,4 +31,3 @@ jobs:
           python-version: "3.12"
       - name: Verify control-policy contract
         run: python -B packages/control-plane/tests/test_control_policy_contract.py
-
