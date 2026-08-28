@@ -60,6 +60,8 @@ def _unicode(value: object) -> None:
         for key, item in value.items(): _unicode(key); _unicode(item)
 
 def parse_json_bytes(raw: bytes) -> object:
+    if not isinstance(raw, bytes): reject("control_policy.invalid_json_bytes", "JSON input must be bytes")
+    if not isinstance(raw, bytes): reject("control_policy.invalid_json_bytes", "JSON input must be bytes")
     if raw.startswith(b"\xef\xbb\xbf"): reject("control_policy.invalid_json_bytes", "UTF-8 BOM is forbidden")
     try:
         value = json.loads(raw.decode("utf-8", errors="strict"), object_pairs_hook=_pairs, parse_int=_integer, parse_float=_float, parse_constant=lambda _: reject("control_policy.invalid_json_bytes", "non-finite number"))
@@ -169,6 +171,7 @@ def read_decision_bytes(raw: bytes) -> dict[str, str]:
 
 def validate_binding(decisions: list[dict[str, object]], reference: object, request: object, validation_time: object) -> dict[str, str]:
     try:
+        if not isinstance(decisions, list): reject("control_policy.invalid_decision", "decisions must be list")
         request = _closed(request, {"actor_ref", "authority_scope_ref", "command_fingerprint", "operation_class", "provenance_record_ref", "pure_plan_digest", "runtime_context_ref", "target_ref"}, "control_policy.invalid_decision")
         decision_id, digest = _reference(reference, REFERENCE); validation_time = _timestamp(validation_time)
         candidates = [decision for decision in (validate_decision(value) for value in decisions) if decision["decision_id"] == decision_id and decision["decision_digest"] == digest]
@@ -185,6 +188,7 @@ def validate_binding(decisions: list[dict[str, object]], reference: object, requ
 
 def validate_binding_bytes(raw_decisions: list[bytes], reference: object, raw_request: bytes, validation_time: object) -> dict[str, str]:
     try:
+        if not isinstance(raw_decisions, list) or not all(isinstance(raw, bytes) for raw in raw_decisions): reject("control_policy.invalid_json_bytes", "raw decisions must be byte list")
         decisions, request = [parse_json_bytes(raw) for raw in raw_decisions], parse_json_bytes(raw_request)
         if not all(isinstance(value, dict) for value in decisions) or not isinstance(request, dict): reject("control_policy.invalid_json_bytes", "binding values must be objects")
         return validate_binding(decisions, reference, request, validation_time)

@@ -126,5 +126,17 @@ class ControlPolicyContractTests(unittest.TestCase):
             self.relock(verifier, copied)
             with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
         self.assertEqual(raised.exception.code, "control_policy.invalid_diagnostics")
+    def test_public_entrypoints_fail_closed_for_invalid_host_types(self) -> None:
+        verifier, value = self.verifier(), self.valid_inputs()
+        for decisions in (None, 1, b"x", [None]):
+            with self.subTest(decisions=repr(decisions)):
+                self.assertEqual(verifier.validate_binding(decisions, value["reference"], value["request"], value["validation_time"])["status"], "rejected")
+        for raw_decisions in (None, 1, [b"\\xff"]):
+            with self.subTest(raw_decisions=repr(raw_decisions)):
+                self.assertEqual(verifier.validate_binding_bytes(raw_decisions, value["reference"], json.dumps(value["request"]).encode(), value["validation_time"])["status"], "rejected")
+        self.assertEqual(verifier.validate_binding_bytes([json.dumps(value["decisions"][0]).encode()], value["reference"], None, value["validation_time"])["status"], "rejected")
+        for raw in (None, {}, 1):
+            with self.subTest(raw=repr(raw)):
+                self.assertEqual(verifier.read_decision_bytes(raw)["status"], "rejected")
 if __name__ == "__main__":
     unittest.main(verbosity=2)
