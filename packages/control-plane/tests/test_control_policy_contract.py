@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
+import shutil
+import tempfile
 import subprocess
 import sys
 import unittest
@@ -76,5 +79,28 @@ class ControlPolicyContractTests(unittest.TestCase):
         decision["provenance_record_ref"] = decision["provenance_record_ref"].replace("/1.0.0/", "/1.1.0/")
         decision["decision_digest"] = verifier.decision_digest(decision)
         self.assertEqual(verifier.validate_binding([decision], verifier.exact_reference(decision), value["request"], value["validation_time"])["status"], "rejected")
+    def relock(self, verifier, root: Path) -> None:
+        entries = [{"digest_kind":"jcs_sha256", "path":path, "sha256":hashlib.sha256(verifier.jcs_bytes(verifier.load_json(root / path))).hexdigest()} for path in verifier._locked_paths(root)]
+        (root / "control-policy" / "1.0.0" / "lock.json").write_text(json.dumps({"entries":entries,"self_digest":"excluded","version":"1.0.0"}), encoding="utf-8")
+
+    def test_relocked_actor_ref_integer_schema_tamper_is_rejected(self) -> None:
+        verifier = self.verifier()
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            path = copied / "control-policy" / "1.0.0" / "schemas" / "decision.schema.json"
+            schema = json.loads(path.read_text(encoding="utf-8")); schema["properties"]["actor_ref"] = {"type":"integer"}; path.write_text(json.dumps(schema), encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_contract")
+
+    def test_relocked_nonstring_fixture_case_id_is_rejected(self) -> None:
+        verifier = self.verifier()
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            path = copied / "control-policy" / "1.0.0" / "fixtures" / "cases.json"
+            suite = json.loads(path.read_text(encoding="utf-8")); suite["cases"][0]["case_id"] = 1; path.write_text(json.dumps(suite), encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_fixtures")
 if __name__ == "__main__":
     unittest.main(verbosity=2)

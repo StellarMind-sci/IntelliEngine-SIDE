@@ -218,21 +218,22 @@ def _verify_lock(root: Path) -> None:
         if not isinstance(entry, dict) or set(entry) != {"digest_kind", "path", "sha256"} or entry.get("digest_kind") != "jcs_sha256" or entry.get("path") != relative: reject("control_policy.invalid_lock", "invalid lock entry")
         if not isinstance(entry.get("sha256"), str) or hashlib.sha256(jcs_bytes(load_json(_safe_path(root, entry["path"])))).hexdigest() != entry["sha256"]: reject("control_policy.lock_digest_mismatch", "lock digest mismatch")
 
-def _schema(value: object) -> None:
+def _schema(value: object, name: str) -> None:
     if not isinstance(value, dict) or value.get("$schema") != "https://json-schema.org/draft/2020-12/schema" or value.get("type") != "object" or value.get("additionalProperties") is not False or not isinstance(value.get("properties"), dict) or set(value.get("required", [])) != set(value["properties"]): reject("control_policy.invalid_contract", "invalid schema")
+    if name.endswith("decision.schema.json") and value["properties"].get("actor_ref") != {"maxLength":96,"pattern":"^[a-z][a-z0-9-]{0,31}/[a-z][a-z0-9-]{0,63}$","type":"string"}: reject("control_policy.invalid_contract", "decision actor_ref schema mismatch")
 
 
 def verify(root: Path) -> None:
     _verify_lock(root)
     manifest = load_json(root / DIRECTORY / "contract.json")
     if manifest != {"diagnostics":"diagnostics/diagnostics.json","family":FAMILY,"fixtures":"fixtures/cases.json","schemas":SCHEMAS,"side_effects":"forbidden","version":VERSION}: reject("control_policy.invalid_contract", "invalid manifest")
-    for relative in SCHEMAS.values(): _schema(load_json(root / DIRECTORY / relative))
+    for relative in SCHEMAS.values(): _schema(load_json(root / DIRECTORY / relative), relative)
     diagnostics = load_json(root / DIRECTORY / "diagnostics" / "diagnostics.json")
     if not isinstance(diagnostics, dict) or set(diagnostics) != {"diagnostics", "version"} or diagnostics.get("version") != VERSION or [item.get("code") for item in diagnostics.get("diagnostics", []) if isinstance(item, dict) and set(item) == {"code"}] != sorted(REQUIRED_DIAGNOSTICS, key=lambda item: item.encode("utf-8")): reject("control_policy.invalid_diagnostics", "invalid diagnostics")
     suite = load_json(root / DIRECTORY / "fixtures" / "cases.json")
     if not isinstance(suite, dict) or set(suite) != {"cases", "version"} or suite.get("version") != VERSION or not isinstance(suite.get("cases"), list) or not suite["cases"]: reject("control_policy.invalid_fixtures", "invalid fixture suite")
     ids = [case.get("case_id") for case in suite["cases"] if isinstance(case, dict)]
-    if ids != sorted(ids, key=lambda item: item.encode("utf-8")) or len(ids) != len(suite["cases"]): reject("control_policy.invalid_fixtures", "invalid fixture IDs")
+    if not all(isinstance(item, str) for item in ids) or ids != sorted(ids, key=lambda item: item.encode("utf-8")) or len(set(ids)) != len(ids) or len(ids) != len(suite["cases"]): reject("control_policy.invalid_fixtures", "invalid fixture IDs")
     for case in suite["cases"]:
         if not isinstance(case, dict) or set(case) != {"case_id", "expected", "input"} or not isinstance(case["input"], dict): reject("control_policy.invalid_fixtures", "invalid fixture")
         data = case["input"]
