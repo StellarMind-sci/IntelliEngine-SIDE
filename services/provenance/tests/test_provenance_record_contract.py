@@ -75,7 +75,9 @@ class ProvenanceRecordContractTests(unittest.TestCase):
                 self.assertEqual(self.verifier.validate_binding([self.record], self.reference, request, "2027-01-01T00:00:00Z"), {"status": "rejected", "diagnostic": code})
         self.assertEqual(self.verifier.validate_binding([], self.reference, self.request, "2027-01-01T00:00:00Z")["diagnostic"], "provenance.missing_record")
         revoked = dict(self.record, revoked=True)
-        self.assertEqual(self.verifier.validate_binding([revoked], self.reference, self.request, "2027-01-01T00:00:00Z")["diagnostic"], "provenance.revoked")
+        revoked["record_digest"] = self.verifier.record_digest(revoked)
+        revoked_reference = self.verifier.exact_reference(revoked)
+        self.assertEqual(self.verifier.validate_binding([revoked], revoked_reference, self.request, "2027-01-01T00:00:00Z")["diagnostic"], "provenance.revoked")
         self.assertEqual(self.verifier.validate_binding([self.record], self.reference, self.request, "2031-01-01T00:00:00Z")["diagnostic"], "provenance.expired")
 
     def test_strict_raw_parser_rejects_ambiguous_or_invalid_bytes(self) -> None:
@@ -124,5 +126,40 @@ class ProvenanceRecordContractTests(unittest.TestCase):
         first["derives_from"] = [self.verifier.exact_reference(second)]
         second["derives_from"] = [self.verifier.exact_reference(first)]
         self.assert_rejected(lambda: self.verifier.validate_derivation([first, second]), "provenance.derivation_cycle")
+    def test_binding_revalidates_candidate_before_using_it(self) -> None:
+        for field, value, code in (
+            ("actor_ref", "actor/tampered", "provenance.lock_digest_mismatch"),
+            ("version", "1.1.0", "provenance.invalid_record"),
+        ):
+            with self.subTest(field=field):
+                record = copy.deepcopy(self.record)
+                record[field] = value
+                self.assertEqual(self.verifier.validate_binding([record], self.reference, self.request, "2027-01-01T00:00:00Z")["diagnostic"], code)
+
+    def test_jcs_uses_ecmascript_number_boundaries_and_rejects_unsafe_float(self) -> None:
+        self.assertEqual(self.verifier.jcs_bytes({"n": 1e-6}), b'{"n":0.000001}')
+        self.assertEqual(self.verifier.jcs_bytes({"n": 1e20}), b'{"n":100000000000000000000}')
+        self.assert_rejected(lambda: self.verifier.parse_json_bytes(b'{"n":9007199254740992.0}'), "provenance.invalid_json_bytes")
+
+    def test_record_refs_and_timestamps_are_strict_and_nonleaking(self) -> None:
+        record = copy.deepcopy(self.record)
+        record["actor_ref"] = "credential/secret"
+        record["record_digest"] = self.verifier.record_digest(record)
+        self.assert_rejected(lambda: self.verifier.validate_record(record), "provenance.protected_content")
+        record = copy.deepcopy(self.record)
+        record["valid_from"] = "2026-01-01T00:00:00+00:00"
+        record["record_digest"] = self.verifier.record_digest(record)
+        self.assert_rejected(lambda: self.verifier.validate_record(record), "provenance.invalid_record")
+
+    def test_diagnostics_cover_all_stable_failure_codes_and_new_minor_is_read_only(self) -> None:
+        diagnostics = json.loads((CONTRACT_ROOT / "provenance-record/1.0.0/diagnostics/diagnostics.json").read_text(encoding="utf-8"))
+        declared = {item["code"] for item in diagnostics["diagnostics"]}
+        self.assertTrue(set(self.verifier.PUBLIC_FAILURE_CODES) <= declared)
+        self.assertEqual(self.verifier.compatibility_state("1.1.0"), "compatible_read")
+        self.assertEqual(self.verifier.compatibility_state("2.0.0"), "rejected")
+    def test_public_failures_do_not_echo_untrusted_input(self) -> None:
+        with self.assertRaises(self.verifier.VerificationError) as raised:
+            self.verifier._safe_path(CONTRACT_ROOT, "provenance-record/1.0.0/../credential-secret")
+        self.assertNotIn("credential", raised.exception.detail)
 if __name__ == "__main__":
     unittest.main()

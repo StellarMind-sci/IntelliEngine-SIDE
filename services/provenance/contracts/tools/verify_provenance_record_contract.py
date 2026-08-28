@@ -19,9 +19,12 @@ LOCK_PATH = DIRECTORY / "lock.json"
 SAFE_INTEGER = 9_007_199_254_740_991
 HEX_64 = re.compile(r"^[0-9a-f]{64}$")
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+OPAQUE_REF = re.compile(r"^[a-z][a-z0-9-]{0,31}/[A-Za-z0-9._:@/-]{1,160}$")
+RFC3339_UTC = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$")
 REFERENCE = re.compile(r"^provenance-record/([0-9]+)\.([0-9]+)\.([0-9]+)/([0-9a-f-]{36})@sha256:([0-9a-f]{64})$")
 REQUIRED_DIAGNOSTICS = {"provenance.binding_actor_mismatch", "provenance.binding_context_mismatch", "provenance.binding_fingerprint_mismatch", "provenance.binding_intent_mismatch", "provenance.binding_scope_mismatch", "provenance.binding_subject_mismatch", "provenance.derivation_cycle", "provenance.expired", "provenance.invalid_json_bytes", "provenance.lock_digest_mismatch", "provenance.lock_unsafe_path", "provenance.missing_record", "provenance.protected_content", "provenance.revoked", "provenance.unknown_field", "provenance.unsupported_major"}
 SENSITIVE_WORDS = ("credential", "secret", "password", "prompt", "memory", "source_text", "original_content", "content_body")
+PUBLIC_FAILURE_CODES = REQUIRED_DIAGNOSTICS | {"provenance.invalid_contract", "provenance.invalid_diagnostics", "provenance.invalid_fixtures", "provenance.invalid_lock", "provenance.invalid_record"}
 
 class VerificationError(Exception):
     def __init__(self, code: str, detail: str) -> None:
@@ -35,7 +38,7 @@ def _pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
     result: dict[str, object] = {}
     for key, value in pairs:
         if key in result:
-            reject("provenance.invalid_json_bytes", f"duplicate member: {key}")
+            reject("provenance.invalid_json_bytes", "duplicate JSON member")
         result[key] = value
     return result
 
@@ -47,8 +50,8 @@ def _integer(token: str) -> int:
 
 def _float(token: str) -> float:
     value = float(token)
-    if not math.isfinite(value):
-        reject("provenance.invalid_json_bytes", "non-finite number")
+    if not math.isfinite(value) or ("." in token and value.is_integer() and abs(value) > SAFE_INTEGER):
+        reject("provenance.invalid_json_bytes", "invalid JSON number")
     return value
 
 def _unicode(value: object) -> None:
@@ -62,23 +65,36 @@ def _unicode(value: object) -> None:
 
 def parse_json_bytes(raw: bytes, label: str = "input") -> object:
     if raw.startswith(b"\xef\xbb\xbf"):
-        reject("provenance.invalid_json_bytes", f"UTF-8 BOM: {label}")
+        reject("provenance.invalid_json_bytes", "UTF-8 BOM is forbidden")
     try:
         value = json.loads(raw.decode("utf-8", errors="strict"), object_pairs_hook=_pairs, parse_int=_integer, parse_float=_float, parse_constant=lambda _: reject("provenance.invalid_json_bytes", "non-finite number"))
     except VerificationError: raise
-    except (UnicodeDecodeError, json.JSONDecodeError) as error: reject("provenance.invalid_json_bytes", f"invalid JSON: {label}: {error}")
+    except (UnicodeDecodeError, json.JSONDecodeError) as error: reject("provenance.invalid_json_bytes", "invalid JSON bytes")
     _unicode(value)
     return value
 
 def load_json(path: Path) -> object:
-    if not path.is_file(): reject("provenance.missing_record", f"missing artifact: {path}")
+    if not path.is_file(): reject("provenance.missing_record", "missing artifact")
     return parse_json_bytes(path.read_bytes(), path.as_posix())
 
 def _number(value: int | float) -> str:
     if isinstance(value, int): return str(value)
+    if not math.isfinite(value): reject("provenance.invalid_json_bytes", "non-finite number")
     if value == 0: return "0"
     text = repr(value).lower()
-    return text[:-2] if text.endswith(".0") else text
+    sign = "-" if text.startswith("-") else ""
+    text = text[len(sign):]
+    if "e" not in text: return sign + (text[:-2] if text.endswith(".0") else text)
+    mantissa, exponent_text = text.split("e")
+    exponent = int(exponent_text)
+    digits = mantissa.replace(".", "")
+    if 1e-6 <= abs(value) < 1e21:
+        position = 1 + exponent
+        if position <= 0: return sign + "0." + "0" * -position + digits
+        if position >= len(digits): return sign + digits + "0" * (position - len(digits))
+        return sign + digits[:position] + "." + digits[position:]
+    mantissa = mantissa[:-2] if mantissa.endswith(".0") else mantissa
+    return f"{sign}{mantissa}e{'+' if exponent >= 0 else '-'}{abs(exponent)}"
 
 def jcs_bytes(value: object) -> bytes:
     if value is None: return b"null"
@@ -100,8 +116,8 @@ def _closed(value: object, keys: set[str], code: str) -> dict[str, object]:
     if not isinstance(value, dict): reject(code, "must be object")
     extras = set(value) - keys
     if extras:
-        if any(any(word in key.lower() for word in SENSITIVE_WORDS) for key in extras): reject("provenance.protected_content", f"protected field: {sorted(extras)}")
-        reject("provenance.unknown_field", f"unknown fields: {sorted(extras)}")
+        if any(any(word in key.lower() for word in SENSITIVE_WORDS) for key in extras): reject("provenance.protected_content", "protected content is forbidden")
+        reject("provenance.unknown_field", "unknown fields are forbidden")
     if set(value) != keys: reject(code, "required closed fields differ")
     return value
 
@@ -110,18 +126,43 @@ def parse_reference(value: object) -> tuple[str, str]:
     match = REFERENCE.fullmatch(value)
     if match is None: reject("provenance.missing_record", "reference must be exact immutable reference")
     major, _, _, record_id, digest = match.groups()
-    if major != "1": reject("provenance.unsupported_major", f"unsupported major: {major}")
+    if major != "1": reject("provenance.unsupported_major", "unsupported major")
     return record_id, digest
 
+def compatibility_state(version: object) -> str:
+    if not isinstance(version, str) or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
+        return "rejected"
+    major, minor, _ = (int(part) for part in version.split("."))
+    if major != 1: return "rejected"
+    return "supported" if minor == 0 else "compatible_read"
+
+def _opaque_ref(value: object) -> None:
+    if not isinstance(value, str) or len(value) > 192 or ".." in value or "//" in value or OPAQUE_REF.fullmatch(value) is None:
+        reject("provenance.invalid_record", "invalid opaque reference")
+    if any(word in value.lower() for word in SENSITIVE_WORDS):
+        reject("provenance.protected_content", "protected content is forbidden")
+
+def _timestamp(value: object) -> str:
+    if not isinstance(value, str) or RFC3339_UTC.fullmatch(value) is None:
+        reject("provenance.invalid_record", "invalid UTC timestamp")
+    try:
+        from datetime import datetime
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        reject("provenance.invalid_record", "invalid UTC timestamp")
+    return value
 def validate_record(value: object) -> dict[str, object]:
     keys = {"actor_ref", "authority_scope_ref", "derives_from", "expires_at", "family", "fingerprint", "intent_digest", "record_digest", "record_id", "revoked", "runtime_context_ref", "subject_ref", "valid_from", "version"}
     record = _closed(value, keys, "provenance.invalid_record")
-    if record["family"] != "provenance-record" or record["version"] != VERSION: reject("provenance.unsupported_major", "record family/version differs")
+    if record["family"] != "provenance-record": reject("provenance.invalid_record", "invalid record family")
+    if record["version"] != VERSION: reject("provenance.invalid_record", "published record version must be exact")
     if not isinstance(record["record_id"], str) or UUID.fullmatch(record["record_id"]) is None: reject("provenance.invalid_record", "record_id must be UUID")
     for key in ("record_digest", "intent_digest", "fingerprint"):
-        if not isinstance(record[key], str) or HEX_64.fullmatch(record[key]) is None: reject("provenance.invalid_record", f"{key} must be sha256")
-    for key in ("subject_ref", "actor_ref", "authority_scope_ref", "runtime_context_ref", "valid_from", "expires_at"):
-        if not isinstance(record[key], str) or not record[key]: reject("provenance.invalid_record", f"{key} must be non-empty")
+        if not isinstance(record[key], str) or HEX_64.fullmatch(record[key]) is None: reject("provenance.invalid_record", "invalid digest field")
+    for key in ("subject_ref", "actor_ref", "authority_scope_ref", "runtime_context_ref"):
+        _opaque_ref(record[key])
+    record["valid_from"] = _timestamp(record["valid_from"])
+    record["expires_at"] = _timestamp(record["expires_at"])
     if not isinstance(record["revoked"], bool) or not isinstance(record["derives_from"], list): reject("provenance.invalid_record", "revoked/derives_from invalid")
     if record["derives_from"] != sorted(set(record["derives_from"])): reject("provenance.invalid_record", "derivation refs must be unique sorted")
     for parent in record["derives_from"]: parse_reference(parent)
@@ -136,7 +177,7 @@ def validate_derivation(records: list[dict[str, object]]) -> None:
         if node in seen: return
         active.add(node)
         for parent in graph.get(node, []):
-            if parent not in graph: reject("provenance.missing_record", f"missing parent: {parent}")
+            if parent not in graph: reject("provenance.missing_record", "missing derived record")
             visit(parent, seen, active)
         active.remove(node); seen.add(node)
     seen: set[str] = set()
@@ -144,8 +185,14 @@ def validate_derivation(records: list[dict[str, object]]) -> None:
 
 def validate_binding(records: list[dict[str, object]], reference: object, request: object, validation_time: object) -> dict[str, str]:
     record_id, digest = parse_reference(reference)
-    if not isinstance(request, dict) or not isinstance(validation_time, str): reject("provenance.missing_record", "request and deterministic time required")
-    candidates = [record for record in records if record["record_id"] == record_id and record["record_digest"] == digest]
+    if not isinstance(request, dict): reject("provenance.missing_record", "invalid binding request")
+    validation_time = _timestamp(validation_time)
+    try:
+        normalized = [validate_record(record) for record in records]
+        validate_derivation(normalized)
+    except VerificationError as error:
+        return {"status": "rejected", "diagnostic": error.code}
+    candidates = [record for record in normalized if record["record_id"] == record_id and record["record_digest"] == digest]
     if len(candidates) != 1: return {"status": "rejected", "diagnostic": "provenance.missing_record"}
     record = candidates[0]
     if record["revoked"]: return {"status": "rejected", "diagnostic": "provenance.revoked"}
@@ -158,10 +205,10 @@ def validate_binding(records: list[dict[str, object]], reference: object, reques
 def _safe_path(root: Path, path: object) -> tuple[str, Path]:
     if not isinstance(path, str) or not path or "\\" in path: reject("provenance.lock_unsafe_path", "non-POSIX lock path")
     pure = PurePosixPath(path)
-    if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts) or pure.parts[:2] != ("provenance-record", VERSION): reject("provenance.lock_unsafe_path", f"unsafe path: {path}")
+    if pure.is_absolute() or any(part in {"", ".", ".."} for part in pure.parts) or pure.parts[:2] != ("provenance-record", VERSION): reject("provenance.lock_unsafe_path", "unsafe lock path")
     candidate = (root / Path(*pure.parts)).resolve()
     try: candidate.relative_to(root.resolve())
-    except ValueError: reject("provenance.lock_unsafe_path", f"path escapes root: {path}")
+    except ValueError: reject("provenance.lock_unsafe_path", "lock path escapes contract root")
     return pure.as_posix(), candidate
 
 def validate_lock(root: Path) -> None:
@@ -173,7 +220,7 @@ def validate_lock(root: Path) -> None:
         relative, artifact = _safe_path(root, entry["path"])
         if relative == LOCK_PATH.as_posix() or relative in locked or entry["digest_kind"] != "jcs_sha256" or not isinstance(entry["sha256"], str) or HEX_64.fullmatch(entry["sha256"]) is None: reject("provenance.invalid_lock", "invalid lock entry")
         locked.add(relative)
-        if hashlib.sha256(jcs_bytes(load_json(artifact))).hexdigest() != entry["sha256"]: reject("provenance.lock_digest_mismatch", f"digest mismatch: {relative}")
+        if hashlib.sha256(jcs_bytes(load_json(artifact))).hexdigest() != entry["sha256"]: reject("provenance.lock_digest_mismatch", "lock digest mismatch")
     actual = {path.relative_to(root).as_posix() for path in (root / DIRECTORY).rglob("*.json") if path.relative_to(root).as_posix() != LOCK_PATH.as_posix()}
     if locked != actual: reject("provenance.invalid_lock", "lock coverage mismatch")
 
@@ -183,9 +230,9 @@ def verify(root: Path) -> None:
     if contract["family"] != "provenance-record" or contract["version"] != VERSION or contract["side_effects"] != "forbidden": reject("provenance.invalid_contract", "identity/side effects differ")
     record = validate_record(contract["record"])
     diagnostics = _closed(load_json(root / DIAGNOSTICS_PATH), {"diagnostics", "version"}, "provenance.invalid_diagnostics")
-    if diagnostics["version"] != VERSION or not isinstance(diagnostics["diagnostics"], list) or {item.get("code") for item in diagnostics["diagnostics"] if isinstance(item, dict)} != REQUIRED_DIAGNOSTICS: reject("provenance.invalid_diagnostics", "catalog differs")
+    if diagnostics["version"] != VERSION or not isinstance(diagnostics["diagnostics"], list) or {item.get("code") for item in diagnostics["diagnostics"] if isinstance(item, dict)} != PUBLIC_FAILURE_CODES: reject("provenance.invalid_diagnostics", "catalog differs")
     fixtures = _closed(load_json(root / FIXTURES_PATH), {"cases", "version"}, "provenance.invalid_fixtures")
-    if fixtures["version"] != VERSION or not isinstance(fixtures["cases"], list) or {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"baseline", "missing", "expired", "revoked", "actor", "scope", "context", "intent", "fingerprint", "unknown-major"}: reject("provenance.invalid_fixtures", "coverage differs")
+    if fixtures["version"] != VERSION or not isinstance(fixtures["cases"], list) or {item.get("case_id") for item in fixtures["cases"] if isinstance(item, dict)} != {"baseline", "missing", "expired", "revoked", "actor", "scope", "context", "intent", "fingerprint", "unknown-major", "newer-minor", "unknown-field"}: reject("provenance.invalid_fixtures", "coverage differs")
     validate_derivation([record]); validate_lock(root)
 
 def main() -> int:
