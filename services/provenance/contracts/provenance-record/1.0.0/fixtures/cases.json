@@ -1,0 +1,1 @@
+{"cases":[{"case_id":"baseline"},{"case_id":"missing"},{"case_id":"expired"},{"case_id":"revoked"},{"case_id":"actor"},{"case_id":"scope"},{"case_id":"context"},{"case_id":"intent"},{"case_id":"fingerprint"},{"case_id":"unknown-major"}],"version":"1.0.0"}
