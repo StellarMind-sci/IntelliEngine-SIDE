@@ -1,0 +1,33 @@
+name: Control policy contract
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/control-policy.yml"
+      - "packages/control-plane/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/control-policy.yml"
+      - "packages/control-plane/**"
+
+permissions:
+  contents: read
+
+jobs:
+  control-policy:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_NO_INDEX: "1"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify control-policy contract
+        run: python -B packages/control-plane/tests/test_control_policy_contract.py
