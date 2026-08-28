@@ -102,5 +102,14 @@ class ControlPolicyContractTests(unittest.TestCase):
             self.relock(verifier, copied)
             with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
         self.assertEqual(raised.exception.code, "control_policy.invalid_fixtures")
+    def test_relocked_operation_schema_tamper_is_rejected(self) -> None:
+        verifier = self.verifier()
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "contracts"; shutil.copytree(CONTRACT_ROOT, copied)
+            path = copied / "control-policy" / "1.0.0" / "schemas" / "decision.schema.json"
+            schema = json.loads(path.read_text(encoding="utf-8")); schema["properties"]["operation_class"] = {"type":"string"}; path.write_text(json.dumps(schema), encoding="utf-8")
+            self.relock(verifier, copied)
+            with self.assertRaises(verifier.VerificationError) as raised: verifier.verify(copied)
+        self.assertEqual(raised.exception.code, "control_policy.invalid_contract")
 if __name__ == "__main__":
     unittest.main(verbosity=2)

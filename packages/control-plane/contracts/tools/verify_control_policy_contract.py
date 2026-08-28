@@ -24,6 +24,7 @@ SENSITIVE = ("credential", "secret", "password", "prompt", "memory", "source_tex
 SAFETY_CAPS = ["no-device", "no-file", "no-final-commit", "no-model", "no-network", "no-runtime-lease"]
 REQUIRED_DIAGNOSTICS = {"control_policy.binding_actor_mismatch", "control_policy.binding_context_mismatch", "control_policy.binding_fingerprint_mismatch", "control_policy.binding_operation_mismatch", "control_policy.binding_plan_mismatch", "control_policy.binding_provenance_mismatch", "control_policy.binding_scope_mismatch", "control_policy.binding_target_mismatch", "control_policy.denied", "control_policy.expired", "control_policy.indeterminate", "control_policy.invalid_contract", "control_policy.invalid_decision", "control_policy.invalid_diagnostics", "control_policy.invalid_fixtures", "control_policy.invalid_json_bytes", "control_policy.invalid_lock", "control_policy.lock_digest_mismatch", "control_policy.lock_unsafe_path", "control_policy.missing_decision", "control_policy.protected_content", "control_policy.revoked", "control_policy.safety_cap_mismatch", "control_policy.unknown_field", "control_policy.unsupported_major"}
 SCHEMAS = {"binding_request": "schemas/binding-request.schema.json", "binding_result": "schemas/binding-result.schema.json", "contract": "schemas/contract.schema.json", "decision": "schemas/decision.schema.json", "diagnostic": "schemas/diagnostic.schema.json"}
+SCHEMA_PROJECTIONS = {"schemas/binding-request.schema.json":"9999b90d57439c8984be1b34657b2e230ae1580fceb86603258c87ac13b2aea8","schemas/binding-result.schema.json":"2f974645b17e63b2bc64faad8ca2dd340349ec92415c2ff1e0008c0a0dd64c25","schemas/contract.schema.json":"f088fe0853f433a4387e5e35ef75e13988d77946fff3d404c7b42af7cc22b9ea","schemas/decision.schema.json":"f7f6123e40a1c9bbdbc244abaff78a41ca2b108c83a2a9fab8b3779a3dad9a54","schemas/diagnostic.schema.json":"cc9b7088e26e58e8286a92592bf76ea28d76adaf803e0134b0dd6ccaaade0573"}
 
 class VerificationError(Exception):
     def __init__(self, code: str, detail: str) -> None:
@@ -221,6 +222,7 @@ def _verify_lock(root: Path) -> None:
 def _schema(value: object, name: str) -> None:
     if not isinstance(value, dict) or value.get("$schema") != "https://json-schema.org/draft/2020-12/schema" or value.get("type") != "object" or value.get("additionalProperties") is not False or not isinstance(value.get("properties"), dict) or set(value.get("required", [])) != set(value["properties"]): reject("control_policy.invalid_contract", "invalid schema")
     if name.endswith("decision.schema.json") and value["properties"].get("actor_ref") != {"maxLength":96,"pattern":"^[a-z][a-z0-9-]{0,31}/[a-z][a-z0-9-]{0,63}$","type":"string"}: reject("control_policy.invalid_contract", "decision actor_ref schema mismatch")
+    if hashlib.sha256(jcs_bytes(value)).hexdigest() != SCHEMA_PROJECTIONS.get(name): reject("control_policy.invalid_contract", "schema semantic projection mismatch")
 
 
 def verify(root: Path) -> None:
@@ -237,7 +239,10 @@ def verify(root: Path) -> None:
     for case in suite["cases"]:
         if not isinstance(case, dict) or set(case) != {"case_id", "expected", "input"} or not isinstance(case["input"], dict): reject("control_policy.invalid_fixtures", "invalid fixture")
         data = case["input"]
-        if set(data) != {"decisions", "reference", "request", "validation_time"} or validate_binding(data["decisions"], data["reference"], data["request"], data["validation_time"]) != case["expected"]: reject("control_policy.invalid_fixtures", "fixture result mismatch")
+        if set(data) == {"decisions", "reference", "request", "validation_time"}: result = validate_binding(data["decisions"], data["reference"], data["request"], data["validation_time"])
+        elif set(data) == {"raw_decisions", "reference", "raw_request", "validation_time"} and isinstance(data["raw_decisions"], list) and all(isinstance(raw, str) for raw in data["raw_decisions"]) and isinstance(data["raw_request"], str): result = validate_binding_bytes([raw.encode("utf-8") for raw in data["raw_decisions"]], data["reference"], data["raw_request"].encode("utf-8"), data["validation_time"])
+        else: reject("control_policy.invalid_fixtures", "invalid fixture input")
+        if result != case["expected"]: reject("control_policy.invalid_fixtures", "fixture result mismatch")
 
 def main() -> int:
     parser = argparse.ArgumentParser(); parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
