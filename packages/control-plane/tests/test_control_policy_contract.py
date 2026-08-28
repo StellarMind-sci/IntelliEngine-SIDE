@@ -69,5 +69,12 @@ class ControlPolicyContractTests(unittest.TestCase):
         protected = copy.deepcopy(value["decisions"][0]); protected["prompt"] = "private"
         with self.assertRaises(verifier.VerificationError) as raised: verifier.validate_decision(protected)
         self.assertEqual(raised.exception.code, "control_policy.protected_content")
+    def test_binding_never_accepts_newer_minor_decision_or_provenance_references(self) -> None:
+        verifier, value = self.verifier(), self.valid_inputs()
+        self.assertEqual(verifier.validate_binding(value["decisions"], value["reference"].replace("/1.0.0/", "/1.1.0/"), value["request"], value["validation_time"])["status"], "rejected")
+        decision = copy.deepcopy(value["decisions"][0])
+        decision["provenance_record_ref"] = decision["provenance_record_ref"].replace("/1.0.0/", "/1.1.0/")
+        decision["decision_digest"] = verifier.decision_digest(decision)
+        self.assertEqual(verifier.validate_binding([decision], verifier.exact_reference(decision), value["request"], value["validation_time"])["status"], "rejected")
 if __name__ == "__main__":
     unittest.main(verbosity=2)

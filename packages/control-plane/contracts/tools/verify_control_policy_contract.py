@@ -129,8 +129,8 @@ def policy_reference(decision: dict[str, object]) -> str:
 
 def _reference(value: object, pattern: re.Pattern[str]) -> tuple[str, str]:
     if not isinstance(value, str) or (match := pattern.fullmatch(value)) is None: reject("control_policy.invalid_decision", "reference must be exact")
-    major, _, _, item_id, digest = match.groups()
-    if major != "1": reject("control_policy.unsupported_major", "unsupported reference major")
+    major, minor, patch, item_id, digest = match.groups()
+    if (major, minor, patch) != ("1", "0", "0"): reject("control_policy.unsupported_major", "unsupported reference version")
     return item_id, digest
 
 def validate_decision(value: object) -> dict[str, object]:
