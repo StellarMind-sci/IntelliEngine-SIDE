@@ -1,0 +1,59 @@
+{
+  "cases": [
+    {
+      "case_id": "blocked-affects-analysis-and-operation-in-stable-order",
+      "flow": {"steps": [
+        {"step_id": "z-analysis", "kind": "analysis", "knowledge_unit_refs": [{"id": "10000000-0000-4000-8000-000000000002", "revision": 1}, {"id": "10000000-0000-4000-8000-000000000001", "revision": 2}]},
+        {"step_id": "a-operation", "kind": "operation", "knowledge_unit_refs": [], "behavior_ref": {"knowledge_unit_ref": {"id": "10000000-0000-4000-8000-000000000001", "revision": 2}}},
+        {"step_id": "m-verification", "kind": "verification", "knowledge_unit_refs": [{"id": "10000000-0000-4000-8000-000000000002", "revision": 1}]}
+      ]},
+      "projection": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "units": [
+        {"ref": {"id": "10000000-0000-4000-8000-000000000002", "revision": 1}, "status": "blocked", "missing_prerequisite_refs": [{"id": "10000000-0000-4000-8000-000000000003", "revision": 1}], "missing_evidence_node_refs": []},
+        {"ref": {"id": "10000000-0000-4000-8000-000000000001", "revision": 2}, "status": "blocked", "missing_prerequisite_refs": [{"id": "10000000-0000-4000-8000-000000000004", "revision": 1}], "missing_evidence_node_refs": []}
+      ]},
+      "expected": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "impacted_steps": [
+        {"step_id": "a-operation", "reasons": [{"knowledge_unit_ref": {"id": "10000000-0000-4000-8000-000000000001", "revision": 2}, "status": "blocked", "missing_prerequisite_refs": [{"id": "10000000-0000-4000-8000-000000000004", "revision": 1}], "missing_evidence_node_refs": []}]},
+        {"step_id": "z-analysis", "reasons": [{"knowledge_unit_ref": {"id": "10000000-0000-4000-8000-000000000001", "revision": 2}, "status": "blocked", "missing_prerequisite_refs": [{"id": "10000000-0000-4000-8000-000000000004", "revision": 1}], "missing_evidence_node_refs": []}, {"knowledge_unit_ref": {"id": "10000000-0000-4000-8000-000000000002", "revision": 1}, "status": "blocked", "missing_prerequisite_refs": [{"id": "10000000-0000-4000-8000-000000000003", "revision": 1}], "missing_evidence_node_refs": []}]}
+      ]}
+    },
+    {
+      "case_id": "needs-evidence-affects-verification-only",
+      "flow": {"steps": [
+        {"step_id": "analysis", "kind": "analysis", "knowledge_unit_refs": [{"id": "10000000-0000-4000-8000-000000000005", "revision": 1}]},
+        {"step_id": "verify", "kind": "verification", "knowledge_unit_refs": [{"id": "10000000-0000-4000-8000-000000000005", "revision": 1}]}
+      ]},
+      "projection": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "units": [{"ref": {"id": "10000000-0000-4000-8000-000000000005", "revision": 1}, "status": "needs_evidence", "missing_prerequisite_refs": [], "missing_evidence_node_refs": [{"id": "20000000-0000-4000-8000-000000000001", "revision": 1}]}]},
+      "expected": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "impacted_steps": [{"step_id": "verify", "reasons": [{"knowledge_unit_ref": {"id": "10000000-0000-4000-8000-000000000005", "revision": 1}, "status": "needs_evidence", "missing_prerequisite_refs": [], "missing_evidence_node_refs": [{"id": "20000000-0000-4000-8000-000000000001", "revision": 1}]}]}]}
+    },
+    {
+      "case_id": "ready-does-not-impact-steps",
+      "flow": {"steps": [{"step_id": "analysis", "kind": "analysis", "knowledge_unit_refs": [{"id": "10000000-0000-4000-8000-000000000006", "revision": 1}]}]},
+      "projection": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "units": [{"ref": {"id": "10000000-0000-4000-8000-000000000006", "revision": 1}, "status": "ready", "missing_prerequisite_refs": [], "missing_evidence_node_refs": []}]},
+      "expected": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "impacted_steps": []}
+    },
+    {
+      "case_id": "invalid-projection-is-not-evaluated",
+      "flow": {"steps": []},
+      "projection": {"object_result": "invalid", "operation_outcome": "succeeded", "issues": [], "units": []},
+      "expected": {"object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": [{"code": "thoughtflow.knowledge_impact.invalid_projection", "path": "/projection", "severity": "error"}], "impacted_steps": []}
+    },
+    {
+      "case_id": "invalid-flow-is-not-evaluated",
+      "flow": {"steps": [{"step_id": "missing-refs", "kind": "analysis"}]},
+      "projection": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "units": []},
+      "expected": {"object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": [{"code": "thoughtflow.knowledge_impact.invalid_flow", "path": "/flow/steps/0/knowledge_unit_refs", "severity": "error"}], "impacted_steps": []}
+    },
+    {
+      "case_id": "unsafe-ref-revision-makes-projection-indeterminate",
+      "flow": {"steps": []},
+      "projection": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "units": [{"ref": {"id": "10000000-0000-4000-8000-000000000007", "revision": 9007199254740992}, "status": "ready", "missing_prerequisite_refs": [], "missing_evidence_node_refs": []}]},
+      "expected": {"object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": [{"code": "thoughtflow.knowledge_impact.invalid_projection", "path": "/projection", "severity": "error"}], "impacted_steps": []}
+    },
+    {
+      "case_id": "non-uuid-ref-makes-projection-indeterminate",
+      "flow": {"steps": []},
+      "projection": {"object_result": "valid", "operation_outcome": "succeeded", "issues": [], "units": [{"ref": {"id": "not-a-uuid", "revision": 1}, "status": "ready", "missing_prerequisite_refs": [], "missing_evidence_node_refs": []}]},
+      "expected": {"object_result": "not_evaluated", "operation_outcome": "indeterminate", "issues": [{"code": "thoughtflow.knowledge_impact.invalid_projection", "path": "/projection", "severity": "error"}], "impacted_steps": []}
+    }
+  ]
+}
