@@ -95,7 +95,8 @@ export function renderLinearEquationPreviewHtml(preview: PreviewResult): string 
     dt { font-weight: 700; } dd { margin: 0; }
     .state { padding: 1rem; border-left: .4rem solid; border-radius: .35rem; }
     .state-ready { background: #e8f7ee; border-color: #167a3f; }
-    .state-blocked, .state-needs-evidence { background: #fff3df; border-color: #b45f06; }
+    .state-blocked { background: #fff3df; border-color: #b45f06; }
+    .state-needs-evidence { background: #f1edff; border-color: #6941c6; }
     .state-empty { background: #edf2f7; border-color: #526170; }
     .state-invalid-input { background: #fdeceb; border-color: #b42318; }
     .reason { margin-top: .75rem; padding: .75rem; background: #fafbfc; border: 1px solid #d7ddea; border-radius: .35rem; }

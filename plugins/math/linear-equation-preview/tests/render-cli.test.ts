@@ -142,3 +142,26 @@ test("CLI reports unknown case and format with stable nonzero stderr", () => {
   assert.equal(missingFormat.stdout, "");
   assert.equal(missingFormat.stderr, "unknown output format: text\n");
 });
+
+test("CLI rejects inherited fixture property names as unknown demo cases", () => {
+  for (const caseId of ["__proto__", "constructor"]) {
+    const result = runCli(caseId, "json");
+
+    assert.notEqual(result.status, 0, caseId);
+    assert.equal(result.stdout, "", caseId);
+    assert.equal(result.stderr, `unknown demo case: ${caseId}\n`, caseId);
+  }
+});
+
+test("renders blocked and needs-evidence with distinct status CSS rules", async () => {
+  const blockedHtml = await render(createLinearEquationPreview(clone(cases.blocked)));
+  const needsEvidenceHtml = await render(createLinearEquationPreview(clone(cases["needs-evidence"])));
+  const blockedStyle = blockedHtml.match(/\.state-blocked \{([^}]+)\}/)?.[1];
+  const needsEvidenceStyle = needsEvidenceHtml.match(/\.state-needs-evidence \{([^}]+)\}/)?.[1];
+
+  assert.ok(blockedStyle);
+  assert.ok(needsEvidenceStyle);
+  assert.notEqual(blockedStyle, needsEvidenceStyle);
+  assert.doesNotMatch(blockedHtml, /import sympy as sp/);
+  assert.doesNotMatch(needsEvidenceHtml, /import sympy as sp/);
+});

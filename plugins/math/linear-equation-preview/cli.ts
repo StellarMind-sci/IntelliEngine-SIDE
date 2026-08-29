@@ -36,11 +36,11 @@ function run() {
     return;
   }
 
-  const request = fixtures[parsed.caseId];
-  if (request === undefined) {
+  if (!Object.hasOwn(fixtures, parsed.caseId)) {
     writeError(`unknown demo case: ${parsed.caseId}`);
     return;
   }
+  const request = fixtures[parsed.caseId];
 
   const preview = createLinearEquationPreview(request);
   const output = parsed.format === "json" ? JSON.stringify(preview, null, 2) : renderLinearEquationPreviewHtml(preview);
