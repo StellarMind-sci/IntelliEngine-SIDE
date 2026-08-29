@@ -236,6 +236,12 @@ export function validateReferences(flow: any, snapshot: any) {
       if (item.object_result === "invalid") return verdict(false, issue("thoughtflow.dangling_reference", path));
       if (["opaque", "compatible_read"].includes(item.object_result)) return indeterminate("thoughtflow.opaque_reference", path);
       if (item.object_result !== "available") return indeterminate("thoughtflow.reference_snapshot_incomplete", path);
+      if (field === "knowledge_unit_refs") {
+        const document = item.document;
+        if (!document || typeof document !== "object" || Array.isArray(document) || refKey({ id: document.id, revision: document.revision }) !== refKey(entries[index])) {
+          return verdict(false, issue("thoughtflow.dangling_reference", path));
+        }
+      }
     }
   }
   for (let index = 0; index < flow.steps.length; index++) {

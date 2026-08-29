@@ -8,6 +8,7 @@ import {
   nextCandidates,
   parseAndValidateTransport,
   simulateBounded,
+  validateReferences,
   validateRevisionTransition,
 } from "../../src/thoughtflow/runtime.ts";
 
@@ -15,6 +16,7 @@ const root = new URL("../../contracts/thoughtflow/1.0.0/", import.meta.url);
 const suite = JSON.parse(readFileSync(new URL("fixtures/cases.json", root), "utf8"));
 const runtimeCases = JSON.parse(readFileSync(new URL("../fixtures/runtime-cases.json", import.meta.url), "utf8"));
 const validFlow = () => structuredClone(suite.cases[0].input.flow);
+const validSnapshot = () => structuredClone(suite.cases[0].input.snapshot);
 
 function renameStep(flow: any, previous: string, next: string) {
   for (const step of flow.steps) {
@@ -70,6 +72,28 @@ test("executes all machine fixtures without replaying expected", () => {
   const results = executeFixtureSuite(root);
   assert.equal(results.length, 18);
   assert.ok(results.every((item) => JSON.stringify(item.actual) === JSON.stringify(item.expected)));
+});
+
+test("rejects available knowledge unit with mismatched document identity", () => {
+  const snapshot = validSnapshot();
+  snapshot.knowledge_units[0].document.id = "018f0c20-7a8b-7c1d-8a2e-666666666666";
+
+  const result = validateReferences(validFlow(), snapshot);
+
+  assert.equal(result.object_result, "invalid");
+  assert.equal(result.issues[0].code, "thoughtflow.dangling_reference");
+  assert.equal(result.issues[0].path, "/knowledge_unit_refs/0");
+});
+
+test("rejects available knowledge unit with mismatched document revision", () => {
+  const snapshot = validSnapshot();
+  snapshot.knowledge_units[0].document.revision = 2;
+
+  const result = validateReferences(validFlow(), snapshot);
+
+  assert.equal(result.object_result, "invalid");
+  assert.equal(result.issues[0].code, "thoughtflow.dangling_reference");
+  assert.equal(result.issues[0].path, "/knowledge_unit_refs/0");
 });
 
 test("raw transport rejects duplicate members", () => {
