@@ -34,14 +34,15 @@
 { mode, side_effects, state, equation, proposal, impacted_steps, reasons }
 ```
 
-`proposal` 只会在 `ready` 状态存在，包含 canonical equation、solution、SymPy source suggestion 和 verification assertion。所有数组稳定排序；输入深拷贝后只读处理。
+`proposal` 只会在投影状态不变量完整成立的 `ready` 状态存在，包含 canonical equation、精确有理数形式的 solution、SymPy source suggestion 和 verification assertion。重复引用、状态与缺失集合矛盾或其他非规范投影一律封闭为 `invalid_input`，不产生 proposal。所有数组稳定排序；输入深拷贝后只读处理。
 
 HTML 渲染函数 `renderLinearEquationPreviewHtml(preview)` 只把该结构化预览转换为无脚本、可打印的单页 HTML。命令行入口读取固定 fixture，向 stdout 输出 JSON 或 HTML；用户可重定向 stdout 到本地文件后打开。CLI 本身不写文件。
 
 ## 范围
 
 - 在 `plugins/math/linear-equation-preview/` 新建 TypeScript 纯函数、HTML renderer、CLI、固定演示 fixture 和 Node 测试。
-- 在 `docs/demos/` 新建验收说明，含复制即用的三种场景命令、预期结果、异常/空状态与截图获取方法。
+- 在 `docs/demos/` 新建验收说明和 ready/blocked/empty 的静态 HTML、PNG 证据，含复制即用的三种场景命令、预期结果、异常/空状态与截图获取方法。
+- 在 `.github/workflows/` 增加仅覆盖该预览切片的 Node 24 测试工作流，确保与本地演示同一测试集合在 CI 中执行。
 
 ## 非目标
 

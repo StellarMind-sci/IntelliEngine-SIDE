@@ -12,11 +12,12 @@
 
 ## Global Constraints
 
-- 只在 plugins/math/linear-equation-preview/** 与 docs/demos/** 增加本切片文件；不得修改任何已发布契约、schema、lock、既有 fixture 或 runtime。
+- 只在 plugins/math/linear-equation-preview/**、docs/demos/** 与新增 `.github/workflows/math-preview.yml` 增加本切片文件；不得修改任何已发布契约、schema、lock、既有 fixture 或 runtime。
 - 纯预览：不启动 Python/SymPy/进程/Agent/网络/数据库，不写工程状态、证据或用户数据，不注册 Plugin SDK。
 - 结果必须含 mode: "preview" 与 side_effects: "forbidden"；不得把建议称为执行结果或个人掌握证据。
 - 仅匹配 operation behavior_ref.behavior_id === "solve-linear-equation"、对应 KnowledgeUnit 的同名 calculation 行为及 runtime.math.symbolic capability。
 - 只有目标单元状态为 ready 时产生 proposal；blocked、needs_evidence、空匹配和非法输入均不得输出代码建议。
+- `ready` 必须没有缺失先修或证据；`blocked` 必须有缺失先修；`needs_evidence` 必须无缺失先修且有证据缺口；重复或矛盾投影封闭为 invalid_input。solution、SymPy 建议和 verification assertion 必须从精确有理数表示生成，不得依赖浮点除法。
 - CLI 只从固定 fixture 读入，向 stdout 输出 JSON 或 HTML；它不得自行创建或修改文件。
 - 用户验收必须覆盖正常、阻断、空状态，提供可复制命令、预期结果、视觉证据、自动化证据、已知限制与回滚。
 - 每个生产行为先取得 RED，再写最小 GREEN；Node 测试必须运行真实 CLI/renderer，不使用 mock。
