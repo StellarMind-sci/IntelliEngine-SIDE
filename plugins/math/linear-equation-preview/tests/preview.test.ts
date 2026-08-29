@@ -87,3 +87,149 @@ test("rejects an unsafe numeric coefficient without offering code", () => {
   assert.equal(preview.proposal, null);
   assert.deepEqual(request, before);
 });
+test("withholds a proposal and sorts evidence reasons when the matching unit needs evidence", () => {
+  const request = clone(cases["needs-evidence"]);
+  const before = clone(request);
+
+  const preview = createLinearEquationPreview(request);
+
+  assert.equal(preview.mode, "preview");
+  assert.equal(preview.side_effects, "forbidden");
+  assert.equal(preview.state, "needs_evidence");
+  assert.equal(preview.proposal, null);
+  assert.deepEqual(preview.impacted_steps, [
+    { step_id: "solve-equation", kind: "operation" },
+    { step_id: "verify-solution", kind: "verification" },
+  ]);
+  assert.deepEqual(preview.reasons, [
+    {
+      knowledge_unit_ref: { id: "linear-equation-unit", revision: 1 },
+      status: "needs_evidence",
+      missing_prerequisite_refs: [],
+      missing_evidence_node_refs: [
+        { id: "evidence-a", revision: 2 },
+        { id: "evidence-z", revision: 1 },
+      ],
+    },
+  ]);
+  assert.deepEqual(request, before);
+});
+
+const negativeGates = [
+  {
+    name: "revision mismatch",
+    arrange(request: typeof cases.ready) {
+      request.flow.steps.find((step: { kind: string }) => step.kind === "operation").behavior_ref.knowledge_unit_ref.revision = 2;
+    },
+  },
+  {
+    name: "absent projection",
+    arrange(request: typeof cases.ready) {
+      request.projection.units = [];
+    },
+  },
+  {
+    name: "wrong behavior kind",
+    arrange(request: typeof cases.ready) {
+      request.knowledge_units[0].behaviors[0].kind = "transformation";
+    },
+  },
+  {
+    name: "wrong behavior capability",
+    arrange(request: typeof cases.ready) {
+      request.knowledge_units[0].behaviors[0].capability = "runtime.math.numeric";
+    },
+  },
+];
+
+for (const { name, arrange } of negativeGates) {
+  test(`withholds a proposal for ${name}`, () => {
+    const request = clone(cases.ready);
+    arrange(request);
+    const before = clone(request);
+
+    const preview = createLinearEquationPreview(request);
+
+    assert.equal(preview.mode, "preview");
+    assert.equal(preview.side_effects, "forbidden");
+    assert.equal(preview.state, "invalid_input");
+    assert.equal(preview.proposal, null);
+    assert.deepEqual(request, before);
+  });
+}
+
+test("chooses the matching operation by step_id so input order cannot change the preview", () => {
+  const validOperation = clone(cases.ready.flow.steps.find((step: { kind: string }) => step.kind === "operation"));
+  validOperation.step_id = "z-valid-operation";
+  const invalidOperation = clone(validOperation);
+  invalidOperation.step_id = "a-invalid-operation";
+  invalidOperation.behavior_ref.knowledge_unit_ref.revision = 2;
+  const verification = clone(cases.ready.flow.steps.find((step: { kind: string }) => step.kind === "verification"));
+  const validFirst = clone(cases.ready);
+  validFirst.flow.steps = [verification, validOperation, invalidOperation];
+  const invalidFirst = clone(cases.ready);
+  invalidFirst.flow.steps = [verification, invalidOperation, validOperation];
+  const validFirstBefore = clone(validFirst);
+  const invalidFirstBefore = clone(invalidFirst);
+
+  const validFirstPreview = createLinearEquationPreview(validFirst);
+  const invalidFirstPreview = createLinearEquationPreview(invalidFirst);
+
+  assert.deepEqual(validFirstPreview, invalidFirstPreview);
+  assert.equal(validFirstPreview.state, "invalid_input");
+  assert.equal(validFirstPreview.proposal, null);
+  assert.deepEqual(validFirst, validFirstBefore);
+  assert.deepEqual(invalidFirst, invalidFirstBefore);
+});
+
+const malformedRequests = [
+  {
+    name: "null equation",
+    arrange(request: typeof cases.ready) {
+      request.equation = null;
+    },
+  },
+  {
+    name: "null flow steps",
+    arrange(request: typeof cases.ready) {
+      request.flow.steps = null;
+    },
+  },
+  {
+    name: "non-array knowledge units",
+    arrange(request: typeof cases.ready) {
+      request.knowledge_units = {};
+    },
+  },
+  {
+    name: "non-array behaviors",
+    arrange(request: typeof cases.ready) {
+      request.knowledge_units[0].behaviors = {};
+    },
+  },
+  {
+    name: "non-array projection units",
+    arrange(request: typeof cases.ready) {
+      request.projection.units = {};
+    },
+  },
+];
+
+for (const { name, arrange } of malformedRequests) {
+  test(`returns a renderer-safe invalid preview for ${name}`, () => {
+    const request = clone(cases.ready);
+    arrange(request);
+    const before = clone(request);
+    let preview: ReturnType<typeof createLinearEquationPreview> | undefined;
+
+    assert.doesNotThrow(() => {
+      preview = createLinearEquationPreview(request);
+    });
+
+    assert.equal(preview?.mode, "preview");
+    assert.equal(preview?.side_effects, "forbidden");
+    assert.equal(preview?.state, "invalid_input");
+    assert.equal(preview?.proposal, null);
+    assert.deepEqual(request, before);
+  });
+}

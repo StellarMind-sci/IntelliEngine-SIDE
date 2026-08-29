@@ -133,4 +133,48 @@
       ]
     }
   }
+,
+  "needs-evidence": {
+    "equation": { "variable": "x", "coefficient": 2, "constant": 3, "right_hand_side": 11 },
+    "knowledge_units": [
+      {
+        "id": "linear-equation-unit",
+        "revision": 1,
+        "title": "Solve a linear equation",
+        "behaviors": [
+          {
+            "behavior_id": "solve-linear-equation",
+            "kind": "calculation",
+            "capability": "runtime.math.symbolic"
+          }
+        ]
+      }
+    ],
+    "projection": {
+      "units": [
+        {
+          "ref": { "id": "linear-equation-unit", "revision": 1 },
+          "status": "needs_evidence",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": [
+            { "id": "evidence-z", "revision": 1 },
+            { "id": "evidence-a", "revision": 2 }
+          ]
+        }
+      ]
+    },
+    "flow": {
+      "steps": [
+        { "step_id": "verify-solution", "kind": "verification" },
+        {
+          "step_id": "solve-equation",
+          "kind": "operation",
+          "behavior_ref": {
+            "knowledge_unit_ref": { "id": "linear-equation-unit", "revision": 1 },
+            "behavior_id": "solve-linear-equation"
+          }
+        }
+      ]
+    }
+  }
 }

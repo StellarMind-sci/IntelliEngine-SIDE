@@ -69,6 +69,99 @@ export type PreviewResult = {
 
 const OPERATION_ID = "solve-linear-equation";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isRef(value: unknown): value is Ref {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.revision === "number" &&
+    Number.isSafeInteger(value.revision)
+  );
+}
+
+function isEquationShape(value: unknown): value is Equation {
+  return (
+    isRecord(value) &&
+    typeof value.variable === "string" &&
+    typeof value.coefficient === "number" &&
+    typeof value.constant === "number" &&
+    typeof value.right_hand_side === "number"
+  );
+}
+
+function isBehavior(value: unknown): value is Behavior {
+  return (
+    isRecord(value) &&
+    typeof value.behavior_id === "string" &&
+    typeof value.kind === "string" &&
+    typeof value.capability === "string"
+  );
+}
+
+function isKnowledgeUnit(value: unknown): value is KnowledgeUnit {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.revision === "number" &&
+    Number.isSafeInteger(value.revision) &&
+    typeof value.title === "string" &&
+    Array.isArray(value.behaviors) &&
+    value.behaviors.every(isBehavior)
+  );
+}
+
+function isProjectionUnit(value: unknown): value is ProjectionUnit {
+  return (
+    isRecord(value) &&
+    isRef(value.ref) &&
+    (value.status === "ready" || value.status === "blocked" || value.status === "needs_evidence") &&
+    Array.isArray(value.missing_prerequisite_refs) &&
+    value.missing_prerequisite_refs.every(isRef) &&
+    Array.isArray(value.missing_evidence_node_refs) &&
+    value.missing_evidence_node_refs.every(isRef)
+  );
+}
+
+function isFlowStep(value: unknown): value is FlowStep {
+  if (!isRecord(value) || typeof value.step_id !== "string" || typeof value.kind !== "string") return false;
+  if (value.behavior_ref === undefined) return true;
+  return (
+    isRecord(value.behavior_ref) &&
+    isRef(value.behavior_ref.knowledge_unit_ref) &&
+    typeof value.behavior_ref.behavior_id === "string"
+  );
+}
+
+function isPreviewRequest(value: unknown): value is PreviewRequest {
+  return (
+    isRecord(value) &&
+    isEquationShape(value.equation) &&
+    Array.isArray(value.knowledge_units) &&
+    value.knowledge_units.every(isKnowledgeUnit) &&
+    isRecord(value.projection) &&
+    Array.isArray(value.projection.units) &&
+    value.projection.units.every(isProjectionUnit) &&
+    isRecord(value.flow) &&
+    Array.isArray(value.flow.steps) &&
+    value.flow.steps.every(isFlowStep)
+  );
+}
+
+function safeEquation(value: unknown): Equation {
+  const equation = isRecord(value) ? value : {};
+  const safeNumber = (candidate: unknown): number =>
+    typeof candidate === "number" && Number.isFinite(candidate) && Number.isSafeInteger(candidate) ? candidate : 0;
+  return {
+    variable: typeof equation.variable === "string" ? equation.variable : "",
+    coefficient: safeNumber(equation.coefficient),
+    constant: safeNumber(equation.constant),
+    right_hand_side: safeNumber(equation.right_hand_side),
+  };
+}
+
 function refKey(ref: Ref): string {
   return `${ref.id}@${ref.revision}`;
 }
@@ -143,13 +236,15 @@ function invalidResult(equation: Equation): PreviewResult {
   };
 }
 
-export function createLinearEquationPreview(request: PreviewRequest): PreviewResult {
-  const equation = copyEquation(request.equation);
-  if (!validEquation(equation)) return invalidResult(equation);
+export function createLinearEquationPreview(request: PreviewRequest): PreviewResult;
+export function createLinearEquationPreview(request: unknown): PreviewResult {
+  const equationSource = isRecord(request) ? request.equation : undefined;
+  const equation = safeEquation(equationSource);
+  if (!isPreviewRequest(request) || !validEquation(equation)) return invalidResult(equation);
 
-  const operation = request.flow.steps.find(
-    (step) => step.kind === "operation" && step.behavior_ref?.behavior_id === OPERATION_ID,
-  );
+  const operation = request.flow.steps
+    .filter((step) => step.kind === "operation" && step.behavior_ref?.behavior_id === OPERATION_ID)
+    .sort((left, right) => left.step_id.localeCompare(right.step_id))[0];
   if (operation?.behavior_ref === undefined) {
     return {
       mode: "preview",
@@ -189,7 +284,6 @@ export function createLinearEquationPreview(request: PreviewRequest): PreviewRes
       reasons: [projectionReason(projectionUnit)],
     };
   }
-  if (projectionUnit.status !== "ready") return invalidResult(equation);
 
   const value = (equation.right_hand_side - equation.constant) / equation.coefficient;
   const canonicalEquation = equationText(equation);
