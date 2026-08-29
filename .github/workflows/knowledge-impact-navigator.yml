@@ -1,0 +1,36 @@
+name: Knowledge Impact Navigator
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/knowledge-impact-navigator/**"
+      - ".github/workflows/knowledge-impact-navigator.yml"
+      - "docs/demos/knowledge-impact-navigator-acceptance.md"
+      - "docs/demos/artifacts/knowledge-impact-navigator/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/knowledge-impact-navigator/**"
+      - ".github/workflows/knowledge-impact-navigator.yml"
+      - "docs/demos/knowledge-impact-navigator-acceptance.md"
+      - "docs/demos/artifacts/knowledge-impact-navigator/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  navigator:
+    name: Navigator (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test Knowledge Impact Navigator
+        run: node --test plugins/math/knowledge-impact-navigator/tests/*.test.ts

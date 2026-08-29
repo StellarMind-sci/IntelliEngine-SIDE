@@ -1,0 +1,88 @@
+import type { KnowledgeImpactNavigatorResult, KnowledgeImpactReason, KnowledgeUnitRef } from "./navigator.ts";
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function reference(ref: KnowledgeUnitRef): string {
+  return `${escapeHtml(ref.id)}@${ref.revision}`;
+}
+
+function referenceList(refs: KnowledgeUnitRef[]): string {
+  return refs.length === 0
+    ? "<li>无</li>"
+    : refs.map((item) => `<li><code>${reference(item)}</code></li>`).join("");
+}
+
+function reasonSections(reasons: KnowledgeImpactReason[]): string {
+  const prerequisites = reasons.flatMap((reason) => reason.missing_prerequisite_refs);
+  const evidence = reasons.flatMap((reason) => reason.missing_evidence_node_refs);
+  const sections: string[] = [];
+  if (prerequisites.length > 0) {
+    sections.push(`<section><h2>缺失前置知识</h2><ul>${referenceList(prerequisites)}</ul></section>`);
+  }
+  if (evidence.length > 0) {
+    sections.push(`<section><h2>缺失证据</h2><ul>${referenceList(evidence)}</ul></section>`);
+  }
+  return sections.join("");
+}
+
+function impactSections(result: KnowledgeImpactNavigatorResult): string {
+  if (result.impacted_steps.length === 0) return "";
+  return `<section><h2>受影响的工程步骤</h2><ul>${result.impacted_steps
+    .map((step) => `<li><code>${escapeHtml(step.step_id)}</code></li>`)
+    .join("")}</ul></section>`;
+}
+
+function mainContent(result: KnowledgeImpactNavigatorResult): string {
+  if (result.navigation === null) {
+    const explanation = result.state === "invalid_input"
+      ? "输入或上游影响投影无效；预览已封闭，不生成导航。"
+      : "没有待处理的工程影响，不伪造下一步。";
+    return `<section class="no-navigation"><h2>无导航</h2><p>${explanation}</p></section>`;
+  }
+  return `<section class="navigation"><h2>只读导航</h2><p>${escapeHtml(result.navigation)}</p></section>${reasonSections(result.reasons)}${impactSections(result)}`;
+}
+
+export function renderKnowledgeImpactNavigatorHtml(result: KnowledgeImpactNavigatorResult): string {
+  const focus = result.focus === null ? "无" : reference(result.focus);
+  const stateClass = {
+    blocked: "state-blocked",
+    needs_evidence: "state-needs-evidence",
+    ready: "state-ready",
+    empty: "state-empty",
+    invalid_input: "state-invalid-input",
+  }[result.state] ?? "state-invalid-input";
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KnowledgeUnit 工程影响导航预览</title>
+<style>
+:root { color-scheme: light; font-family: "Segoe UI", sans-serif; background: #f5f7fb; color: #172033; }
+body { margin: 0; padding: 32px; }
+main { max-width: 820px; margin: 0 auto; background: #fff; border: 1px solid #d9e1ee; border-radius: 16px; padding: 28px; box-shadow: 0 12px 32px #1d2a4420; }
+h1 { margin-top: 0; } h2 { font-size: 1.05rem; margin-bottom: 8px; } section { border-top: 1px solid #e6ebf3; padding-top: 14px; margin-top: 18px; } code { overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; } .pill { padding: 4px 8px; border-radius: 999px; background: #e8edf6; font-family: ui-monospace, monospace; }
+.state { display: inline-block; margin-top: 16px; padding: 8px 12px; border-radius: 8px; font-weight: 700; }
+.state-blocked { background: #ffe4e6; color: #9f1239; border: 1px solid #fda4af; }
+.state-needs-evidence { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+.state-ready { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.state-empty { background: #e5e7eb; color: #374151; border: 1px solid #9ca3af; }
+.state-invalid-input { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
+.navigation { background: #edf6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 14px; } .no-navigation { background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; padding: 14px; }
+.notice { color: #475569; font-size: .94rem; } ul { padding-left: 22px; }
+</style>
+</head>
+<body>
+<main>
+<h1>KnowledgeUnit 工程影响导航预览</h1>
+<div class="meta"><span class="pill">mode: preview</span><span class="pill">side_effects: forbidden</span><span class="pill">focus: ${focus}</span></div>
+<div class="state ${stateClass}">state: ${escapeHtml(result.state)}</div>
+<p class="notice">仅导航提示，不执行、不写入。此页面不运行 Thoughtflow、Agent、代码或模型。</p>
+${mainContent(result)}
+</main>
+</body>
+</html>`;
+}
