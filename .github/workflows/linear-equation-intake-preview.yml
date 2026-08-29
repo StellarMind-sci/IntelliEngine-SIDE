@@ -1,0 +1,44 @@
+name: Linear Equation Intake Preview
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/linear-equation-intake-preview/**"
+      - "packages/cognitive-ir/src/cognitive-node/runtime.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - "packages/cognitive-ir/contracts/cognitive-node/1.0.0/**"
+      - ".github/workflows/linear-equation-intake-preview.yml"
+      - "docs/demos/linear-equation-intake-preview-acceptance.md"
+      - "docs/demos/artifacts/linear-equation-intake-preview/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/linear-equation-intake-preview/**"
+      - "packages/cognitive-ir/src/cognitive-node/runtime.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - "packages/cognitive-ir/contracts/cognitive-node/1.0.0/**"
+      - ".github/workflows/linear-equation-intake-preview.yml"
+      - "docs/demos/linear-equation-intake-preview-acceptance.md"
+      - "docs/demos/artifacts/linear-equation-intake-preview/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  intake-preview:
+    name: Intake preview (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test Linear Equation Intake Preview
+        run: node --test plugins/math/linear-equation-intake-preview/tests/*.test.ts
