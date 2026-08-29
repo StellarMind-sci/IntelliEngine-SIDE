@@ -44,7 +44,7 @@ node plugins/math/knowledge-impact-navigator/cli.ts --case empty --format html >
 Start-Process $env:TEMP\knowledge-impact-empty.html
 ```
 
-预期：灰色 `empty` 状态；明确显示没有待处理工程影响，不推测无关 Thoughtflow 步骤，也不显示只读导航。
+预期：灰色 `empty` 状态；明确显示“这个 KnowledgeUnit 当前没有关联工程步骤；不伪造下一步。”，不推测无关 Thoughtflow 步骤，也不显示只读导航。
 
 ### Invalid：输入封闭
 
