@@ -37,20 +37,31 @@ function refList(value: unknown): RefKey[] | undefined {
   return keys.some((key) => key === undefined) ? undefined : keys as RefKey[];
 }
 
+function canonicalKeys(keys: RefKey[]) {
+  const sorted = [...keys].sort(compareBytes);
+  return new Set(keys).size === keys.length && keys.every((key, index) => key === sorted[index]);
+}
+
+function canonicalRefSet(value: unknown): RefKey[] | undefined {
+  const keys = refList(value);
+  return keys === undefined || !canonicalKeys(keys) ? undefined : keys;
+}
+
 function projectionReasons(projection: unknown): Map<RefKey, JsonObject> | undefined {
-  if (!object(projection) || projection.object_result !== "valid" || !Array.isArray(projection.units)) return undefined;
-  const reasons = new Map<RefKey, JsonObject>();
+  if (!object(projection) || projection.object_result !== "valid" || projection.operation_outcome !== "succeeded" || !Array.isArray(projection.issues) || projection.issues.length !== 0 || !Array.isArray(projection.units)) return undefined;
+  const reasons = new Map<RefKey, JsonObject>(), unitRefs: RefKey[] = [];
   for (const unit of projection.units) {
     if (!object(unit) || Object.keys(unit).sort().join(",") !== unitFields.join(",")) return undefined;
-    const key = refKey(unit.ref), prerequisites = refList(unit.missing_prerequisite_refs), evidence = refList(unit.missing_evidence_node_refs);
+    const key = refKey(unit.ref), prerequisites = canonicalRefSet(unit.missing_prerequisite_refs), evidence = canonicalRefSet(unit.missing_evidence_node_refs);
     if (key === undefined || prerequisites === undefined || evidence === undefined || !["blocked", "needs_evidence", "ready"].includes(unit.status) || reasons.has(key)) return undefined;
+    unitRefs.push(key);
     reasons.set(key, {
       knowledge_unit_ref: refFromKey(key), status: unit.status,
       missing_prerequisite_refs: prerequisites.map(refFromKey),
       missing_evidence_node_refs: evidence.map(refFromKey),
     });
   }
-  return reasons;
+  return canonicalKeys(unitRefs) ? reasons : undefined;
 }
 
 export function projectKnowledgeImpacts(flow: unknown, projection: unknown) {

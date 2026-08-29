@@ -45,25 +45,45 @@ def _ref_list(value: Any) -> list[tuple[bytes, int]] | None:
     return [key for key in keys if key is not None]
 
 
+def _canonical_ref_set(refs: list[tuple[bytes, int]]) -> bool:
+    return refs == sorted(refs) and len(refs) == len(set(refs))
+
+
 def _projection_reasons(projection: Any) -> dict[tuple[bytes, int], dict] | None:
-    if not isinstance(projection, dict) or projection.get("object_result") != "valid" or not isinstance(projection.get("units"), list):
+    if (
+        not isinstance(projection, dict)
+        or projection.get("object_result") != "valid"
+        or projection.get("operation_outcome") != "succeeded"
+        or projection.get("issues") != []
+        or not isinstance(projection.get("units"), list)
+    ):
         return None
     reasons: dict[tuple[bytes, int], dict] = {}
+    unit_refs: list[tuple[bytes, int]] = []
     for unit in projection["units"]:
         if not isinstance(unit, dict) or set(unit) != _UNIT_FIELDS:
             return None
         key = _ref_key(unit.get("ref"))
         prerequisites = _ref_list(unit.get("missing_prerequisite_refs"))
         evidence = _ref_list(unit.get("missing_evidence_node_refs"))
-        if key is None or prerequisites is None or evidence is None or unit.get("status") not in {"blocked", "needs_evidence", "ready"} or key in reasons:
+        if (
+            key is None
+            or prerequisites is None
+            or evidence is None
+            or not _canonical_ref_set(prerequisites)
+            or not _canonical_ref_set(evidence)
+            or unit.get("status") not in {"blocked", "needs_evidence", "ready"}
+            or key in reasons
+        ):
             return None
+        unit_refs.append(key)
         reasons[key] = {
             "knowledge_unit_ref": _ref_from_key(key),
             "status": unit["status"],
             "missing_prerequisite_refs": [_ref_from_key(ref) for ref in prerequisites],
             "missing_evidence_node_refs": [_ref_from_key(ref) for ref in evidence],
         }
-    return reasons
+    return reasons if _canonical_ref_set(unit_refs) else None
 
 
 def project_knowledge_impacts(flow: Any, projection: Any) -> dict:
