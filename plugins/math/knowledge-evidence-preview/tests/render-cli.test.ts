@@ -29,22 +29,37 @@ test("renders direct verification navigation only for needs-evidence", () => {
 
   assert.match(evidence.stdout, /verification-linear/);
   assert.match(evidence.stdout, /返回 verification 步骤补充缺失工程证据/);
+  assert.match(blocked.stdout, /受影响的工程步骤/);
+  assert.match(blocked.stdout, /analysis-linear/);
   assert.doesNotMatch(blocked.stdout, /关联 verification 步骤/);
   assert.match(empty.stdout, /没有可安全定位的受影响步骤/);
   assert.doesNotMatch(empty.stdout, /只读导航/);
 });
 
+test("CLI JSON exposes only safe impacted steps for each state", () => {
+  const blocked = JSON.parse(runCli("--case", "blocked", "--format", "json").stdout);
+  const evidence = JSON.parse(runCli("--case", "needs-evidence", "--format", "json").stdout);
+  const empty = JSON.parse(runCli("--case", "empty", "--format", "json").stdout);
+  const invalid = JSON.parse(runCli("--case", "invalid", "--format", "json").stdout);
+
+  assert.deepEqual(blocked.impacted_steps, ["analysis-linear"]);
+  assert.deepEqual(evidence.impacted_steps, ["verification-linear"]);
+  assert.deepEqual(evidence.verification_steps, evidence.impacted_steps);
+  assert.deepEqual(empty.impacted_steps, []);
+  assert.deepEqual(invalid.impacted_steps, []);
+});
 test("escapes dynamic evidence strings and unknown state CSS values", () => {
   const html = renderKnowledgeEvidencePreviewHtml({
     mode: "preview", side_effects: "forbidden", state: "blocked\" onmouseover=alert(1)" as unknown as "blocked",
     focus: { id: "<focus&>", revision: "1</span><img src=x onerror=alert(1)>" as unknown as number },
-    navigation: "<img src=x onerror=alert(1)>", verification_steps: ["<step&>"],
+    navigation: "<img src=x onerror=alert(1)>", verification_steps: ["<step&>"], impacted_steps: ["<impact&>"],
     validations: [{ validation_id: "<validation&>", description: "<description&>", evidence_node_refs: [{ id: "<evidence&>", revision: 1 }], missing_evidence_node_refs: [], status: "missing" }],
     mastery_criteria: [{ criterion_id: "<criterion&>", statement: "<statement&>", evidence_node_refs: [{ id: "<evidence&>", revision: 1 }], missing_evidence_node_refs: [], status: "missing" }],
   });
 
   assert.match(html, /&lt;focus&amp;&gt;@1&lt;\/span&gt;&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(html, /&lt;validation&amp;&gt;/);
+  assert.match(html, /&lt;impact&amp;&gt;/);
   assert.match(html, /class="state state-invalid-input"/);
   assert.doesNotMatch(html, /<img\b|<script\b|<iframe\b|<[^>]*\bonerror\s*=/i);
 });
@@ -66,6 +81,6 @@ test("invalid input is closed before any evidence rows can be emitted", () => {
   const result = createKnowledgeEvidencePreview({});
   assert.deepEqual(result, {
     mode: "preview", side_effects: "forbidden", state: "invalid_input", focus: null,
-    navigation: null, validations: [], mastery_criteria: [], verification_steps: [],
+    navigation: null, validations: [], mastery_criteria: [], verification_steps: [], impacted_steps: [],
   });
 });

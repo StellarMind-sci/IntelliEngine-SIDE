@@ -47,6 +47,7 @@ test("uses validateUnit and projectKnowledge to describe a blocked unit without 
   assert.equal(result.state, "blocked");
   assert.equal(result.navigation, "先完成缺失前置知识，再继续查看验证要求。");
   assert.deepEqual(result.verification_steps, []);
+  assert.deepEqual(result.impacted_steps, ["analysis-linear"]);
   assert.deepEqual(result.validations, [{
     validation_id: "check-resolution",
     description: "Verify a resolved equation.",
@@ -72,6 +73,7 @@ test("navigates needs-evidence only to direct verification Thoughtflow steps", (
   assert.equal(result.state, "needs_evidence");
   assert.equal(result.navigation, "返回 verification 步骤补充缺失工程证据。");
   assert.deepEqual(result.verification_steps, ["verification-linear"]);
+  assert.deepEqual(result.impacted_steps, ["verification-linear"]);
   assert.equal(result.validations[0].status, "missing");
 });
 
@@ -86,6 +88,7 @@ test("returns ready when all evidence is present, even without verification step
   assert.equal(result.state, "ready");
   assert.equal(result.navigation, null);
   assert.deepEqual(result.verification_steps, []);
+  assert.deepEqual(result.impacted_steps, []);
   assert.equal(result.validations[0].status, "satisfied");
   assert.equal(result.mastery_criteria[0].status, "satisfied");
 });
@@ -103,6 +106,8 @@ test("returns empty when blocked or needs-evidence has no safe direct step categ
   assert.equal(evidence.state, "empty");
   assert.equal(evidence.navigation, null);
   assert.deepEqual(evidence.verification_steps, []);
+  assert.deepEqual(blocked.impacted_steps, []);
+  assert.deepEqual(evidence.impacted_steps, []);
 });
 
 test("fails closed for noncanonical, contradictory, or identity-mismatched input", () => {
@@ -115,7 +120,7 @@ test("fails closed for noncanonical, contradictory, or identity-mismatched input
   for (const value of [noncanonical, mismatch, extra, unsafeRoot, noncanonicalFlow]) {
     assert.deepEqual(createKnowledgeEvidencePreview(value), {
       mode: "preview", side_effects: "forbidden", state: "invalid_input", focus: null,
-      navigation: null, validations: [], mastery_criteria: [], verification_steps: [],
+      navigation: null, validations: [], mastery_criteria: [], verification_steps: [], impacted_steps: [],
     });
   }
 });

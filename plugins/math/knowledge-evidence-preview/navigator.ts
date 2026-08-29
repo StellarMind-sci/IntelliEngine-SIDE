@@ -33,6 +33,7 @@ export type KnowledgeEvidencePreviewResult = {
   validations: ValidationPreview[];
   mastery_criteria: MasteryCriterionPreview[];
   verification_steps: string[];
+  impacted_steps: string[];
 };
 
 type JsonObject = Record<string, unknown>;
@@ -77,7 +78,7 @@ function canonicalRefs(value: unknown): KnowledgeUnitRef[] | undefined {
 function invalidResult(): KnowledgeEvidencePreviewResult {
   return {
     mode: "preview", side_effects: "forbidden", state: "invalid_input", focus: null,
-    navigation: null, validations: [], mastery_criteria: [], verification_steps: [],
+    navigation: null, validations: [], mastery_criteria: [], verification_steps: [], impacted_steps: [],
   };
 }
 
@@ -182,15 +183,15 @@ export function createKnowledgeEvidencePreview(request: unknown): KnowledgeEvide
     if (impactedSteps === undefined || rows === undefined) return invalidResult();
 
     if (status.status === "ready") {
-      return { mode: "preview", side_effects: "forbidden", state: "ready", focus: copyRef(parts.focus), navigation: null, ...rows, verification_steps: [] };
+      return { mode: "preview", side_effects: "forbidden", state: "ready", focus: copyRef(parts.focus), navigation: null, ...rows, verification_steps: [], impacted_steps: [] };
     }
     if (impactedSteps.length === 0) {
-      return { mode: "preview", side_effects: "forbidden", state: "empty", focus: copyRef(parts.focus), navigation: null, ...rows, verification_steps: [] };
+      return { mode: "preview", side_effects: "forbidden", state: "empty", focus: copyRef(parts.focus), navigation: null, ...rows, verification_steps: [], impacted_steps: [] };
     }
     if (status.status === "blocked") {
-      return { mode: "preview", side_effects: "forbidden", state: "blocked", focus: copyRef(parts.focus), navigation: "先完成缺失前置知识，再继续查看验证要求。", ...rows, verification_steps: [] };
+      return { mode: "preview", side_effects: "forbidden", state: "blocked", focus: copyRef(parts.focus), navigation: "先完成缺失前置知识，再继续查看验证要求。", ...rows, verification_steps: [], impacted_steps: impactedSteps };
     }
-    return { mode: "preview", side_effects: "forbidden", state: "needs_evidence", focus: copyRef(parts.focus), navigation: "返回 verification 步骤补充缺失工程证据。", ...rows, verification_steps: impactedSteps };
+    return { mode: "preview", side_effects: "forbidden", state: "needs_evidence", focus: copyRef(parts.focus), navigation: "返回 verification 步骤补充缺失工程证据。", ...rows, verification_steps: impactedSteps, impacted_steps: impactedSteps };
   } catch {
     return invalidResult();
   }
