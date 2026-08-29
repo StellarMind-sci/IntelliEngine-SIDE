@@ -1,0 +1,6 @@
+{
+  "ready": {"text": "2x + 3 = 11", "source_ref": "source:algebra:example-1"},
+  "negative": {"text": "-x - 4 = 0", "source_ref": "source:algebra:negative-example"},
+  "empty": {"text": "   ", "source_ref": "source:algebra:empty-example"},
+  "invalid": {"text": "x^2 = 4", "source_ref": "source:algebra:invalid-example"}
+}
