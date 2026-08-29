@@ -173,6 +173,6 @@ test("renders an exact rational solution instead of a floating-point approximati
   const html = await render(createLinearEquationPreview(request));
 
   assert.match(html, /x = 1\/49/);
-  assert.match(html, /49 \* \(1\/49\) \+ 0 == 1/);
+  assert.match(html, /49 \* sp\.Rational\(1, 49\) \+ 0 == 1/);
   assert.doesNotMatch(html, /0\.020408/);
 });

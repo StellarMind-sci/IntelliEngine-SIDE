@@ -330,7 +330,7 @@ for (const { name, arrange } of inconsistentProjectionGates) {
   });
 }
 
-test("represents a non-terminating rational solution exactly", () => {
+test("uses exact SymPy rationals in verification assertions for non-integer solutions", () => {
   const request = clone(cases.ready);
   request.equation = { variable: "x", coefficient: 49, constant: 0, right_hand_side: 1 };
   const before = clone(request);
@@ -339,9 +339,9 @@ test("represents a non-terminating rational solution exactly", () => {
 
   assert.equal(preview.state, "ready");
   assert.deepEqual(preview.proposal?.solution, { variable: "x", value: "1/49" });
-  assert.equal(preview.proposal?.verification_assertion, "49 * (1/49) + 0 == 1");
+  assert.equal(preview.proposal?.verification_assertion, "49 * sp.Rational(1, 49) + 0 == 1");
   assert.match(preview.proposal?.sympy_source ?? "", /sp\.Rational\(1, 49\)/);
-  assert.doesNotMatch(preview.proposal?.verification_assertion ?? "", /0\.020408/);
+  assert.doesNotMatch(preview.proposal?.verification_assertion ?? "", /\(1\/49\)/);
   assert.deepEqual(request, before);
 });
 
@@ -362,7 +362,8 @@ test("normalizes negative rational solutions and accepts safe-integer boundaries
   const boundaryPreview = createLinearEquationPreview(boundaryRequest);
 
   assert.deepEqual(negativePreview.proposal?.solution, { variable: "x", value: "-1/2" });
-  assert.equal(negativePreview.proposal?.verification_assertion, "2 * (-1/2) + 1 == 0");
+  assert.equal(negativePreview.proposal?.verification_assertion, "2 * sp.Rational(-1, 2) + 1 == 0");
+  assert.doesNotMatch(negativePreview.proposal?.verification_assertion ?? "", /\(-1\/2\)/);
   assert.deepEqual(boundaryPreview.proposal?.solution, { variable: "x", value: "18014398509481982" });
   assert.equal(
     boundaryPreview.proposal?.verification_assertion,

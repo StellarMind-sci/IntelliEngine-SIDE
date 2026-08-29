@@ -284,8 +284,9 @@ function rationalText(value: Rational): string {
 }
 
 function multiplicationOperand(value: Rational): string {
+  if (value.denominator !== 1n) return sympyRationalText(value);
   const text = rationalText(value);
-  return value.numerator < 0n || value.denominator !== 1n ? `(${text})` : text;
+  return value.numerator < 0n ? `(${text})` : text;
 }
 
 function sympyRationalText(value: Rational): string {
