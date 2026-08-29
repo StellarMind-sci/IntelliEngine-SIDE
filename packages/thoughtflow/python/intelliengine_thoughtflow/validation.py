@@ -280,6 +280,10 @@ def validate_references(flow: dict, snapshot: Any) -> dict:
             if item.get("object_result") == "invalid": return verdict(False, issue("thoughtflow.dangling_reference", path))
             if item.get("object_result") in {"opaque", "compatible_read"}: return indeterminate("thoughtflow.opaque_reference", path)
             if item.get("object_result") != "available": return indeterminate("thoughtflow.reference_snapshot_incomplete", path)
+            if field == "knowledge_unit_refs":
+                document = item.get("document")
+                if not isinstance(document, dict) or ref_key({"id": document.get("id"), "revision": document.get("revision")}) != ref_key(reference):
+                    return verdict(False, issue("thoughtflow.dangling_reference", path))
     for index, step in enumerate(flow["steps"]):
         if step["kind"] != "operation": continue
         entry = knowledge[ref_key(step["behavior_ref"]["knowledge_unit_ref"])]
