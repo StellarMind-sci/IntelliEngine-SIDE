@@ -30,7 +30,11 @@ body:
   - type: textarea
     id: acceptance
     attributes:
-      label: 验收条件与测试命令
+      label: 验收与测试
+      description: |-
+        必填：用户能力、验收入口、前置条件、操作步骤、预期结果、异常场景、视觉证据、自动化证据、已知限制与回滚。
+        无界面任务提供可执行 CLI/API/fixture/日志/结构化输出命令及输入/输出示例。
+        界面任务另需可复制启动命令、固定演示数据、正常/阻断或错误/空状态三场景，以及截图或录屏；无法提供时说明替代验证方式。
     validations:
       required: true
   - type: textarea

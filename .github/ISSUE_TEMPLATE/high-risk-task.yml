@@ -25,6 +25,9 @@ body:
   - type: textarea
     id: acceptance
     attributes:
-      label: 审核测试与人工审查条件
+      label: 验收、审核测试与人工审查条件
+      description: |-
+        写清用户能力、验收入口、前置条件、操作步骤、预期结果、异常场景、证据、测试命令、已知限制与回滚。
+        无界面任务提供命令及输入/输出示例；界面任务覆盖正常、阻断/错误、空状态并提供截图或录屏（或替代验证方式）。
     validations:
       required: true
