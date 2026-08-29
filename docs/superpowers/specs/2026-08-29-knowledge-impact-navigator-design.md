@@ -8,9 +8,9 @@
 
 ## 用户结果
 
-1. **阻断**：目标单元 `blocked` 时，展示缺失前置、受影响的 analysis/operation 步骤，以及“先完成前置知识再继续该步骤”的只读导航。
+1. **阻断**：目标单元 `blocked` 时，展示缺失前置、受影响的 analysis/operation 步骤，以及“先完成前置知识再继续该步骤”的只读导航。KnowledgeUnit projector 的前置优先语义允许它同时列出缺失证据；这仍是合法 blocked，不得拒绝或改写为 needs_evidence。
 2. **缺证据**：目标单元 `needs_evidence` 时，展示缺失证据、受影响 verification 步骤，以及“返回验证步骤补充证据”的只读导航。
-3. **正常/空**：`ready` 或没有关联步骤时，明确显示没有待处理的工程影响，不伪造下一步。
+3. **正常/空**：`ready`，或任一有效聚焦单元没有关联 impact/flow 步骤时，明确显示没有待处理的工程影响，不伪造下一步或误报输入无效。
 4. **异常**：输入或上游 impact 投影不是 valid/succeeded 时封闭显示 invalid_input，不产生导航条目。
 
 ## 输入和输出
@@ -29,7 +29,7 @@
 
 - `plugins/math/knowledge-impact-navigator/` 的纯 view-model、HTML renderer、CLI、fixture 与 Node 测试；
 - `docs/demos/` 的可复制验收说明与 normal/blocked/needs-evidence/empty/invalid 视觉证据；
-- `.github/workflows/knowledge-impact-navigator.yml` 的 Node 24 Ubuntu/Windows 测试。
+- `.github/workflows/knowledge-impact-navigator.yml` 的 Node 24 Ubuntu/Windows 测试；path trigger 同时覆盖直接复用的 Thoughtflow impact runtime 与 KnowledgeUnit project runtime。
 
 ## 非目标
 

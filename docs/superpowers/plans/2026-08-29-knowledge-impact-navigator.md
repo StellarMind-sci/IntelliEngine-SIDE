@@ -11,7 +11,7 @@
 - 只修改本插件目录、演示文档/产物和新增专属 workflow；不动既有 runtime、合同、schema、lock 或 SDK。
 - 固定 `mode: "preview"`、`side_effects: "forbidden"`；无执行、写入、网络、Agent、外部工具或用户数据。
 - 只调用既有 impact runtime；上游 invalid/indeterminate、聚焦 ref 非规范或不匹配一律封闭为 `invalid_input`。
-- 只有 blocked/needs_evidence 有非可执行导航文案；所有其他状态无导航。
+- blocked（缺失前置非空，可同时有证据缺口）与 needs_evidence（无缺失前置、证据缺口非空）有非可执行导航文案；ready 或任何有效但无关联 impact 的 focus 均返回 empty 且无导航。
 - CLI 仅固定 fixture→stdout；renderer 无 script、逃逸全部动态文本。
 
 ## Task 1：核心导航 view-model 与真实影响测试
@@ -29,7 +29,7 @@
 
 1. 先写 RED：renderer 覆盖五态与转义，CLI 覆盖 stdout/stderr/未知参数；blocked 与 needs-evidence 视觉状态必须不同。
 2. 最小实现无脚本 renderer 与 stdout-only CLI。
-3. 新 workflow 使用 Node 24、Ubuntu/Windows、path trigger 并跑插件全集。
+3. 新 workflow 使用 Node 24、Ubuntu/Windows、path trigger 覆盖插件、演示、workflow 及直接 Thoughtflow/KnowledgeUnit 依赖，并跑插件全集。
 4. 从 CLI 生成五态 HTML/PNG，并在验收说明提供命令、预期、异常、视觉/自动化证据、限制与回滚。
 5. 跑 GREEN：插件全集、Thoughtflow TS、治理检查、五条 CLI，及 `git diff --check`。
 
