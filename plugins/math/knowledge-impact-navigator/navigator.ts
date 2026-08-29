@@ -101,7 +101,7 @@ function projectionUnits(projection: unknown): ProjectionUnit[] | undefined {
     const status = unit.status;
     if (unitRef === undefined || prerequisites === undefined || evidence === undefined) return undefined;
     if (status === "ready" && (prerequisites.length !== 0 || evidence.length !== 0)) return undefined;
-    if (status === "blocked" && (prerequisites.length === 0 || evidence.length !== 0)) return undefined;
+    if (status === "blocked" && prerequisites.length === 0) return undefined;
     if (status === "needs_evidence" && (prerequisites.length !== 0 || evidence.length === 0)) return undefined;
     if (status !== "blocked" && status !== "needs_evidence" && status !== "ready") return undefined;
 
@@ -151,7 +151,7 @@ function reason(value: unknown): KnowledgeImpactReason | undefined {
   const prerequisites = canonicalRefs(value.missing_prerequisite_refs);
   const evidence = canonicalRefs(value.missing_evidence_node_refs);
   if (prerequisites === undefined || evidence === undefined) return undefined;
-  if (value.status === "blocked" && (prerequisites.length === 0 || evidence.length !== 0)) return undefined;
+  if (value.status === "blocked" && prerequisites.length === 0) return undefined;
   if (value.status === "needs_evidence" && (prerequisites.length !== 0 || evidence.length === 0)) return undefined;
   return {
     knowledge_unit_ref: copyRef(knowledgeUnitRef),
@@ -214,7 +214,17 @@ export function createKnowledgeImpactNavigator(request: unknown): KnowledgeImpac
     };
   }
 
-  if (impacts.length === 0) return invalidResult();
+  if (impacts.length === 0) {
+    return {
+      mode: "preview",
+      side_effects: "forbidden",
+      state: "empty",
+      focus: copyRef(focusRef),
+      navigation: null,
+      impacted_steps: [],
+      reasons: [],
+    };
+  }
 
   const reasons = distinctReasons(impacts);
   if (reasons.length !== 1 || reasons[0].status !== projectionUnit.status) return invalidResult();
