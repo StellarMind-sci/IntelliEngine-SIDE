@@ -6,10 +6,21 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { parseAndValidate, runFixtureSuite, validateUnit } from "../../src/knowledge-unit/runtime.ts";
+import { canonicalize } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
 
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const contractRoot = resolve(packageRoot, "contracts/knowledge-unit/1.0.0");
+
+
+function unitWithJcsSize(unit: any, size: number) {
+  const value = structuredClone(unit);
+  const statements = value.concept_boundary.out_of_scope_statements;
+  statements[0] = "";
+  statements[0] = "x".repeat(size - Buffer.byteLength(canonicalize(value)));
+  assert.equal(Buffer.byteLength(canonicalize(value)), size);
+  return value;
+}
 
 
 test("executes all eight KnowledgeUnit contract cases exactly", () => {
@@ -60,6 +71,19 @@ test("nested node ref sets require canonical order", () => {
   }]);
 });
 
+test("rejects structurally valid unit larger than JCS limit", () => {
+  const suite = JSON.parse(readFileSync(resolve(contractRoot, "fixtures/cases.json"), "utf8"));
+  const valid = suite.cases.find((fixture: any) => fixture.case_id === "linear-equation-valid").input;
+  const atLimit = unitWithJcsSize(valid.unit, 1_048_576);
+  const overLimit = unitWithJcsSize(valid.unit, 1_048_577);
+
+  assert.equal(validateUnit(atLimit, valid.available_node_refs, contractRoot).object_result, "valid");
+  assert.deepEqual(validateUnit(overLimit, valid.available_node_refs, contractRoot), {
+    object_result: "not_evaluated",
+    operation_outcome: "resource_exhausted",
+    issues: [{ code: "knowledge_unit.invalid_json", path: "", severity: "error" }],
+  });
+});
 test("raw transport rejects duplicate members", () => {
   const result = parseAndValidate(
     Buffer.from('{"contract_version":"1.0.0","contract_version":"1.0.0"}'),
