@@ -104,6 +104,16 @@ class ThoughtflowPythonRuntimeTests(unittest.TestCase):
         self.assertEqual(result["issues"][0]["code"], "thoughtflow.dangling_reference")
         self.assertEqual(result["issues"][0]["path"], "/knowledge_unit_refs/0")
 
+    def test_rejects_available_knowledge_unit_with_mismatched_document_revision(self) -> None:
+        snapshot = valid_snapshot()
+        snapshot["knowledge_units"][0]["document"]["revision"] = 2
+
+        result = validate_references(valid_flow(), snapshot)
+
+        self.assertEqual(result["object_result"], "invalid")
+        self.assertEqual(result["issues"][0]["code"], "thoughtflow.dangling_reference")
+        self.assertEqual(result["issues"][0]["path"], "/knowledge_unit_refs/0")
+
     def test_raw_transport_rejects_duplicate_members(self) -> None:
         result = parse_and_validate_transport(b'{"contract_version":"1.0.0","contract_version":"1.0.0"}')
 

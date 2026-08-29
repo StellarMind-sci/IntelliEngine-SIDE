@@ -85,6 +85,17 @@ test("rejects available knowledge unit with mismatched document identity", () =>
   assert.equal(result.issues[0].path, "/knowledge_unit_refs/0");
 });
 
+test("rejects available knowledge unit with mismatched document revision", () => {
+  const snapshot = validSnapshot();
+  snapshot.knowledge_units[0].document.revision = 2;
+
+  const result = validateReferences(validFlow(), snapshot);
+
+  assert.equal(result.object_result, "invalid");
+  assert.equal(result.issues[0].code, "thoughtflow.dangling_reference");
+  assert.equal(result.issues[0].path, "/knowledge_unit_refs/0");
+});
+
 test("raw transport rejects duplicate members", () => {
   const result = parseAndValidateTransport(Buffer.from('{"contract_version":"1.0.0","contract_version":"1.0.0"}'));
   assert.equal(result.issues[0].code, "thoughtflow.invalid_json");
