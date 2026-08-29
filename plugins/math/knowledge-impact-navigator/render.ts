@@ -38,7 +38,9 @@ function mainContent(result: KnowledgeImpactNavigatorResult): string {
   if (result.navigation === null) {
     const explanation = result.state === "invalid_input"
       ? "输入或上游影响投影无效；预览已封闭，不生成导航。"
-      : "没有待处理的工程影响，不伪造下一步。";
+      : result.state === "empty"
+        ? "这个 KnowledgeUnit 当前没有关联工程步骤；不伪造下一步。"
+        : "没有待处理的工程影响，不伪造下一步。";
     return `<section class="no-navigation"><h2>无导航</h2><p>${explanation}</p></section>`;
   }
   return `<section class="navigation"><h2>只读导航</h2><p>${escapeHtml(result.navigation)}</p></section>${reasonSections(result.reasons)}${impactSections(result)}`;

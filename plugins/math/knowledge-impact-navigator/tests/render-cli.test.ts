@@ -31,8 +31,12 @@ test("renders each navigator state as a static preview with the correct navigati
     if (caseId === "blocked" || caseId === "needs_evidence") {
       assert.match(html, /只读导航/);
     } else {
-      assert.match(html, /没有待处理的工程影响/);
       assert.doesNotMatch(html, /只读导航/);
+      if (caseId === "empty") {
+        assert.match(html, /没有关联工程步骤/);
+      } else {
+        assert.match(html, /没有待处理的工程影响/);
+      }
     }
   }
 
@@ -42,6 +46,15 @@ test("renders each navigator state as a static preview with the correct navigati
   assert.doesNotMatch(invalid, /只读导航/);
 });
 
+test("labels a legal empty flow as having no associated engineering steps", () => {
+  const empty = renderKnowledgeImpactNavigatorHtml(createKnowledgeImpactNavigator(clone(cases.empty)));
+  const ready = renderKnowledgeImpactNavigatorHtml(createKnowledgeImpactNavigator(clone(cases.ready)));
+
+  assert.match(empty, /没有关联工程步骤/);
+  assert.doesNotMatch(empty, /只读导航/);
+  assert.match(ready, /没有待处理的工程影响/);
+  assert.doesNotMatch(ready, /没有关联工程步骤/);
+});
 test("renders blocked prerequisites and analysis operation impacts", () => {
   const html = renderKnowledgeImpactNavigatorHtml(createKnowledgeImpactNavigator(clone(cases.blocked)));
 
