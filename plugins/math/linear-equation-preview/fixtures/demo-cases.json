@@ -177,4 +177,24 @@
       ]
     }
   }
+,
+  "duplicate-step-id": {
+    "verification_step": { "step_id": "verify-solution", "kind": "verification" },
+    "ready_operation": {
+      "step_id": "duplicate-operation",
+      "kind": "operation",
+      "behavior_ref": {
+        "knowledge_unit_ref": { "id": "linear-equation-unit", "revision": 1 },
+        "behavior_id": "solve-linear-equation"
+      }
+    },
+    "absent_operation": {
+      "step_id": "duplicate-operation",
+      "kind": "operation",
+      "behavior_ref": {
+        "knowledge_unit_ref": { "id": "absent-linear-equation-unit", "revision": 1 },
+        "behavior_id": "solve-linear-equation"
+      }
+    }
+  }
 }

@@ -135,6 +135,15 @@ function isFlowStep(value: unknown): value is FlowStep {
   );
 }
 
+function hasUniqueStepIds(steps: unknown[]): boolean {
+  const stepIds = new Set<string>();
+  for (const step of steps) {
+    if (!isFlowStep(step) || stepIds.has(step.step_id)) return false;
+    stepIds.add(step.step_id);
+  }
+  return true;
+}
+
 function isPreviewRequest(value: unknown): value is PreviewRequest {
   return (
     isRecord(value) &&
@@ -146,7 +155,7 @@ function isPreviewRequest(value: unknown): value is PreviewRequest {
     value.projection.units.every(isProjectionUnit) &&
     isRecord(value.flow) &&
     Array.isArray(value.flow.steps) &&
-    value.flow.steps.every(isFlowStep)
+    hasUniqueStepIds(value.flow.steps)
   );
 }
 

@@ -233,3 +233,31 @@ for (const { name, arrange } of malformedRequests) {
     assert.deepEqual(request, before);
   });
 }
+test("rejects duplicate matching operation step_ids independently of source order", () => {
+  const fixture = cases["duplicate-step-id"];
+  const readyFirst = clone(cases.ready);
+  readyFirst.flow.steps = [
+    clone(fixture.verification_step),
+    clone(fixture.ready_operation),
+    clone(fixture.absent_operation),
+  ];
+  const absentFirst = clone(cases.ready);
+  absentFirst.flow.steps = [
+    clone(fixture.verification_step),
+    clone(fixture.absent_operation),
+    clone(fixture.ready_operation),
+  ];
+  const readyFirstBefore = clone(readyFirst);
+  const absentFirstBefore = clone(absentFirst);
+
+  const readyFirstPreview = createLinearEquationPreview(readyFirst);
+  const absentFirstPreview = createLinearEquationPreview(absentFirst);
+
+  assert.deepEqual(readyFirstPreview, absentFirstPreview);
+  assert.equal(readyFirstPreview.mode, "preview");
+  assert.equal(readyFirstPreview.side_effects, "forbidden");
+  assert.equal(readyFirstPreview.state, "invalid_input");
+  assert.equal(readyFirstPreview.proposal, null);
+  assert.deepEqual(readyFirst, readyFirstBefore);
+  assert.deepEqual(absentFirst, absentFirstBefore);
+});
