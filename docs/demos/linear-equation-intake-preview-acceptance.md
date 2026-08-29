@@ -67,7 +67,7 @@ $LASTEXITCODE
 
 ```powershell
 node --test plugins/math/linear-equation-intake-preview/tests/*.test.ts
-node --test packages/cognitive-ir/tests/ts/*.test.ts
+node --test packages/cognitive-ir/tests/cognitive-node-ts/*.test.ts packages/cognitive-ir/tests/conformance-ts/*.test.ts
 python scripts/verify_governance.py
 ```
 
