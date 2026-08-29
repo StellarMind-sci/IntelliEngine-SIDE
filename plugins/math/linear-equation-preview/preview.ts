@@ -45,7 +45,7 @@ export type PreviewRequest = {
 
 export type PreviewProposal = {
   canonical_equation: string;
-  solution: { variable: string; value: number };
+  solution: { variable: string; value: string };
   sympy_source: string;
   verification_assertion: string;
 };
@@ -66,6 +66,8 @@ export type PreviewResult = {
   impacted_steps: Array<{ step_id: string; kind: string }>;
   reasons: PreviewReason[];
 };
+
+type Rational = { numerator: bigint; denominator: bigint };
 
 const OPERATION_ID = "solve-linear-equation";
 
@@ -172,11 +174,38 @@ function safeEquation(value: unknown): Equation {
 }
 
 function refKey(ref: Ref): string {
-  return `${ref.id}@${ref.revision}`;
+  return JSON.stringify([ref.id, ref.revision]);
 }
 
 function compareRefs(left: Ref, right: Ref): number {
-  return refKey(left).localeCompare(refKey(right));
+  const idComparison = left.id.localeCompare(right.id);
+  return idComparison === 0 ? left.revision - right.revision : idComparison;
+}
+
+function hasUniqueRefs(refs: Ref[]): boolean {
+  const keys = new Set<string>();
+  for (const ref of refs) {
+    const key = refKey(ref);
+    if (keys.has(key)) return false;
+    keys.add(key);
+  }
+  return true;
+}
+
+function projectionStateIsConsistent(unit: ProjectionUnit): boolean {
+  const hasPrerequisites = unit.missing_prerequisite_refs.length > 0;
+  const hasEvidence = unit.missing_evidence_node_refs.length > 0;
+  if (unit.status === "ready") return !hasPrerequisites && !hasEvidence;
+  if (unit.status === "blocked") return hasPrerequisites;
+  return !hasPrerequisites && hasEvidence;
+}
+
+function hasConsistentReferences(request: PreviewRequest): boolean {
+  return (
+    hasUniqueRefs(request.knowledge_units.map((unit) => ({ id: unit.id, revision: unit.revision }))) &&
+    hasUniqueRefs(request.projection.units.map((unit) => unit.ref)) &&
+    request.projection.units.every(projectionStateIsConsistent)
+  );
 }
 
 function copyRef(ref: Ref): Ref {
@@ -228,9 +257,46 @@ function equationText(equation: Equation): string {
   return `${numberText(equation.coefficient)}*${equation.variable} ${constant} = ${numberText(equation.right_hand_side)}`;
 }
 
-function expressionText(equation: Equation, solution: number): string {
+function greatestCommonDivisor(left: bigint, right: bigint): bigint {
+  let dividend = left < 0n ? -left : left;
+  let divisor = right < 0n ? -right : right;
+  while (divisor !== 0n) {
+    const remainder = dividend % divisor;
+    dividend = divisor;
+    divisor = remainder;
+  }
+  return dividend;
+}
+
+function exactSolution(equation: Equation): Rational {
+  let numerator = BigInt(equation.right_hand_side) - BigInt(equation.constant);
+  let denominator = BigInt(equation.coefficient);
+  if (denominator < 0n) {
+    numerator = -numerator;
+    denominator = -denominator;
+  }
+  const divisor = greatestCommonDivisor(numerator, denominator);
+  return { numerator: numerator / divisor, denominator: denominator / divisor };
+}
+
+function rationalText(value: Rational): string {
+  return value.denominator === 1n ? value.numerator.toString() : `${value.numerator}/${value.denominator}`;
+}
+
+function multiplicationOperand(value: Rational): string {
+  const text = rationalText(value);
+  return value.numerator < 0n || value.denominator !== 1n ? `(${text})` : text;
+}
+
+function sympyRationalText(value: Rational): string {
+  return value.denominator === 1n
+    ? `sp.Integer(${value.numerator.toString()})`
+    : `sp.Rational(${value.numerator.toString()}, ${value.denominator.toString()})`;
+}
+
+function expressionText(equation: Equation, solution: Rational): string {
   const constant = equation.constant < 0 ? `- ${numberText(Math.abs(equation.constant))}` : `+ ${numberText(equation.constant)}`;
-  return `${numberText(equation.coefficient)} * ${numberText(solution)} ${constant}`;
+  return `${numberText(equation.coefficient)} * ${multiplicationOperand(solution)} ${constant}`;
 }
 
 function invalidResult(equation: Equation): PreviewResult {
@@ -249,7 +315,9 @@ export function createLinearEquationPreview(request: PreviewRequest): PreviewRes
 export function createLinearEquationPreview(request: unknown): PreviewResult {
   const equationSource = isRecord(request) ? request.equation : undefined;
   const equation = safeEquation(equationSource);
-  if (!isPreviewRequest(request) || !validEquation(equation)) return invalidResult(equation);
+  if (!isPreviewRequest(request) || !validEquation(equation) || !hasConsistentReferences(request)) {
+    return invalidResult(equation);
+  }
 
   const operation = request.flow.steps
     .filter((step) => step.kind === "operation" && step.behavior_ref?.behavior_id === OPERATION_ID)
@@ -294,9 +362,10 @@ export function createLinearEquationPreview(request: unknown): PreviewResult {
     };
   }
 
-  const value = (equation.right_hand_side - equation.constant) / equation.coefficient;
+  const solution = exactSolution(equation);
+  const solutionText = rationalText(solution);
   const canonicalEquation = equationText(equation);
-  const verificationAssertion = `${expressionText(equation, value)} == ${numberText(equation.right_hand_side)}`;
+  const verificationAssertion = `${expressionText(equation, solution)} == ${numberText(equation.right_hand_side)}`;
   return {
     mode: "preview",
     side_effects: "forbidden",
@@ -304,12 +373,13 @@ export function createLinearEquationPreview(request: unknown): PreviewResult {
     equation,
     proposal: {
       canonical_equation: canonicalEquation,
-      solution: { variable: equation.variable, value },
+      solution: { variable: equation.variable, value: solutionText },
       sympy_source: [
         "import sympy as sp",
         `${equation.variable} = sp.symbols('${equation.variable}')`,
         `equation = sp.Eq(${numberText(equation.coefficient)} * ${equation.variable} ${equation.constant < 0 ? "-" : "+"} ${numberText(Math.abs(equation.constant))}, ${numberText(equation.right_hand_side)})`,
         `solution = sp.solve(equation, ${equation.variable})[0]`,
+        `assert solution == ${sympyRationalText(solution)}`,
       ].join("\n"),
       verification_assertion: verificationAssertion,
     },

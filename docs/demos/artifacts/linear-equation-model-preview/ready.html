@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>线性方程模型预览</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #f5f7fa; color: #172033; }
+    main { max-width: 54rem; margin: 2rem auto; padding: 1.5rem; background: #fff; border: 1px solid #d7ddea; border-radius: .75rem; }
+    h1, h2, h3 { margin-top: 0; }
+    section { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d7ddea; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: .45rem 1rem; }
+    dt { font-weight: 700; } dd { margin: 0; }
+    .state { padding: 1rem; border-left: .4rem solid; border-radius: .35rem; }
+    .state-ready { background: #e8f7ee; border-color: #167a3f; }
+    .state-blocked { background: #fff3df; border-color: #b45f06; }
+    .state-needs-evidence { background: #f1edff; border-color: #6941c6; }
+    .state-empty { background: #edf2f7; border-color: #526170; }
+    .state-invalid-input { background: #fdeceb; border-color: #b42318; }
+    .reason { margin-top: .75rem; padding: .75rem; background: #fafbfc; border: 1px solid #d7ddea; border-radius: .35rem; }
+    pre { overflow-x: auto; padding: 1rem; background: #172033; color: #f4f7fb; border-radius: .35rem; white-space: pre-wrap; }
+    code { font-family: ui-monospace, Consolas, monospace; }
+    .notice { color: #526170; }
+    @media print { body { background: #fff; } main { max-width: none; margin: 0; border: 0; } pre { color: #172033; background: #f4f4f4; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>线性方程模型预览</h1>
+    <p class="notice">只读 preview；不执行 Python、SymPy 或验证。</p>
+    <section aria-label="预览元数据">
+      <dl>
+        <dt>mode</dt><dd><code>preview</code></dd>
+        <dt>side_effects</dt><dd><code>forbidden</code></dd>
+      </dl>
+    </section>
+    <section class="state state-ready" aria-label="工程状态">
+      <h2>工程状态：ready</h2>
+      <p>模型建议已生成；它仍是只读预览。</p>
+    </section>
+    <section>
+      <h2>方程</h2>
+      <p><code>2*x + 3 = 11</code></p>
+    </section>
+    <section>
+      <h2>受影响步骤</h2>
+      <ul><li><code>solve-equation</code>（operation）</li><li><code>verify-solution</code>（verification）</li></ul>
+    </section>
+    <section>
+      <h2>阻断原因</h2>
+      <p>无阻断原因。</p>
+    </section>
+    <section>
+      <h2>模型建议</h2>
+      <dl>
+  <dt>规范方程</dt><dd><code>2*x + 3 = 11</code></dd>
+  <dt>解</dt><dd><code>x = 4</code></dd>
+  <dt>验证断言</dt><dd><code>2 * 4 + 3 == 11</code></dd>
+</dl>
+<h3>SymPy 建议（未执行）</h3>
+<pre><code>import sympy as sp
+x = sp.symbols(&#39;x&#39;)
+equation = sp.Eq(2 * x + 3, 11)
+solution = sp.solve(equation, x)[0]
+assert solution == sp.Integer(4)</code></pre>
+    </section>
+  </main>
+</body>
+</html>

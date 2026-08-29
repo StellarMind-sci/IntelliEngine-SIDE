@@ -165,3 +165,14 @@ test("renders blocked and needs-evidence with distinct status CSS rules", async 
   assert.doesNotMatch(blockedHtml, /import sympy as sp/);
   assert.doesNotMatch(needsEvidenceHtml, /import sympy as sp/);
 });
+
+test("renders an exact rational solution instead of a floating-point approximation", async () => {
+  const request = clone(cases.ready);
+  request.equation = { variable: "x", coefficient: 49, constant: 0, right_hand_side: 1 };
+
+  const html = await render(createLinearEquationPreview(request));
+
+  assert.match(html, /x = 1\/49/);
+  assert.match(html, /49 \* \(1\/49\) \+ 0 == 1/);
+  assert.doesNotMatch(html, /0\.020408/);
+});

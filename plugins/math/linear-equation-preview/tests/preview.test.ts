@@ -21,7 +21,7 @@ test("compiles a ready symbolic calculation into a hand-checked proposal", () =>
   assert.equal(preview.mode, "preview");
   assert.equal(preview.side_effects, "forbidden");
   assert.equal(preview.state, "ready");
-  assert.deepEqual(preview.proposal?.solution, { variable: "x", value: 4 });
+  assert.deepEqual(preview.proposal?.solution, { variable: "x", value: "4" });
   assert.equal(preview.proposal?.canonical_equation, "2*x + 3 = 11");
   assert.equal(preview.proposal?.verification_assertion, "2 * 4 + 3 == 11");
   assert.deepEqual(preview.impacted_steps.map((step) => step.step_id), ["solve-equation", "verify-solution"]);
@@ -260,4 +260,114 @@ test("rejects duplicate matching operation step_ids independently of source orde
   assert.equal(readyFirstPreview.proposal, null);
   assert.deepEqual(readyFirst, readyFirstBefore);
   assert.deepEqual(absentFirst, absentFirstBefore);
+});
+test("rejects duplicate KnowledgeUnit and projection refs independently of source order", () => {
+  const duplicateKnowledgeUnit = clone(cases.ready.knowledge_units[0]);
+  duplicateKnowledgeUnit.title = "Conflicting duplicate unit";
+  const duplicateProjection = clone(cases.ready.projection.units[0]);
+  duplicateProjection.status = "blocked";
+  duplicateProjection.missing_prerequisite_refs = [{ id: "required-unit", revision: 1 }];
+
+  const unitFirst = clone(cases.ready);
+  unitFirst.knowledge_units = [clone(cases.ready.knowledge_units[0]), duplicateKnowledgeUnit];
+  unitFirst.projection.units = [clone(cases.ready.projection.units[0]), duplicateProjection];
+  const duplicateFirst = clone(cases.ready);
+  duplicateFirst.knowledge_units = [duplicateKnowledgeUnit, clone(cases.ready.knowledge_units[0])];
+  duplicateFirst.projection.units = [duplicateProjection, clone(cases.ready.projection.units[0])];
+  const unitFirstBefore = clone(unitFirst);
+  const duplicateFirstBefore = clone(duplicateFirst);
+
+  const unitFirstPreview = createLinearEquationPreview(unitFirst);
+  const duplicateFirstPreview = createLinearEquationPreview(duplicateFirst);
+
+  assert.deepEqual(unitFirstPreview, duplicateFirstPreview);
+  assert.equal(unitFirstPreview.state, "invalid_input");
+  assert.equal(unitFirstPreview.proposal, null);
+  assert.deepEqual(unitFirst, unitFirstBefore);
+  assert.deepEqual(duplicateFirst, duplicateFirstBefore);
+});
+
+const inconsistentProjectionGates = [
+  {
+    name: "ready status with missing references",
+    arrange(request: typeof cases.ready) {
+      request.projection.units[0].missing_prerequisite_refs = [{ id: "required-unit", revision: 1 }];
+    },
+  },
+  {
+    name: "needs-evidence status without missing evidence",
+    arrange(request: typeof cases.ready) {
+      request.projection.units[0].status = "needs_evidence";
+    },
+  },
+  {
+    name: "needs-evidence status carrying prerequisites",
+    arrange(request: typeof cases.ready) {
+      request.projection.units[0].status = "needs_evidence";
+      request.projection.units[0].missing_prerequisite_refs = [{ id: "required-unit", revision: 1 }];
+      request.projection.units[0].missing_evidence_node_refs = [{ id: "evidence-unit", revision: 1 }];
+    },
+  },
+  {
+    name: "blocked status without missing prerequisites",
+    arrange(request: typeof cases.ready) {
+      request.projection.units[0].status = "blocked";
+    },
+  },
+];
+
+for (const { name, arrange } of inconsistentProjectionGates) {
+  test(`rejects an inconsistent projection: ${name}`, () => {
+    const request = clone(cases.ready);
+    arrange(request);
+    const before = clone(request);
+
+    const preview = createLinearEquationPreview(request);
+
+    assert.equal(preview.state, "invalid_input");
+    assert.equal(preview.proposal, null);
+    assert.deepEqual(request, before);
+  });
+}
+
+test("represents a non-terminating rational solution exactly", () => {
+  const request = clone(cases.ready);
+  request.equation = { variable: "x", coefficient: 49, constant: 0, right_hand_side: 1 };
+  const before = clone(request);
+
+  const preview = createLinearEquationPreview(request);
+
+  assert.equal(preview.state, "ready");
+  assert.deepEqual(preview.proposal?.solution, { variable: "x", value: "1/49" });
+  assert.equal(preview.proposal?.verification_assertion, "49 * (1/49) + 0 == 1");
+  assert.match(preview.proposal?.sympy_source ?? "", /sp\.Rational\(1, 49\)/);
+  assert.doesNotMatch(preview.proposal?.verification_assertion ?? "", /0\.020408/);
+  assert.deepEqual(request, before);
+});
+
+test("normalizes negative rational solutions and accepts safe-integer boundaries exactly", () => {
+  const negativeRequest = clone(cases.ready);
+  negativeRequest.equation = { variable: "x", coefficient: 2, constant: 1, right_hand_side: 0 };
+  const boundaryRequest = clone(cases.ready);
+  boundaryRequest.equation = {
+    variable: "x",
+    coefficient: 1,
+    constant: -9007199254740991,
+    right_hand_side: 9007199254740991,
+  };
+  const negativeBefore = clone(negativeRequest);
+  const boundaryBefore = clone(boundaryRequest);
+
+  const negativePreview = createLinearEquationPreview(negativeRequest);
+  const boundaryPreview = createLinearEquationPreview(boundaryRequest);
+
+  assert.deepEqual(negativePreview.proposal?.solution, { variable: "x", value: "-1/2" });
+  assert.equal(negativePreview.proposal?.verification_assertion, "2 * (-1/2) + 1 == 0");
+  assert.deepEqual(boundaryPreview.proposal?.solution, { variable: "x", value: "18014398509481982" });
+  assert.equal(
+    boundaryPreview.proposal?.verification_assertion,
+    "1 * 18014398509481982 - 9007199254740991 == 9007199254740991",
+  );
+  assert.deepEqual(negativeRequest, negativeBefore);
+  assert.deepEqual(boundaryRequest, boundaryBefore);
 });

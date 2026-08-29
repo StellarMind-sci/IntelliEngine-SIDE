@@ -46,6 +46,15 @@ $LASTEXITCODE
 
 预期：第一条命令退出非零并只向 stderr 输出 `unknown demo case: missing`；第二条退出非零并只向 stderr 输出 `unknown output format: text`。两条命令均不向 stdout 写入预览。
 
+## 持久化视觉证据
+
+以下证据与本任务的固定 demo case 对应，保存在仓库中，供离线审阅；HTML 是 CLI 的只读 stdout，PNG 由无头本地浏览器渲染，渲染过程不访问网络、不执行 Python/SymPy，也不写工程状态：
+
+- Ready：[HTML](artifacts/linear-equation-model-preview/ready.html)；[PNG 截图](artifacts/linear-equation-model-preview/ready.png)
+- Blocked：[HTML](artifacts/linear-equation-model-preview/blocked.html)；[PNG 截图](artifacts/linear-equation-model-preview/blocked.png)
+- Empty：[HTML](artifacts/linear-equation-model-preview/empty.html)；[PNG 截图](artifacts/linear-equation-model-preview/empty.png)
+
+JSON 中的 `proposal.solution.value` 是规范的精确有理数字符串：整数仍显示为 `"4"`，分数例如 `"1/49"`，避免把浮点近似当作验证证据。页面继续显示其可读形式（例如 `x = 4`）。
 ## 截图方法
 
 分别打开三个临时 HTML 文件后，使用 Windows 的 `Win+Shift+S` 截取整个可见预览页。每张截图应保留标题、`mode`、`side_effects`、工程状态和相应主体内容：ready 的 SymPy 建议、blocked 的缺失前置、empty 的空状态说明。浏览器不可用时，可保存 CLI 的完整 HTML stdout 作为替代视觉证据，并记录未能截屏的环境原因。
@@ -62,7 +71,7 @@ python scripts/verify_governance.py
 node --test packages/thoughtflow/tests/ts/*.test.ts
 ```
 
-预期：测试通过；ready JSON 含 `proposal`；blocked 与 empty HTML 不含 `from sympy import`；治理检查通过。
+预期：本地测试通过；ready JSON 含 `proposal`，且其解为精确有理数字符串；blocked 与 empty HTML 不含 `from sympy import`；治理检查通过。仓库的 [Math preview workflow](../../.github/workflows/math-preview.yml) 在 Ubuntu 与 Windows 的 Node.js 24 上运行同一完整 plugin 测试集；本机不是 Node 24 时，不得把本地结果当作正式 CI 证据。
 
 ## 已知限制
 
