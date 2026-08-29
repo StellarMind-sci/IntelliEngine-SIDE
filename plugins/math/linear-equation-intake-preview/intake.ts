@@ -31,6 +31,8 @@ export type LinearEquationIntakePreview = {
 type ParsedEquation = { coefficient: number; variable: string; constant: number; rightHandSide: number; normalized: string };
 type JsonObject = Record<string, unknown>;
 
+const INTAKE_SOURCE_REF = /^prov:[a-z][a-z0-9-]*(?::[A-Za-z0-9._-]+)+$/;
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -75,8 +77,7 @@ function validRequest(value: unknown): value is { text: string; source_ref: stri
     Object.prototype.hasOwnProperty.call(value, "source_ref") &&
     typeof value.text === "string" &&
     typeof value.source_ref === "string" &&
-    value.source_ref.length > 0 &&
-    value.source_ref.trim() === value.source_ref
+    INTAKE_SOURCE_REF.test(value.source_ref)
   );
 }
 

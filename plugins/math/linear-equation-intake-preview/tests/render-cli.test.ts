@@ -3,7 +3,6 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { createLinearEquationIntakePreview } from "../intake.ts";
 import { renderLinearEquationIntakePreviewHtml } from "../render.ts";
 
 const cli = fileURLToPath(new URL("../cli.ts", import.meta.url));
@@ -22,9 +21,19 @@ test("renders static readonly intake previews for ready, empty and invalid cases
   }
 });
 
-test("escapes dynamic source, candidate and diagnostic text", () => {
-  const result = createLinearEquationIntakePreview({ text: "x = 1", source_ref: "<source&>" });
-  const html = renderLinearEquationIntakePreviewHtml({ ...result, diagnostic: "<img src=x onerror=alert(1)>" });
+test("escapes dynamic renderer API source, candidate and diagnostic text", () => {
+  const html = renderLinearEquationIntakePreviewHtml({
+    mode: "preview", side_effects: "forbidden", state: "ready",
+    source: { text: "<text&>", source_ref: "prov:source:example" },
+    normalized_equation: "<equation&>", variable: "x",
+    candidate_node: {
+      contract_version: "1.0.0", id: "<candidate&>", revision: 1, base_kind: "relation",
+      type_id: "org.intelliengine.math/equation", type_version: "1.2.0",
+      data: { expression: "<expression&>", symbols: ["x"] }, provenance_refs: ["<source&>"],
+    },
+    validation: { transport: "valid", semantic: "valid" }, diagnostic: "<img src=x onerror=alert(1)>",
+  });
+  assert.match(html, /&lt;candidate&amp;&gt;/);
   assert.match(html, /&lt;source&amp;&gt;/);
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(html, /<img\b|<script\b|<iframe\b|<[^>]*\bonerror\s*=/i);
