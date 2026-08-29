@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>线性方程模型预览</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { margin: 0; background: #f5f7fa; color: #172033; }
+    main { max-width: 54rem; margin: 2rem auto; padding: 1.5rem; background: #fff; border: 1px solid #d7ddea; border-radius: .75rem; }
+    h1, h2, h3 { margin-top: 0; }
+    section { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #d7ddea; }
+    dl { display: grid; grid-template-columns: max-content 1fr; gap: .45rem 1rem; }
+    dt { font-weight: 700; } dd { margin: 0; }
+    .state { padding: 1rem; border-left: .4rem solid; border-radius: .35rem; }
+    .state-ready { background: #e8f7ee; border-color: #167a3f; }
+    .state-blocked { background: #fff3df; border-color: #b45f06; }
+    .state-needs-evidence { background: #f1edff; border-color: #6941c6; }
+    .state-empty { background: #edf2f7; border-color: #526170; }
+    .state-invalid-input { background: #fdeceb; border-color: #b42318; }
+    .reason { margin-top: .75rem; padding: .75rem; background: #fafbfc; border: 1px solid #d7ddea; border-radius: .35rem; }
+    pre { overflow-x: auto; padding: 1rem; background: #172033; color: #f4f7fb; border-radius: .35rem; white-space: pre-wrap; }
+    code { font-family: ui-monospace, Consolas, monospace; }
+    .notice { color: #526170; }
+    @media print { body { background: #fff; } main { max-width: none; margin: 0; border: 0; } pre { color: #172033; background: #f4f4f4; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>线性方程模型预览</h1>
+    <p class="notice">只读 preview；不执行 Python、SymPy 或验证。</p>
+    <section aria-label="预览元数据">
+      <dl>
+        <dt>mode</dt><dd><code>preview</code></dd>
+        <dt>side_effects</dt><dd><code>forbidden</code></dd>
+      </dl>
+    </section>
+    <section class="state state-blocked" aria-label="工程状态">
+      <h2>工程状态：blocked</h2>
+      <p>工程状态被阻断；请先补齐前置条件。</p>
+    </section>
+    <section>
+      <h2>方程</h2>
+      <p><code>2*x + 3 = 11</code></p>
+    </section>
+    <section>
+      <h2>受影响步骤</h2>
+      <ul><li><code>solve-equation</code>（operation）</li><li><code>verify-solution</code>（verification）</li></ul>
+    </section>
+    <section>
+      <h2>阻断原因</h2>
+      <article class="reason">
+  <h3>blocked</h3>
+  <p>KnowledgeUnit：<code>linear-equation-unit@1</code></p>
+  <dl>
+    <dt>缺失前置</dt><dd><ul><li><code>equality-transformations-unit@1</code></li></ul></dd>
+    <dt>缺失证据</dt><dd><span>无</span></dd>
+  </dl>
+</article>
+    </section>
+    <section>
+      <h2>模型建议</h2>
+      <p>当前工程状态不提供代码建议。</p>
+    </section>
+  </main>
+</body>
+</html>
