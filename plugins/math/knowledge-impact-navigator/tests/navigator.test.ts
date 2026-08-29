@@ -188,3 +188,87 @@ test("rejects a blocked focus that has no matching engineering impact", () => {
   assert.deepEqual(result.reasons, []);
   assert.deepEqual(request, before);
 });
+
+test("rejects a blocked reason that also carries missing evidence", () => {
+  const request = clone(cases.blocked);
+  request.projection.units[0].missing_evidence_node_refs = [
+    { id: "20000000-0000-4000-8000-000000000001", revision: 1 },
+  ];
+  const before = clone(request);
+
+  const result = createKnowledgeImpactNavigator(request);
+
+  assert.deepEqual(result, {
+    mode: "preview",
+    side_effects: "forbidden",
+    state: "invalid_input",
+    focus: null,
+    navigation: null,
+    impacted_steps: [],
+    reasons: [],
+  });
+  assert.deepEqual(request, before);
+});
+
+test("rejects a needs-evidence reason that also carries missing prerequisites", () => {
+  const request = clone(cases.needs_evidence);
+  request.projection.units[0].missing_prerequisite_refs = [
+    { id: "10000000-0000-4000-8000-000000000011", revision: 1 },
+  ];
+  const before = clone(request);
+
+  const result = createKnowledgeImpactNavigator(request);
+
+  assert.deepEqual(result, {
+    mode: "preview",
+    side_effects: "forbidden",
+    state: "invalid_input",
+    focus: null,
+    navigation: null,
+    impacted_steps: [],
+    reasons: [],
+  });
+  assert.deepEqual(request, before);
+});
+
+test("treats a ready focus referenced only by analysis behavior as empty", () => {
+  const request = clone(cases.ready);
+  request.flow.steps = [
+    {
+      step_id: "analysis-behavior-only",
+      kind: "analysis",
+      knowledge_unit_refs: [],
+      behavior_ref: { knowledge_unit_ref: clone(request.focus_ref) },
+    },
+  ];
+  const before = clone(request);
+
+  const result = createKnowledgeImpactNavigator(request);
+
+  assert.equal(result.state, "empty");
+  assert.equal(result.navigation, null);
+  assert.deepEqual(result.impacted_steps, []);
+  assert.deepEqual(result.reasons, []);
+  assert.deepEqual(request, before);
+});
+
+test("keeps a ready focus referenced by operation behavior as a valid association", () => {
+  const request = clone(cases.ready);
+  request.flow.steps = [
+    {
+      step_id: "operation-behavior-only",
+      kind: "operation",
+      knowledge_unit_refs: [],
+      behavior_ref: { knowledge_unit_ref: clone(request.focus_ref) },
+    },
+  ];
+  const before = clone(request);
+
+  const result = createKnowledgeImpactNavigator(request);
+
+  assert.equal(result.state, "ready");
+  assert.equal(result.navigation, null);
+  assert.deepEqual(result.impacted_steps, []);
+  assert.deepEqual(result.reasons, []);
+  assert.deepEqual(request, before);
+});

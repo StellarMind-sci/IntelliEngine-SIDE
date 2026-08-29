@@ -97,24 +97,35 @@ function focusAppearsInFlow(flow: unknown, focusRef: KnowledgeUnitRef): boolean 
       const candidateRef = ref(candidate);
       return candidateRef !== undefined && refKey(candidateRef) === focusKey;
     });
-    const behavior = object(step.behavior_ref) ? ref(step.behavior_ref.knowledge_unit_ref) : undefined;
+    const behavior = step.kind === "operation" && object(step.behavior_ref) ? ref(step.behavior_ref.knowledge_unit_ref) : undefined;
     return direct || (behavior !== undefined && refKey(behavior) === focusKey);
   });
+}
+
+function canonicalRefs(value: unknown): KnowledgeUnitRef[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const refs = value.map(ref);
+  if (refs.some((candidate) => candidate === undefined)) return undefined;
+  const keys = (refs as KnowledgeUnitRef[]).map(refKey);
+  const sorted = [...keys].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+  if (new Set(keys).size !== keys.length || !keys.every((key, index) => key === sorted[index])) return undefined;
+  return (refs as KnowledgeUnitRef[]).map(copyRef);
 }
 
 function reason(value: unknown): KnowledgeImpactReason | undefined {
   if (!object(value)) return undefined;
   const knowledgeUnitRef = ref(value.knowledge_unit_ref);
   if (knowledgeUnitRef === undefined || (value.status !== "blocked" && value.status !== "needs_evidence")) return undefined;
-  if (!Array.isArray(value.missing_prerequisite_refs) || !Array.isArray(value.missing_evidence_node_refs)) return undefined;
-  const prerequisites = value.missing_prerequisite_refs.map(ref);
-  const evidence = value.missing_evidence_node_refs.map(ref);
-  if (prerequisites.some((candidate) => candidate === undefined) || evidence.some((candidate) => candidate === undefined)) return undefined;
+  const prerequisites = canonicalRefs(value.missing_prerequisite_refs);
+  const evidence = canonicalRefs(value.missing_evidence_node_refs);
+  if (prerequisites === undefined || evidence === undefined) return undefined;
+  if (value.status === "blocked" && (prerequisites.length === 0 || evidence.length !== 0)) return undefined;
+  if (value.status === "needs_evidence" && (prerequisites.length !== 0 || evidence.length === 0)) return undefined;
   return {
     knowledge_unit_ref: copyRef(knowledgeUnitRef),
     status: value.status,
-    missing_prerequisite_refs: (prerequisites as KnowledgeUnitRef[]).map(copyRef),
-    missing_evidence_node_refs: (evidence as KnowledgeUnitRef[]).map(copyRef),
+    missing_prerequisite_refs: prerequisites,
+    missing_evidence_node_refs: evidence,
   };
 }
 
