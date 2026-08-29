@@ -7,7 +7,7 @@
 ## 已有事实与边界
 
 - 已合并的 KnowledgeUnit 投影把工程状态表达为 `ready`、`blocked`、`needs_evidence`；Thoughtflow 影响投影能指出受影响步骤与原因。
-- `resolve-linear-equation` 已声明 `calculation` / `runtime.math.symbolic` 行为，但目前没有数学执行器、输入解析器、Web IDE 或已发布 Plugin SDK。
+- `solve-linear-equation` 已声明 `calculation` / `runtime.math.symbolic` 行为，但目前没有数学执行器、输入解析器、Web IDE 或已发布 Plugin SDK。
 - 因此本切片不运行 SymPy、不创建工程状态、不授予 capability，也不声称已经有可加载的 DomainPlugin。代码归属 `plugins/math`，但只是未来插件可复用的纯预览组件。
 
 ## 用户结果
@@ -16,7 +16,7 @@
 
 1. **正常**：`2x + 3 = 11` 显示规范模型、`x = 4`、SymPy 建议、`2 * 4 + 3 == 11` 验证断言，以及关联 operation/verification 步骤。
 2. **阻断**：当目标 KnowledgeUnit 为 `blocked` 或 `needs_evidence` 时，显示缺失前置或证据和受影响步骤，且 `proposal` 为 `null`；绝不输出可执行代码建议。
-3. **空状态**：当 Thoughtflow 没有匹配的 `resolve-linear-equation` operation 时，显示没有可编译行为；不把无关步骤或其他 capability 猜成数学模型。
+3. **空状态**：当 Thoughtflow 没有匹配的 `solve-linear-equation` operation 时，显示没有可编译行为；不把无关步骤或其他 capability 猜成数学模型。
 
 预览明确标记 `mode: "preview"`、`side_effects: "forbidden"`。它不描述个人掌握程度，只有工程前置与验证证据状态。
 
@@ -25,10 +25,10 @@
 内部函数 `createLinearEquationPreview(request)` 接收：
 
 - 受限 equation `{ variable: "x", coefficient: 2, constant: 3, right_hand_side: 11 }`；所有字段必须是有限安全数，`coefficient !== 0`。
-- KnowledgeUnit project projection 的只读 `units` 结果。
+- KnowledgeUnit project projection 的只读 `units` 结果，以及对应的不可变 `knowledge_units` 文档；后者只用于确认行为和 capability。
 - Thoughtflow 的只读 `steps`，只读取 operation 的 `behavior_ref` 与 verification step。
 
-它只匹配行为 ID `resolve-linear-equation`、capability `runtime.math.symbolic`、且 KnowledgeUnit 标题为 `resolve-linear-equation` 的目标单元。输出为：
+它只匹配 Thoughtflow operation 的行为 ID `solve-linear-equation`，并要求对应不可变 KnowledgeUnit 文档含同名行为、`calculation` kind 与 `runtime.math.symbolic` capability。固定演示 fixture 在内部对齐这些字段；它不修改既有跨模块 fixture。输出为：
 
 ```text
 { mode, side_effects, state, equation, proposal, impacted_steps, reasons }
