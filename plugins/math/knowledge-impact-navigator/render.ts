@@ -5,7 +5,7 @@ function escapeHtml(value: string): string {
 }
 
 function reference(ref: KnowledgeUnitRef): string {
-  return `${escapeHtml(ref.id)}@${ref.revision}`;
+  return `${escapeHtml(ref.id)}@${escapeHtml(String(ref.revision))}`;
 }
 
 function referenceList(refs: KnowledgeUnitRef[]): string {

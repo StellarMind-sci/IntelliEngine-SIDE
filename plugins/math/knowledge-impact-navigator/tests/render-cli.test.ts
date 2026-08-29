@@ -90,6 +90,33 @@ test("escapes every dynamic value before static HTML output", () => {
   assert.doesNotMatch(html, /<img\b|<script\b|<iframe\b|<[^>]*\bonerror\s*=/i);
 });
 
+test("renders untrusted runtime revisions as text rather than HTML", () => {
+  const injectedRevision = "1</span><img src=x onerror=alert(1)>";
+  const html = renderKnowledgeImpactNavigatorHtml({
+    mode: "preview",
+    side_effects: "forbidden",
+    state: "blocked",
+    focus: { id: "safe", revision: injectedRevision as unknown as number },
+    navigation: null,
+    impacted_steps: [],
+    reasons: [],
+  });
+
+  assert.match(html, /safe@1&lt;\/span&gt;&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(html, /<img\b|<[^>]*\bonerror\s*=/i);
+
+  const numeric = renderKnowledgeImpactNavigatorHtml({
+    mode: "preview",
+    side_effects: "forbidden",
+    state: "empty",
+    focus: { id: "numeric", revision: 42 },
+    navigation: null,
+    impacted_steps: [],
+    reasons: [],
+  });
+  assert.match(numeric, /focus: numeric@42/);
+});
+
 test("CLI emits JSON and HTML for all five fixed demo states", () => {
   for (const caseId of ["blocked", "needs-evidence", "ready", "empty", "invalid"] as const) {
     const json = runCli("--case", caseId, "--format", "json");
