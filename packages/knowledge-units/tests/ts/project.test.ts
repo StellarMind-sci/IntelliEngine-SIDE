@@ -13,6 +13,14 @@ const fixturePath = resolve(packageRoot, "tests/fixtures/project-projection-case
 const prerequisiteRef = { id: "10000000-0000-4000-8000-000000000001", revision: 1 };
 const dependentRef = { id: "10000000-0000-4000-8000-000000000002", revision: 1 };
 const evidenceRef = { id: "20000000-0000-4000-8000-000000000002", revision: 1 };
+const noncanonicalCases: Array<[string, string]> = [
+  ["noncanonical-available-duplicate", "/available_node_refs"],
+  ["noncanonical-available-unordered", "/available_node_refs"],
+  ["noncanonical-available-invalid-ref", "/available_node_refs"],
+  ["noncanonical-evidence-duplicate", "/evidence_node_refs"],
+  ["noncanonical-evidence-unordered", "/evidence_node_refs"],
+  ["noncanonical-evidence-invalid-ref", "/evidence_node_refs"],
+];
 
 
 function loadCase(caseId: string) {
@@ -37,9 +45,10 @@ test("empty evidence marks the dependent unit as needs_evidence", () => {
   assert.equal(result.operation_outcome, "succeeded");
   assert.deepEqual(result.issues, []);
   assert.deepEqual(result.units[1], {
-    unit_ref: dependentRef,
+    ref: dependentRef,
     status: "needs_evidence",
-    missing_prerequisite_unit_refs: [],
+    missing_prerequisite_refs: [],
+    missing_evidence_node_refs: [evidenceRef],
   });
 });
 
@@ -48,10 +57,23 @@ test("missing prerequisite blocks the dependent unit and lists its ref", () => {
   const result = projectCase("missing-prerequisite");
 
   assert.deepEqual(result.units, [{
-    unit_ref: dependentRef,
+    ref: dependentRef,
     status: "blocked",
-    missing_prerequisite_unit_refs: [prerequisiteRef],
+    missing_prerequisite_refs: [prerequisiteRef],
+    missing_evidence_node_refs: [],
   }]);
+});
+
+
+test("complete evidence reports no missing evidence", () => {
+  const result = projectCase("full-evidence");
+
+  assert.deepEqual(result.units[1], {
+    ref: dependentRef,
+    status: "ready",
+    missing_prerequisite_refs: [],
+    missing_evidence_node_refs: [],
+  });
 });
 
 
@@ -100,3 +122,21 @@ test("duplicate unit ref is invalid", () => {
     severity: "error",
   }]);
 });
+
+
+for (const [caseId, path] of noncanonicalCases) {
+  test(`${caseId} returns a closed invalid result`, () => {
+    assert.deepEqual(projectCase(caseId), {
+      object_result: "invalid",
+      operation_outcome: "succeeded",
+      issues: [{
+        code: "knowledge_project.noncanonical_set",
+        path,
+        severity: "error",
+      }],
+      units: [],
+      node_dependents: [],
+      unit_dependents: [],
+    });
+  });
+}

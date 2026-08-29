@@ -166,15 +166,19 @@ export function projectKnowledge(units: unknown, availableNodeRefs: unknown, evi
       if (!nodeUsers.has(nodeRef)) nodeUsers.set(nodeRef, new Set());
       nodeUsers.get(nodeRef)!.add(key);
     }
+    const missingEvidence = [...requiredEvidenceRefs(unit)]
+      .filter((ref) => !evidenceSet.has(ref))
+      .sort(compareBytes);
     const status = missing.get(key)!.length > 0
       ? "blocked"
-      : [...requiredEvidenceRefs(unit)].every((ref) => evidenceSet.has(ref))
-        ? "ready"
-        : "needs_evidence";
+      : missingEvidence.length > 0
+        ? "needs_evidence"
+        : "ready";
     return {
-      unit_ref: refFromKey(key),
+      ref: refFromKey(key),
       status,
-      missing_prerequisite_unit_refs: missing.get(key)!.map(refFromKey),
+      missing_prerequisite_refs: missing.get(key)!.map(refFromKey),
+      missing_evidence_node_refs: missingEvidence.map(refFromKey),
     };
   });
 

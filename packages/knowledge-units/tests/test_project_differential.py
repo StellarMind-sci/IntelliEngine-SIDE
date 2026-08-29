@@ -22,13 +22,22 @@ sys.path[:0] = [str(PYTHON_ROOT), str(COGNITIVE_PYTHON)]
 from intelliengine_knowledge_units.project import project_knowledge
 
 
+DEPENDENT_REF = {"id": "10000000-0000-4000-8000-000000000002", "revision": 1}
+EVIDENCE_REF = {"id": "20000000-0000-4000-8000-000000000002", "revision": 1}
+NONCANONICAL_CASES = (
+    ("noncanonical-available-duplicate", "/available_node_refs"),
+    ("noncanonical-available-unordered", "/available_node_refs"),
+    ("noncanonical-available-invalid-ref", "/available_node_refs"),
+    ("noncanonical-evidence-duplicate", "/evidence_node_refs"),
+    ("noncanonical-evidence-unordered", "/evidence_node_refs"),
+    ("noncanonical-evidence-invalid-ref", "/evidence_node_refs"),
+)
+
+
 def load_inputs(fixture: dict, case: dict) -> tuple[list[dict], list[dict], list[dict]]:
     units = [copy.deepcopy(fixture["unit_catalog"][index]) for index in case["unit_indexes"]]
     if case.get("cycle"):
-        units[0]["prerequisite_unit_refs"] = [{
-            "id": "10000000-0000-4000-8000-000000000002",
-            "revision": 1,
-        }]
+        units[0]["prerequisite_unit_refs"] = [copy.deepcopy(DEPENDENT_REF)]
     return units, case["available_node_refs"], case["evidence_node_refs"]
 
 
@@ -39,6 +48,26 @@ class KnowledgeUnitProjectDifferentialTests(unittest.TestCase):
         for case in fixture["cases"]:
             units, available, evidence = load_inputs(fixture, case)
             python[case["case_id"]] = project_knowledge(units, available, evidence, CONTRACT_ROOT)
+
+        self.assertEqual(python["empty-evidence"]["units"][1], {
+            "ref": DEPENDENT_REF,
+            "status": "needs_evidence",
+            "missing_prerequisite_refs": [],
+            "missing_evidence_node_refs": [EVIDENCE_REF],
+        })
+        for case_id, path in NONCANONICAL_CASES:
+            self.assertEqual(python[case_id], {
+                "object_result": "invalid",
+                "operation_outcome": "succeeded",
+                "issues": [{
+                    "code": "knowledge_project.noncanonical_set",
+                    "path": path,
+                    "severity": "error",
+                }],
+                "units": [],
+                "node_dependents": [],
+                "unit_dependents": [],
+            })
 
         node = shutil.which("node")
         self.assertIsNotNone(node)

@@ -21,6 +21,14 @@ CONTRACT_ROOT = PACKAGE_ROOT / "contracts" / "knowledge-unit" / "1.0.0"
 PREREQUISITE_REF = {"id": "10000000-0000-4000-8000-000000000001", "revision": 1}
 DEPENDENT_REF = {"id": "10000000-0000-4000-8000-000000000002", "revision": 1}
 EVIDENCE_REF = {"id": "20000000-0000-4000-8000-000000000002", "revision": 1}
+NONCANONICAL_CASES = (
+    ("noncanonical-available-duplicate", "/available_node_refs"),
+    ("noncanonical-available-unordered", "/available_node_refs"),
+    ("noncanonical-available-invalid-ref", "/available_node_refs"),
+    ("noncanonical-evidence-duplicate", "/evidence_node_refs"),
+    ("noncanonical-evidence-unordered", "/evidence_node_refs"),
+    ("noncanonical-evidence-invalid-ref", "/evidence_node_refs"),
+)
 
 
 def load_case(case_id: str):
@@ -44,19 +52,31 @@ class KnowledgeUnitProjectTests(unittest.TestCase):
         self.assertEqual(result["operation_outcome"], "succeeded")
         self.assertEqual(result["issues"], [])
         self.assertEqual(result["units"][1], {
-            "unit_ref": DEPENDENT_REF,
+            "ref": DEPENDENT_REF,
             "status": "needs_evidence",
-            "missing_prerequisite_unit_refs": [],
+            "missing_prerequisite_refs": [],
+            "missing_evidence_node_refs": [EVIDENCE_REF],
         })
 
     def test_missing_prerequisite_blocks_dependent_unit_and_lists_ref(self) -> None:
         result = self.project_case("missing-prerequisite")
 
         self.assertEqual(result["units"], [{
-            "unit_ref": DEPENDENT_REF,
+            "ref": DEPENDENT_REF,
             "status": "blocked",
-            "missing_prerequisite_unit_refs": [PREREQUISITE_REF],
+            "missing_prerequisite_refs": [PREREQUISITE_REF],
+            "missing_evidence_node_refs": [],
         }])
+
+    def test_complete_evidence_reports_no_missing_evidence(self) -> None:
+        result = self.project_case("full-evidence")
+
+        self.assertEqual(result["units"][1], {
+            "ref": DEPENDENT_REF,
+            "status": "ready",
+            "missing_prerequisite_refs": [],
+            "missing_evidence_node_refs": [],
+        })
 
     def test_evidence_node_reports_the_two_direct_unit_dependents(self) -> None:
         result = self.project_case("full-evidence")
@@ -96,6 +116,22 @@ class KnowledgeUnitProjectTests(unittest.TestCase):
             "path": "/units/2",
             "severity": "error",
         }])
+
+    def test_noncanonical_available_and_evidence_sets_are_closed_invalid_results(self) -> None:
+        for case_id, path in NONCANONICAL_CASES:
+            with self.subTest(case_id=case_id):
+                self.assertEqual(self.project_case(case_id), {
+                    "object_result": "invalid",
+                    "operation_outcome": "succeeded",
+                    "issues": [{
+                        "code": "knowledge_project.noncanonical_set",
+                        "path": path,
+                        "severity": "error",
+                    }],
+                    "units": [],
+                    "node_dependents": [],
+                    "unit_dependents": [],
+                })
 
 
 if __name__ == "__main__":

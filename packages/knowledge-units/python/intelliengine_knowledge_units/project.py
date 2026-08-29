@@ -160,13 +160,15 @@ def project_knowledge(units: Any, available_node_refs: Any, evidence_node_refs: 
         unit = by_ref[key]
         for node_ref in _collect_node_refs(unit):
             node_users.setdefault(node_ref, set()).add(key)
+        missing_evidence = sorted(_required_evidence_refs(unit) - evidence_set)
         status = "blocked" if missing[key] else (
-            "needs_evidence" if not _required_evidence_refs(unit) <= evidence_set else "ready"
+            "needs_evidence" if missing_evidence else "ready"
         )
         projection_units.append({
-            "unit_ref": _ref_from_key(key),
+            "ref": _ref_from_key(key),
             "status": status,
-            "missing_prerequisite_unit_refs": [_ref_from_key(ref) for ref in missing[key]],
+            "missing_prerequisite_refs": [_ref_from_key(ref) for ref in missing[key]],
+            "missing_evidence_node_refs": [_ref_from_key(ref) for ref in missing_evidence],
         })
 
     node_dependents = [
