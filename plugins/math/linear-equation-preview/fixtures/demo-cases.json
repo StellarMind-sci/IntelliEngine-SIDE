@@ -1,0 +1,136 @@
+{
+  "ready": {
+    "equation": { "variable": "x", "coefficient": 2, "constant": 3, "right_hand_side": 11 },
+    "knowledge_units": [
+      {
+        "id": "linear-equation-unit",
+        "revision": 1,
+        "title": "Solve a linear equation",
+        "behaviors": [
+          {
+            "behavior_id": "solve-linear-equation",
+            "kind": "calculation",
+            "capability": "runtime.math.symbolic"
+          }
+        ]
+      }
+    ],
+    "projection": {
+      "units": [
+        {
+          "ref": { "id": "linear-equation-unit", "revision": 1 },
+          "status": "ready",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": []
+        }
+      ]
+    },
+    "flow": {
+      "steps": [
+        { "step_id": "verify-solution", "kind": "verification" },
+        {
+          "step_id": "solve-equation",
+          "kind": "operation",
+          "behavior_ref": {
+            "knowledge_unit_ref": { "id": "linear-equation-unit", "revision": 1 },
+            "behavior_id": "solve-linear-equation"
+          }
+        },
+        { "step_id": "state-goal", "kind": "goal" }
+      ]
+    }
+  },
+  "blocked": {
+    "equation": { "variable": "x", "coefficient": 2, "constant": 3, "right_hand_side": 11 },
+    "knowledge_units": [
+      {
+        "id": "linear-equation-unit",
+        "revision": 1,
+        "title": "Solve a linear equation",
+        "behaviors": [
+          {
+            "behavior_id": "solve-linear-equation",
+            "kind": "calculation",
+            "capability": "runtime.math.symbolic"
+          }
+        ]
+      }
+    ],
+    "projection": {
+      "units": [
+        {
+          "ref": { "id": "linear-equation-unit", "revision": 1 },
+          "status": "blocked",
+          "missing_prerequisite_refs": [
+            { "id": "equality-transformations-unit", "revision": 1 }
+          ],
+          "missing_evidence_node_refs": []
+        }
+      ]
+    },
+    "flow": {
+      "steps": [
+        {
+          "step_id": "solve-equation",
+          "kind": "operation",
+          "behavior_ref": {
+            "knowledge_unit_ref": { "id": "linear-equation-unit", "revision": 1 },
+            "behavior_id": "solve-linear-equation"
+          }
+        },
+        { "step_id": "verify-solution", "kind": "verification" }
+      ]
+    }
+  },
+  "empty": {
+    "equation": { "variable": "x", "coefficient": 2, "constant": 3, "right_hand_side": 11 },
+    "knowledge_units": [],
+    "projection": { "units": [] },
+    "flow": {
+      "steps": [
+        { "step_id": "verify-solution", "kind": "verification" },
+        { "step_id": "state-goal", "kind": "goal" }
+      ]
+    }
+  },
+  "invalid-equation": {
+    "equation": { "variable": "x", "coefficient": 0, "constant": 3, "right_hand_side": 11 },
+    "knowledge_units": [
+      {
+        "id": "linear-equation-unit",
+        "revision": 1,
+        "title": "Solve a linear equation",
+        "behaviors": [
+          {
+            "behavior_id": "solve-linear-equation",
+            "kind": "calculation",
+            "capability": "runtime.math.symbolic"
+          }
+        ]
+      }
+    ],
+    "projection": {
+      "units": [
+        {
+          "ref": { "id": "linear-equation-unit", "revision": 1 },
+          "status": "ready",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": []
+        }
+      ]
+    },
+    "flow": {
+      "steps": [
+        {
+          "step_id": "solve-equation",
+          "kind": "operation",
+          "behavior_ref": {
+            "knowledge_unit_ref": { "id": "linear-equation-unit", "revision": 1 },
+            "behavior_id": "solve-linear-equation"
+          }
+        },
+        { "step_id": "verify-solution", "kind": "verification" }
+      ]
+    }
+  }
+}
