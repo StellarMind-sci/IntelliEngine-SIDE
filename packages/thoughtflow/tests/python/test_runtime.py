@@ -17,6 +17,7 @@ from intelliengine_thoughtflow.runtime import (
     next_candidates,
     parse_and_validate_transport,
     simulate_bounded,
+    validate_references,
     validate_revision_transition,
 )
 
@@ -25,6 +26,9 @@ def valid_flow() -> dict:
     suite = json.loads((CONTRACT_ROOT / "fixtures" / "cases.json").read_text(encoding="utf-8"))
     return copy.deepcopy(suite["cases"][0]["input"]["flow"])
 
+def valid_snapshot() -> dict:
+    suite = json.loads((CONTRACT_ROOT / "fixtures" / "cases.json").read_text(encoding="utf-8"))
+    return copy.deepcopy(suite["cases"][0]["input"]["snapshot"])
 
 RUNTIME_CASES = json.loads((PACKAGE_ROOT / "tests" / "fixtures" / "runtime-cases.json").read_text(encoding="utf-8"))
 
@@ -89,6 +93,26 @@ class ThoughtflowPythonRuntimeTests(unittest.TestCase):
 
         self.assertEqual(len(results), 18)
         self.assertTrue(all(item["actual"] == item["expected"] for item in results))
+
+    def test_rejects_available_knowledge_unit_with_mismatched_document_identity(self) -> None:
+        snapshot = valid_snapshot()
+        snapshot["knowledge_units"][0]["document"]["id"] = "018f0c20-7a8b-7c1d-8a2e-666666666666"
+
+        result = validate_references(valid_flow(), snapshot)
+
+        self.assertEqual(result["object_result"], "invalid")
+        self.assertEqual(result["issues"][0]["code"], "thoughtflow.dangling_reference")
+        self.assertEqual(result["issues"][0]["path"], "/knowledge_unit_refs/0")
+
+    def test_rejects_available_knowledge_unit_with_mismatched_document_revision(self) -> None:
+        snapshot = valid_snapshot()
+        snapshot["knowledge_units"][0]["document"]["revision"] = 2
+
+        result = validate_references(valid_flow(), snapshot)
+
+        self.assertEqual(result["object_result"], "invalid")
+        self.assertEqual(result["issues"][0]["code"], "thoughtflow.dangling_reference")
+        self.assertEqual(result["issues"][0]["path"], "/knowledge_unit_refs/0")
 
     def test_raw_transport_rejects_duplicate_members(self) -> None:
         result = parse_and_validate_transport(b'{"contract_version":"1.0.0","contract_version":"1.0.0"}')

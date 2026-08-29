@@ -5,12 +5,13 @@ import re
 from pathlib import Path
 from typing import Any
 
-from intelliengine_conformance.json_codec import JsonInputError, parse_json_bytes
+from intelliengine_conformance.json_codec import JsonInputError, canonicalize, parse_json_bytes
 from intelliengine_conformance.schema_validation import is_valid
 
 
 JsonObject = dict[str, Any]
 SAFE_INTEGER = 9007199254740991
+KNOWLEDGE_UNIT_JCS_BYTES = 1_048_576
 UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 CAPABILITIES = {
     "runtime.math.numeric",
@@ -33,6 +34,14 @@ def _result(valid: bool, issue: JsonObject | None = None) -> JsonObject:
         "object_result": "valid" if valid else "invalid",
         "operation_outcome": "succeeded",
         "issues": [] if issue is None else [issue],
+    }
+
+
+def _resource_exhausted() -> JsonObject:
+    return {
+        "object_result": "not_evaluated",
+        "operation_outcome": "resource_exhausted",
+        "issues": [_issue("knowledge_unit.invalid_json", "")],
     }
 
 
@@ -154,6 +163,8 @@ def validate_unit(unit: Any, available_node_refs: Any, contract_root: Path) -> J
     schema = parse_json_bytes((contract_root / "schemas" / "knowledge-unit.schema.json").read_bytes())
     if not is_valid(unit, schema, schema):
         return _result(False, _issue("knowledge_unit.invalid_json", ""))
+    if len(canonicalize(unit)) > KNOWLEDGE_UNIT_JCS_BYTES:
+        return _resource_exhausted()
     return _result(True)
 
 

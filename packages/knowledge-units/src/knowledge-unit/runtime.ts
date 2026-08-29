@@ -2,11 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { validateMachineSchema } from "../../../cognitive-ir/src/conformance-ts/machine-schema.ts";
-import { StrictJsonError, strictParse } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
+import { StrictJsonError, canonicalize, strictParse } from "../../../cognitive-ir/src/conformance-ts/strict-json.ts";
 
 
 type JsonObject = Record<string, any>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const KNOWLEDGE_UNIT_JCS_BYTES = 1_048_576;
 const CAPABILITIES = new Set([
   "runtime.math.numeric",
   "runtime.math.symbolic",
@@ -34,6 +35,15 @@ function result(valid: boolean, problem?: JsonObject) {
     object_result: valid ? "valid" : "invalid",
     operation_outcome: "succeeded",
     issues: problem === undefined ? [] : [problem],
+  };
+}
+
+
+function resourceExhausted() {
+  return {
+    object_result: "not_evaluated",
+    operation_outcome: "resource_exhausted",
+    issues: [issue("knowledge_unit.invalid_json", "")],
   };
 }
 
@@ -146,6 +156,7 @@ export function validateUnit(unit: unknown, availableNodeRefs: unknown, contract
   }
   const schema = readStrict(resolve(contractRoot, "schemas/knowledge-unit.schema.json")) as JsonObject;
   if (!validateMachineSchema(unit, schema, schema, new Map())) return result(false, issue("knowledge_unit.invalid_json", ""));
+  if (Buffer.byteLength(canonicalize(unit)) > KNOWLEDGE_UNIT_JCS_BYTES) return resourceExhausted();
   return result(true);
 }
 
