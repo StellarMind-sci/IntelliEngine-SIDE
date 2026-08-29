@@ -80,12 +80,44 @@ function succeededImpact(value: unknown): value is {
   );
 }
 
-function focusProjectionUnit(projection: unknown, focusRef: KnowledgeUnitRef): { status: "blocked" | "needs_evidence" | "ready" } | undefined {
+type ProjectionUnit = {
+  ref: KnowledgeUnitRef;
+  status: "blocked" | "needs_evidence" | "ready";
+};
+
+const PROJECTION_UNIT_FIELDS = "missing_evidence_node_refs,missing_prerequisite_refs,ref,status";
+
+function projectionUnits(projection: unknown): ProjectionUnit[] | undefined {
   if (!object(projection) || !Array.isArray(projection.units)) return undefined;
-  const matching = projection.units.filter((unit) => object(unit) && ref(unit.ref) !== undefined && refKey(ref(unit.ref)!) === refKey(focusRef));
-  if (matching.length !== 1 || !object(matching[0])) return undefined;
-  const status = matching[0].status;
-  return status === "blocked" || status === "needs_evidence" || status === "ready" ? { status } : undefined;
+
+  const units: ProjectionUnit[] = [];
+  const keys: string[] = [];
+  for (const unit of projection.units) {
+    if (!object(unit) || Object.keys(unit).sort().join(",") !== PROJECTION_UNIT_FIELDS) return undefined;
+
+    const unitRef = ref(unit.ref);
+    const prerequisites = canonicalRefs(unit.missing_prerequisite_refs);
+    const evidence = canonicalRefs(unit.missing_evidence_node_refs);
+    const status = unit.status;
+    if (unitRef === undefined || prerequisites === undefined || evidence === undefined) return undefined;
+    if (status === "ready" && (prerequisites.length !== 0 || evidence.length !== 0)) return undefined;
+    if (status === "blocked" && (prerequisites.length === 0 || evidence.length !== 0)) return undefined;
+    if (status === "needs_evidence" && (prerequisites.length !== 0 || evidence.length === 0)) return undefined;
+    if (status !== "blocked" && status !== "needs_evidence" && status !== "ready") return undefined;
+
+    units.push({ ref: copyRef(unitRef), status });
+    keys.push(refKey(unitRef));
+  }
+
+  const sorted = [...keys].sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
+  if (new Set(keys).size !== keys.length || !keys.every((key, index) => key === sorted[index])) return undefined;
+  return units;
+}
+
+function focusProjectionUnit(units: ProjectionUnit[], focusRef: KnowledgeUnitRef): { status: "blocked" | "needs_evidence" | "ready" } | undefined {
+  const matching = units.filter((unit) => refKey(unit.ref) === refKey(focusRef));
+  if (matching.length !== 1) return undefined;
+  return { status: matching[0].status };
 }
 
 function focusAppearsInFlow(flow: unknown, focusRef: KnowledgeUnitRef): boolean {
@@ -161,7 +193,10 @@ export function createKnowledgeImpactNavigator(request: unknown): KnowledgeImpac
   const impact = projectKnowledgeImpacts(request.flow, request.projection);
   if (!succeededImpact(impact)) return invalidResult();
 
-  const projectionUnit = focusProjectionUnit(request.projection, focusRef);
+  const units = projectionUnits(request.projection);
+  if (units === undefined) return invalidResult();
+
+  const projectionUnit = focusProjectionUnit(units, focusRef);
   if (projectionUnit === undefined) return invalidResult();
 
   const impacts = focusedImpacts(impact.impacted_steps, focusRef);

@@ -95,6 +95,29 @@ test("reports a ready focus without inventing a navigation action", () => {
   assert.deepEqual(request, before);
 });
 
+test("rejects a ready focus when an unreferenced projection unit has contradictory blocked state", () => {
+  const request = clone(cases.ready);
+  request.projection.units.push({
+    ref: { id: "10000000-0000-4000-8000-000000000099", revision: 1 },
+    status: "blocked",
+    missing_prerequisite_refs: [],
+    missing_evidence_node_refs: [],
+  });
+  const before = clone(request);
+
+  const result = createKnowledgeImpactNavigator(request);
+
+  assert.deepEqual(result, {
+    mode: "preview",
+    side_effects: "forbidden",
+    state: "invalid_input",
+    focus: null,
+    navigation: null,
+    impacted_steps: [],
+    reasons: [],
+  });
+  assert.deepEqual(request, before);
+});
 test("reports an empty focus association without inventing an impact", () => {
   const request = clone(cases.empty);
   const before = clone(request);
@@ -154,6 +177,24 @@ test("sorts blocked navigation independently of source step order", () => {
   assert.deepEqual(forwardResult.impacted_steps.map((step) => step.step_id), ["a-operation", "z-analysis"]);
 });
 
+test("rejects duplicate projection unit refs before reporting a ready focus", () => {
+  const request = clone(cases.empty);
+  request.projection.units.push(clone(request.projection.units[1]));
+  const before = clone(request);
+
+  const result = createKnowledgeImpactNavigator(request);
+
+  assert.deepEqual(result, {
+    mode: "preview",
+    side_effects: "forbidden",
+    state: "invalid_input",
+    focus: null,
+    navigation: null,
+    impacted_steps: [],
+    reasons: [],
+  });
+  assert.deepEqual(request, before);
+});
 test("rejects a focus that is absent from the canonical projection", () => {
   const request = clone(cases.ready);
   request.focus_ref = { id: "10000000-0000-4000-8000-000000000009", revision: 1 };
@@ -238,7 +279,7 @@ test("treats a ready focus referenced only by analysis behavior as empty", () =>
       step_id: "analysis-behavior-only",
       kind: "analysis",
       knowledge_unit_refs: [],
-      behavior_ref: { knowledge_unit_ref: clone(request.focus_ref) },
+      behavior_ref: { knowledge_unit_ref: clone(request.focus_ref), behavior_id: "solve-linear-equation" },
     },
   ];
   const before = clone(request);
@@ -259,7 +300,7 @@ test("keeps a ready focus referenced by operation behavior as a valid associatio
       step_id: "operation-behavior-only",
       kind: "operation",
       knowledge_unit_refs: [],
-      behavior_ref: { knowledge_unit_ref: clone(request.focus_ref) },
+      behavior_ref: { knowledge_unit_ref: clone(request.focus_ref), behavior_id: "solve-linear-equation" },
     },
   ];
   const before = clone(request);
