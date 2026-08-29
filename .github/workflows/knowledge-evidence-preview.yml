@@ -1,0 +1,48 @@
+name: Knowledge Evidence Preview
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/knowledge-evidence-preview/**"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/thoughtflow/src/thoughtflow/knowledge-impact.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - ".github/workflows/knowledge-evidence-preview.yml"
+      - "docs/demos/knowledge-evidence-preview-acceptance.md"
+      - "docs/demos/artifacts/knowledge-evidence-preview/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/knowledge-evidence-preview/**"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/thoughtflow/src/thoughtflow/knowledge-impact.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - ".github/workflows/knowledge-evidence-preview.yml"
+      - "docs/demos/knowledge-evidence-preview-acceptance.md"
+      - "docs/demos/artifacts/knowledge-evidence-preview/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence-preview:
+    name: Evidence preview (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test Knowledge Evidence Preview
+        run: node --test plugins/math/knowledge-evidence-preview/tests/*.test.ts
