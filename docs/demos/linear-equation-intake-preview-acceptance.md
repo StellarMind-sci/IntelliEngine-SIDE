@@ -4,13 +4,13 @@
 
 用户可从固定纯文本示例离线查看原文、受限格式的来源引用、规范化的一元一次方程，以及已经过 CognitiveNode 传输与语义校验的**未持久化候选节点**。每张页面固定标识 `mode: preview` 与 `side_effects: forbidden`，并明确说明“候选尚未写入工程”。
 
-预览仅在内存中处理固定 CLI fixture：来源引用只接受 `prov:<kind>:<identifier>[:<identifier>...]`，不接受任意 provenance 字符串；不读取任意文件，不支持 DOCX、图片或通用数学文本导入；不执行代码或模型，不写入工程，不联网，不调用 Agent 或 ChangeSet。本功能是受限一元一次方程 parser 的展示，不是通用数学提取器。
+预览只接受固定 CLI fixture，不接受、读取或解析用户指定文件，也不支持 DOCX、图片或通用数学文本导入；来源引用只接受 `prov:<kind>:<identifier>[:<identifier>...]`，不接受任意 provenance 字符串。为以真实 CognitiveNode public contract 验证候选，插件会从自身固定推导的仓库路径只读锁定 schema 与 math type definition，但不接受任意路径。它不执行代码或模型，不写入工程，不联网，不调用 Agent 或 ChangeSet。本功能是受限一元一次方程 parser 的展示，不是通用数学提取器。
 
 ## 前置条件与验收入口
 
 - 在仓库根目录 `E:\Projects\IDE` 执行命令。
 - 使用 Node.js 24：`node --version` 应显示 `v24.x`。其他本机版本可以用于页面检查，但不能替代正式 Node 24 CI。
-- CLI 只读取仓库内的固定 `fixtures/demo-cases.json`，向 stdout 输出 HTML。下面的 PowerShell 重定向仅由验收者在临时目录生成静态页面。
+- CLI 只读取仓库内固定的 `fixtures/demo-cases.json`，并向 stdout 输出 HTML；候选验证还会从插件内部固定推导的路径只读锁定 CognitiveNode schema 与 math type definition，均不接受任意文件路径。下面的 PowerShell 重定向仅由验收者在临时目录生成静态页面。
 
 ## 四态操作与预期
 
@@ -61,7 +61,7 @@ node plugins/math/linear-equation-intake-preview/cli.ts --case ready --format te
 $LASTEXITCODE
 ```
 
-预期：三条 CLI 命令均为非零退出，stdout 均为空；stderr 依次精确为 `unknown demo case: missing`、`unknown demo case: __proto__`、`unknown output format: text`。异常输入不会触发文件读取或工程写入。
+预期：三条 CLI 命令均为非零退出，stdout 均为空；stderr 依次精确为 `unknown demo case: missing`、`unknown demo case: __proto__`、`unknown output format: text`。异常输入不会接受或读取用户指定文件，也不会触发工程写入。
 
 ## 自动化与视觉证据
 
