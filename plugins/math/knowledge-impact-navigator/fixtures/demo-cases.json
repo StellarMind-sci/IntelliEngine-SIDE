@@ -1,0 +1,115 @@
+{
+  "blocked": {
+    "focus_ref": { "id": "10000000-0000-4000-8000-000000000001", "revision": 1 },
+    "flow": {
+      "steps": [
+        {
+          "step_id": "z-analysis",
+          "kind": "analysis",
+          "knowledge_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000001", "revision": 1 }]
+        },
+        {
+          "step_id": "a-operation",
+          "kind": "operation",
+          "knowledge_unit_refs": [],
+          "behavior_ref": {
+            "knowledge_unit_ref": { "id": "10000000-0000-4000-8000-000000000001", "revision": 1 }
+          }
+        }
+      ]
+    },
+    "projection": {
+      "object_result": "valid",
+      "operation_outcome": "succeeded",
+      "issues": [],
+      "units": [
+        {
+          "ref": { "id": "10000000-0000-4000-8000-000000000001", "revision": 1 },
+          "status": "blocked",
+          "missing_prerequisite_refs": [{ "id": "10000000-0000-4000-8000-000000000011", "revision": 1 }],
+          "missing_evidence_node_refs": []
+        }
+      ]
+    }
+  },
+  "needs_evidence": {
+    "focus_ref": { "id": "10000000-0000-4000-8000-000000000002", "revision": 1 },
+    "flow": {
+      "steps": [
+        {
+          "step_id": "analysis-not-impacted",
+          "kind": "analysis",
+          "knowledge_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000002", "revision": 1 }]
+        },
+        {
+          "step_id": "verification-evidence",
+          "kind": "verification",
+          "knowledge_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000002", "revision": 1 }]
+        }
+      ]
+    },
+    "projection": {
+      "object_result": "valid",
+      "operation_outcome": "succeeded",
+      "issues": [],
+      "units": [
+        {
+          "ref": { "id": "10000000-0000-4000-8000-000000000002", "revision": 1 },
+          "status": "needs_evidence",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }]
+        }
+      ]
+    }
+  },
+  "ready": {
+    "focus_ref": { "id": "10000000-0000-4000-8000-000000000003", "revision": 1 },
+    "flow": {
+      "steps": [
+        {
+          "step_id": "ready-analysis",
+          "kind": "analysis",
+          "knowledge_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000003", "revision": 1 }]
+        }
+      ]
+    },
+    "projection": {
+      "object_result": "valid",
+      "operation_outcome": "succeeded",
+      "issues": [],
+      "units": [
+        {
+          "ref": { "id": "10000000-0000-4000-8000-000000000003", "revision": 1 },
+          "status": "ready",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": []
+        }
+      ]
+    }
+  },
+  "empty": {
+    "focus_ref": { "id": "10000000-0000-4000-8000-000000000004", "revision": 1 },
+    "flow": {
+      "steps": []
+    },
+    "projection": {
+      "object_result": "valid",
+      "operation_outcome": "succeeded",
+      "issues": [],
+      "units": [
+        {
+          "ref": { "id": "10000000-0000-4000-8000-000000000004", "revision": 1 },
+          "status": "ready",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": []
+        },
+        {
+          "ref": { "id": "10000000-0000-4000-8000-000000000005", "revision": 1 },
+          "status": "ready",
+          "missing_prerequisite_refs": [],
+          "missing_evidence_node_refs": []
+        }
+      ]
+    }
+  }
+}

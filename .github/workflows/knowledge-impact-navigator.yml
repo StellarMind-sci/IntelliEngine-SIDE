@@ -1,0 +1,46 @@
+name: Knowledge Impact Navigator
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/knowledge-impact-navigator/**"
+      - "packages/thoughtflow/src/thoughtflow/knowledge-impact.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/knowledge-units/tests/fixtures/project-projection-cases.json"
+      - ".github/workflows/knowledge-impact-navigator.yml"
+      - "docs/demos/knowledge-impact-navigator-acceptance.md"
+      - "docs/demos/artifacts/knowledge-impact-navigator/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/knowledge-impact-navigator/**"
+      - "packages/thoughtflow/src/thoughtflow/knowledge-impact.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/knowledge-units/tests/fixtures/project-projection-cases.json"
+      - ".github/workflows/knowledge-impact-navigator.yml"
+      - "docs/demos/knowledge-impact-navigator-acceptance.md"
+      - "docs/demos/artifacts/knowledge-impact-navigator/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  navigator:
+    name: Navigator (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test Knowledge Impact Navigator
+        run: node --test plugins/math/knowledge-impact-navigator/tests/*.test.ts
