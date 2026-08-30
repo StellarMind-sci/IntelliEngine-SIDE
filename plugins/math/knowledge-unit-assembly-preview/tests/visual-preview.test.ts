@@ -93,3 +93,34 @@ test("committed HTML artifacts reproduce the CLI output exactly", () => {
     assert.equal(committed, result.stdout);
   }
 });
+test("escapes constructed needs_evidence fields without producing executable markup", () => {
+  const injected = structuredClone(preview("2x + 3 = 11"));
+  const token = "<>& onerror=alert(1)";
+  injected.source_ref = `source${token}`;
+  const unit = injected.knowledge_unit!;
+  unit.title = `title${token}`;
+  unit.id = `unit${token}`;
+  for (const [index, node] of injected.candidate_nodes.entries()) {
+    const mutable = node as unknown as { id: string; type_id: string; data: { name?: string; expression?: string; symbols?: string[] } };
+    mutable.id = `node-${index}${token}`;
+    mutable.type_id = `type-${index}${token}`;
+    mutable.data = { name: `data-${index}${token}` };
+  }
+  for (const [index, binding] of unit.node_bindings.entries()) binding.node_ref.id = `binding-${index}${token}`;
+  (unit.validations[0] as unknown as { description: string; validation_id: string }).description = `validation${token}`;
+  (unit.validations[0] as unknown as { description: string; validation_id: string }).validation_id = `validation-id${token}`;
+  (unit.mastery_criteria[0] as unknown as { statement: string; criterion_id: string }).statement = `mastery${token}`;
+  (unit.mastery_criteria[0] as unknown as { statement: string; criterion_id: string }).criterion_id = `mastery-id${token}`;
+  injected.projection!.missing_evidence_node_refs[0].id = `missing${token}`;
+  injected.navigation = `navigation${token}` as typeof injected.navigation;
+
+  const output = renderLinearEquationKnowledgeUnitAssemblyPreviewHtml(injected);
+
+  for (const escaped of [
+    "source&lt;&gt;&amp; onerror=alert(1)", "title&lt;&gt;&amp; onerror=alert(1)", "unit&lt;&gt;&amp; onerror=alert(1)",
+    "binding-0&lt;&gt;&amp; onerror=alert(1)", "type-0&lt;&gt;&amp; onerror=alert(1)", "data-0&lt;&gt;&amp; onerror=alert(1)",
+    "validation&lt;&gt;&amp; onerror=alert(1)", "mastery&lt;&gt;&amp; onerror=alert(1)", "missing&lt;&gt;&amp; onerror=alert(1)",
+    "navigation&lt;&gt;&amp; onerror=alert(1)",
+  ]) assert.equal(output.includes(escaped), true, escaped);
+  assert.doesNotMatch(output, /<script\b|<iframe\b|<[^>]*\sonerror\s*=/i);
+});

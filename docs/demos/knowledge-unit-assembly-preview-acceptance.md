@@ -65,11 +65,27 @@ git diff --check
 
 专属 [KnowledgeUnit Assembly Preview workflow](../../.github/workflows/knowledge-unit-assembly-preview.yml) 在 Ubuntu 与 Windows 的 Node.js 24 上运行完整插件测试。测试会验证真实 CLI 到真实组装器的三态路径、HTML 安全转义、无 `script`/`iframe`/事件处理器、非掌握措辞、异常 CLI 的 stdout/stderr，以及下列 HTML 与当前 CLI stdout 的逐字节一致性：
 
-- Needs evidence：[HTML](artifacts/knowledge-unit-assembly-preview/needs-evidence.html)
-- Empty：[HTML](artifacts/knowledge-unit-assembly-preview/empty.html)
-- Invalid：[HTML](artifacts/knowledge-unit-assembly-preview/invalid.html)
+- Needs evidence：[HTML](artifacts/knowledge-unit-assembly-preview/needs-evidence.html)；[PNG](artifacts/knowledge-unit-assembly-preview/needs-evidence.png)
+- Empty：[HTML](artifacts/knowledge-unit-assembly-preview/empty.html)；[PNG](artifacts/knowledge-unit-assembly-preview/empty.png)
+- Invalid：[HTML](artifacts/knowledge-unit-assembly-preview/invalid.html)；[PNG](artifacts/knowledge-unit-assembly-preview/invalid.png)
 
-本工作区未找到可用的本地无头浏览器或 Playwright/Puppeteer，因此没有伪造 PNG 链接或将截图标记为已完成。精确探测命令与结果为：`where.exe chrome; where.exe msedge; where.exe chromium; node -e "for (const m of ['playwright','@playwright/test','puppeteer']) ..."`；三种浏览器均未找到，三个 Node 包均为 `no`。以上三份 HTML 可离线直接打开，并由自动化逐字节核验，作为当前替代可视化验收证据。
+三张 PNG 已由本地无头 Chrome 离线打开对应 HTML 后生成；不访问网络。以下 PowerShell 是本轮实际使用的生成方式（在仓库根目录执行）：
+
+```powershell
+$chrome = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+$artifact = (Resolve-Path 'docs/demos/artifacts/knowledge-unit-assembly-preview').Path
+foreach ($caseId in @('needs-evidence', 'empty', 'invalid')) {
+  $profile = Join-Path $env:TEMP ('intelliengine-ku-chrome-' + [guid]::NewGuid().ToString('N'))
+  $png = Join-Path $artifact "$caseId.png"
+  $uri = "file:///" + (Join-Path $artifact "$caseId.html").Replace('\', '/')
+  New-Item -ItemType Directory -Path $profile | Out-Null
+  $arguments = "--headless --disable-gpu --no-first-run --user-data-dir=`"$profile`" --window-size=1440,1200 --screenshot=`"$png`" `"$uri`""
+  $process = Start-Process -FilePath $chrome -ArgumentList $arguments -Wait -PassThru
+  [PSCustomObject]@{ case = $caseId; exit_code = $process.ExitCode; png = $png; bytes = (Get-Item -LiteralPath $png).Length }
+}
+```
+
+本轮三个 Chrome 进程均返回退出码 `0`；生成文件大小分别为 needs_evidence `98912` bytes、empty `50859` bytes、invalid `52814` bytes。HTML 由 CLI stdout 逐字节核验，PNG 则是同一份静态 HTML 的离线可视化截图。
 
 ## 已知限制与回滚
 
