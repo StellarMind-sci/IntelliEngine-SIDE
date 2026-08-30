@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { createLinearEquationVerificationPathPreview } from "../verification-path-preview.ts";
+import {
+  createLinearEquationVerificationPathPreview,
+  validEmptyNavigatorResult,
+  validVerificationNavigatorResult,
+} from "../verification-path-preview.ts";
+import { fixedKnowledgeUnitContractRoot } from "../../knowledge-unit-assembly-preview/assembly.ts";
+import { projectKnowledge } from "../../../../packages/knowledge-units/src/knowledge-unit/project.ts";
+import { createKnowledgeImpactNavigator } from "../../knowledge-impact-navigator/navigator.ts";
 
 const cases = JSON.parse(readFileSync(new URL("../fixtures/demo-cases.json", import.meta.url), "utf8")) as Record<string, unknown>;
 
@@ -101,4 +108,88 @@ test("fails closed without mutation for unexpected, inherited, accessor, symbol,
     if (before !== null) assert.deepEqual(input, before);
     if (input === symbol) assert.equal(symbol[Object.getOwnPropertySymbols(symbol)[0]!], true);
   }
+});
+
+function realVerificationNavigator() {
+  const bridge = createLinearEquationVerificationPathPreview(clone(cases.verification));
+  assert.equal(bridge.state, "needs_evidence");
+  assert.notEqual(bridge.assembly?.knowledge_unit, null);
+  assert.notEqual(bridge.knowledge_unit_ref, null);
+  assert.notEqual(bridge.flow_context, null);
+  const assembly = bridge.assembly!;
+  const focus = bridge.knowledge_unit_ref!;
+  const projection = projectKnowledge(
+    [assembly.knowledge_unit],
+    assembly.candidate_nodes.map(({ id, revision }) => ({ id, revision })),
+    [],
+    fixedKnowledgeUnitContractRoot(),
+  );
+  const missingEvidence = projection.units[0].missing_evidence_node_refs;
+  const navigator = createKnowledgeImpactNavigator({ flow: bridge.flow_context, projection, focus_ref: focus });
+  return { focus, projection, missingEvidence, navigator };
+}
+
+test("accepts only the complete real verification navigator result tied to the projected KnowledgeUnit", () => {
+  const { focus, projection, missingEvidence, navigator } = realVerificationNavigator();
+
+  assert.equal(projection.object_result, "valid");
+  assert.equal(projection.operation_outcome, "succeeded");
+  assert.equal(projection.units[0].status, "needs_evidence");
+  assert.equal(validVerificationNavigatorResult(navigator, focus, missingEvidence), true);
+  assert.deepEqual(navigator.focus, focus);
+  assert.deepEqual(navigator.reasons, [{
+    knowledge_unit_ref: focus,
+    status: "needs_evidence",
+    missing_prerequisite_refs: [],
+    missing_evidence_node_refs: missingEvidence,
+  }]);
+  assert.deepEqual(navigator.impacted_steps, [{
+    step_id: "verification-linear-equation",
+    reasons: navigator.reasons,
+  }]);
+});
+
+test("closes the verification navigator gate when focus, reason, impact, or preview envelope is malformed", () => {
+  const { focus, missingEvidence, navigator } = realVerificationNavigator();
+  const mutations: Array<(value: any) => void> = [
+    (value) => { value.mode = "live"; },
+    (value) => { value.side_effects = "allowed"; },
+    (value) => { value.focus.revision = 2; },
+    (value) => { value.reasons[0].status = "ready"; },
+    (value) => { value.reasons[0].missing_prerequisite_refs = [focus]; },
+    (value) => { value.reasons[0].missing_evidence_node_refs = []; },
+    (value) => { value.impacted_steps[0].step_id = "analysis-linear-equation"; },
+    (value) => { value.impacted_steps[0].reasons = []; },
+    (value) => { value.navigation = "返回 analysis 步骤。"; },
+  ];
+
+  for (const mutate of mutations) {
+    const malformed = structuredClone(navigator);
+    mutate(malformed);
+    assert.equal(validVerificationNavigatorResult(malformed, focus, missingEvidence), false);
+  }
+});
+
+test("accepts only a complete empty navigator result for the unmapped preview context", () => {
+  const bridge = createLinearEquationVerificationPathPreview(clone(cases.unmapped));
+  assert.equal(bridge.state, "empty");
+  const assembly = bridge.assembly!;
+  const focus = bridge.knowledge_unit_ref!;
+  const projection = projectKnowledge(
+    [assembly.knowledge_unit],
+    assembly.candidate_nodes.map(({ id, revision }) => ({ id, revision })),
+    [],
+    fixedKnowledgeUnitContractRoot(),
+  );
+  const navigator = createKnowledgeImpactNavigator({ flow: bridge.flow_context, projection, focus_ref: focus });
+
+  assert.equal(validEmptyNavigatorResult(navigator, focus), true);
+  const malformed = structuredClone(navigator);
+  malformed.reasons = [{
+    knowledge_unit_ref: focus,
+    status: "needs_evidence",
+    missing_prerequisite_refs: [],
+    missing_evidence_node_refs: [],
+  }];
+  assert.equal(validEmptyNavigatorResult(malformed, focus), false);
 });

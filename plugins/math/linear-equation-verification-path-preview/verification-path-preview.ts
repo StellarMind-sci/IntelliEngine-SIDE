@@ -42,6 +42,7 @@ export type LinearEquationVerificationPathPreview = {
 };
 
 type JsonObject = Record<string, unknown>;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 function plainObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -80,7 +81,7 @@ function ref(value: unknown): KnowledgeUnitRef | null {
   if (!exactDataObject(value, ["id", "revision"])) return null;
   const id = ownData(value, "id");
   const revision = ownData(value, "revision");
-  return typeof id === "string" && Number.isSafeInteger(revision) && revision >= 1 ? { id, revision } : null;
+  return typeof id === "string" && UUID.test(id) && Number.isSafeInteger(revision) && revision >= 1 ? { id, revision } : null;
 }
 
 function refKey(value: KnowledgeUnitRef): string {
@@ -138,6 +139,88 @@ function validProjection(projection: unknown, focus: KnowledgeUnitRef): NodeRef[
   return evidence;
 }
 
+function exactDataArray(value: unknown, length: number): unknown[] | null {
+  if (!Array.isArray(value) || types.isProxy(value) || Object.getPrototypeOf(value) !== Array.prototype || value.length !== length) return null;
+  const keys = Reflect.ownKeys(value);
+  if (keys.length !== length + 1 || !keys.includes("length")) return null;
+  for (let index = 0; index < length; index += 1) {
+    if (!keys.includes(String(index))) return null;
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (descriptor === undefined || !descriptor.enumerable || !("value" in descriptor)) return null;
+  }
+  return value;
+}
+
+function sameRefs(left: unknown, right: unknown): boolean {
+  const leftRefs = canonicalRefs(left);
+  const rightRefs = canonicalRefs(right);
+  return leftRefs !== null && rightRefs !== null
+    && leftRefs.length === rightRefs.length
+    && leftRefs.every((item, index) => refKey(item) === refKey(rightRefs[index]!));
+}
+
+function validNeedsEvidenceReason(value: unknown, focus: KnowledgeUnitRef, missingEvidence: NodeRef[]): boolean {
+  if (!exactDataObject(value, ["knowledge_unit_ref", "status", "missing_prerequisite_refs", "missing_evidence_node_refs"])) return false;
+  const reasonRef = ref(ownData(value, "knowledge_unit_ref"));
+  const prerequisites = canonicalRefs(ownData(value, "missing_prerequisite_refs"));
+  const evidence = canonicalRefs(ownData(value, "missing_evidence_node_refs"));
+  return reasonRef !== null
+    && refKey(reasonRef) === refKey(focus)
+    && ownData(value, "status") === "needs_evidence"
+    && prerequisites !== null && prerequisites.length === 0
+    && evidence !== null && sameRefs(evidence, missingEvidence);
+}
+
+function equivalentNeedsEvidenceReasons(left: unknown, right: unknown): boolean {
+  if (!exactDataObject(left, ["knowledge_unit_ref", "status", "missing_prerequisite_refs", "missing_evidence_node_refs"])
+    || !exactDataObject(right, ["knowledge_unit_ref", "status", "missing_prerequisite_refs", "missing_evidence_node_refs"])) return false;
+  const leftRef = ref(ownData(left, "knowledge_unit_ref"));
+  const rightRef = ref(ownData(right, "knowledge_unit_ref"));
+  return leftRef !== null && rightRef !== null
+    && refKey(leftRef) === refKey(rightRef)
+    && ownData(left, "status") === ownData(right, "status")
+    && sameRefs(ownData(left, "missing_prerequisite_refs"), ownData(right, "missing_prerequisite_refs"))
+    && sameRefs(ownData(left, "missing_evidence_node_refs"), ownData(right, "missing_evidence_node_refs"));
+}
+
+function validNavigatorEnvelope(value: unknown, state: "needs_evidence" | "empty", focus: KnowledgeUnitRef): value is JsonObject {
+  if (!exactDataObject(value, ["mode", "side_effects", "state", "focus", "navigation", "impacted_steps", "reasons"])) return false;
+  const navigatorFocus = ref(ownData(value, "focus"));
+  return ownData(value, "mode") === "preview"
+    && ownData(value, "side_effects") === "forbidden"
+    && ownData(value, "state") === state
+    && navigatorFocus !== null && refKey(navigatorFocus) === refKey(focus);
+}
+
+export function validVerificationNavigatorResult(value: unknown, focus: KnowledgeUnitRef, missingEvidence: NodeRef[]): boolean {
+  try {
+    if (!validNavigatorEnvelope(value, "needs_evidence", focus)
+      || ownData(value, "navigation") !== "返回 verification 步骤补充缺失证据。") return false;
+    const reasons = exactDataArray(ownData(value, "reasons"), 1);
+    const impacts = exactDataArray(ownData(value, "impacted_steps"), 1);
+    if (reasons === null || impacts === null || !validNeedsEvidenceReason(reasons[0], focus, missingEvidence)) return false;
+    const impact = impacts[0];
+    if (!exactDataObject(impact, ["step_id", "reasons"])
+      || ownData(impact, "step_id") !== "verification-linear-equation") return false;
+    const impactReasons = exactDataArray(ownData(impact, "reasons"), 1);
+    return impactReasons !== null
+      && validNeedsEvidenceReason(impactReasons[0], focus, missingEvidence)
+      && equivalentNeedsEvidenceReasons(reasons[0], impactReasons[0]);
+  } catch {
+    return false;
+  }
+}
+
+export function validEmptyNavigatorResult(value: unknown, focus: KnowledgeUnitRef): boolean {
+  try {
+    if (!validNavigatorEnvelope(value, "empty", focus) || ownData(value, "navigation") !== null) return false;
+    return exactDataArray(ownData(value, "reasons"), 0) !== null
+      && exactDataArray(ownData(value, "impacted_steps"), 0) !== null;
+  } catch {
+    return false;
+  }
+}
+
 function completePreview(request: VerificationPathRequest): LinearEquationVerificationPathPreview {
   const intake = createLinearEquationIntakePreview({ text: request.source.text, source_ref: request.source.source_ref });
   const assembly = createLinearEquationKnowledgeUnitAssemblyPreview({ intake_preview: intake });
@@ -166,10 +249,7 @@ function completePreview(request: VerificationPathRequest): LinearEquationVerifi
   const flowContext: PreviewFlowContext = { persistence: "not_persisted", steps };
   const navigator = createKnowledgeImpactNavigator({ flow: flowContext, projection, focus_ref: focus });
   if (request.flow_context === "verification") {
-    if (navigator.state !== "needs_evidence"
-      || navigator.navigation === null
-      || navigator.impacted_steps.length !== 1
-      || navigator.impacted_steps[0]?.step_id !== "verification-linear-equation") {
+    if (!validVerificationNavigatorResult(navigator, focus, missingEvidence)) {
       return emptyResult("invalid_input", assembly.source_ref, "预览工程上下文未能只定位 verification 步骤。", null);
     }
     return {
@@ -186,7 +266,7 @@ function completePreview(request: VerificationPathRequest): LinearEquationVerifi
       diagnostic: null,
     };
   }
-  if (navigator.state !== "empty" || navigator.navigation !== null || navigator.impacted_steps.length !== 0) {
+  if (!validEmptyNavigatorResult(navigator, focus)) {
     return emptyResult("invalid_input", assembly.source_ref, "预览工程上下文不应生成未关联的 navigation。", null);
   }
   return {
@@ -203,7 +283,6 @@ function completePreview(request: VerificationPathRequest): LinearEquationVerifi
     diagnostic: "当前预览工程上下文没有关联 verification 步骤；不伪造下一步。",
   };
 }
-
 export function createLinearEquationVerificationPathPreview(input: unknown): LinearEquationVerificationPathPreview {
   try {
     const request = strictRequest(input);
