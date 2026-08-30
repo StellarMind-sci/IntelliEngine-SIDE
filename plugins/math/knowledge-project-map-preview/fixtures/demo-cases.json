@@ -1,0 +1,82 @@
+{
+  "cases": {
+    "normal": {
+      "units": [
+        {
+          "contract_version": "1.0.0",
+          "id": "10000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "title": "understand-equality-transformations",
+          "concept_boundary": { "focus_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }], "out_of_scope_statements": ["quadratic-equations"] },
+          "learning_objectives": [{ "objective_id": "transform-equality", "statement": "Apply equivalent transformations.", "target_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }] }],
+          "node_bindings": [{ "role": "core", "node_ref": { "id": "20000000-0000-4000-8000-000000000001", "revision": 1 } }, { "role": "evidence", "node_ref": { "id": "20000000-0000-4000-8000-000000000002", "revision": 1 } }],
+          "prerequisite_unit_refs": [],
+          "behaviors": [{ "behavior_id": "transform", "kind": "transformation", "capability": "runtime.math.symbolic", "input_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }], "output_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }] }],
+          "validations": [{ "validation_id": "check-transform", "description": "Verify an equivalent transformation.", "subject_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }], "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }] }],
+          "mastery_criteria": [{ "criterion_id": "show-transform", "statement": "Provide evidence for transformations.", "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }] }],
+          "provenance_refs": ["source:algebra:equality"]
+        },
+        {
+          "contract_version": "1.0.0",
+          "id": "10000000-0000-4000-8000-000000000002",
+          "revision": 1,
+          "title": "resolve-linear-equation",
+          "concept_boundary": { "focus_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "out_of_scope_statements": ["quadratic-equations"] },
+          "learning_objectives": [{ "objective_id": "resolve-linear", "statement": "Resolve a linear equation.", "target_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }] }],
+          "node_bindings": [{ "role": "core", "node_ref": { "id": "20000000-0000-4000-8000-000000000003", "revision": 1 } }, { "role": "evidence", "node_ref": { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 } }],
+          "prerequisite_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000001", "revision": 1 }],
+          "behaviors": [{ "behavior_id": "resolve", "kind": "calculation", "capability": "runtime.math.symbolic", "input_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "output_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }] }],
+          "validations": [{ "validation_id": "check-resolution", "description": "Verify a resolved equation.", "subject_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }] }],
+          "mastery_criteria": [{ "criterion_id": "show-resolution", "statement": "Provide evidence for resolution.", "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }] }],
+          "provenance_refs": ["source:algebra:linear"]
+        }
+      ],
+      "available_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000005", "revision": 1 }],
+      "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }],
+      "default_selected_node_ref": { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }
+    },
+    "blocked": {
+      "units": [
+        {
+          "contract_version": "1.0.0", "id": "10000000-0000-4000-8000-000000000002", "revision": 1, "title": "resolve-linear-equation",
+          "concept_boundary": { "focus_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "out_of_scope_statements": ["quadratic-equations"] },
+          "learning_objectives": [{ "objective_id": "resolve-linear", "statement": "Resolve a linear equation.", "target_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }] }],
+          "node_bindings": [{ "role": "core", "node_ref": { "id": "20000000-0000-4000-8000-000000000003", "revision": 1 } }, { "role": "evidence", "node_ref": { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 } }],
+          "prerequisite_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000001", "revision": 1 }],
+          "behaviors": [{ "behavior_id": "resolve", "kind": "calculation", "capability": "runtime.math.symbolic", "input_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "output_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }] }],
+          "validations": [{ "validation_id": "check-resolution", "description": "Verify a resolved equation.", "subject_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }] }],
+          "mastery_criteria": [{ "criterion_id": "show-resolution", "statement": "Provide evidence for resolution.", "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }] }],
+          "provenance_refs": ["source:algebra:linear"]
+        }
+      ],
+      "available_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000005", "revision": 1 }],
+      "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }],
+      "default_selected_node_ref": { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }
+    },
+    "empty": {
+      "units": [
+        {
+          "contract_version": "1.0.0", "id": "10000000-0000-4000-8000-000000000001", "revision": 1, "title": "understand-equality-transformations",
+          "concept_boundary": { "focus_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }], "out_of_scope_statements": ["quadratic-equations"] },
+          "learning_objectives": [{ "objective_id": "transform-equality", "statement": "Apply equivalent transformations.", "target_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }] }],
+          "node_bindings": [{ "role": "core", "node_ref": { "id": "20000000-0000-4000-8000-000000000001", "revision": 1 } }, { "role": "evidence", "node_ref": { "id": "20000000-0000-4000-8000-000000000002", "revision": 1 } }],
+          "prerequisite_unit_refs": [], "behaviors": [{ "behavior_id": "transform", "kind": "transformation", "capability": "runtime.math.symbolic", "input_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }], "output_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }] }],
+          "validations": [{ "validation_id": "check-transform", "description": "Verify an equivalent transformation.", "subject_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }], "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }] }],
+          "mastery_criteria": [{ "criterion_id": "show-transform", "statement": "Provide evidence for transformations.", "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }] }], "provenance_refs": ["source:algebra:equality"]
+        },
+        {
+          "contract_version": "1.0.0", "id": "10000000-0000-4000-8000-000000000002", "revision": 1, "title": "resolve-linear-equation",
+          "concept_boundary": { "focus_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "out_of_scope_statements": ["quadratic-equations"] },
+          "learning_objectives": [{ "objective_id": "resolve-linear", "statement": "Resolve a linear equation.", "target_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }] }],
+          "node_bindings": [{ "role": "core", "node_ref": { "id": "20000000-0000-4000-8000-000000000003", "revision": 1 } }, { "role": "evidence", "node_ref": { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 } }],
+          "prerequisite_unit_refs": [{ "id": "10000000-0000-4000-8000-000000000001", "revision": 1 }], "behaviors": [{ "behavior_id": "resolve", "kind": "calculation", "capability": "runtime.math.symbolic", "input_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "output_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }] }],
+          "validations": [{ "validation_id": "check-resolution", "description": "Verify a resolved equation.", "subject_node_refs": [{ "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }], "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }] }],
+          "mastery_criteria": [{ "criterion_id": "show-resolution", "statement": "Provide evidence for resolution.", "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }] }], "provenance_refs": ["source:algebra:linear"]
+        }
+      ],
+      "available_node_refs": [{ "id": "20000000-0000-4000-8000-000000000001", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000003", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000004", "revision": 1 }, { "id": "20000000-0000-4000-8000-000000000005", "revision": 1 }],
+      "evidence_node_refs": [{ "id": "20000000-0000-4000-8000-000000000002", "revision": 1 }],
+      "default_selected_node_ref": { "id": "20000000-0000-4000-8000-000000000005", "revision": 1 }
+    }
+  }
+}

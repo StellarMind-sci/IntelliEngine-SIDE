@@ -1,0 +1,8 @@
+{
+  "name": "@intelliengine/math-knowledge-project-map-preview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.ts"
+  }
+}
