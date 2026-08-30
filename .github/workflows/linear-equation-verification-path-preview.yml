@@ -1,0 +1,62 @@
+name: Linear Equation Verification Path Preview
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/linear-equation-verification-path-preview/**"
+      - "plugins/math/linear-equation-intake-preview/**"
+      - "plugins/math/knowledge-unit-assembly-preview/**"
+      - "plugins/math/knowledge-impact-navigator/**"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/knowledge-units/tests/fixtures/project-projection-cases.json"
+      - "packages/thoughtflow/src/thoughtflow/knowledge-impact.ts"
+      - "packages/cognitive-ir/src/cognitive-node/runtime.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - "packages/cognitive-ir/contracts/cognitive-node/1.0.0/**"
+      - ".gitattributes"
+      - ".github/workflows/linear-equation-verification-path-preview.yml"
+      - "docs/demos/linear-equation-verification-path-preview-acceptance.md"
+      - "docs/demos/artifacts/linear-equation-verification-path-preview/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/linear-equation-verification-path-preview/**"
+      - "plugins/math/linear-equation-intake-preview/**"
+      - "plugins/math/knowledge-unit-assembly-preview/**"
+      - "plugins/math/knowledge-impact-navigator/**"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/knowledge-units/tests/fixtures/project-projection-cases.json"
+      - "packages/thoughtflow/src/thoughtflow/knowledge-impact.ts"
+      - "packages/cognitive-ir/src/cognitive-node/runtime.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - "packages/cognitive-ir/contracts/cognitive-node/1.0.0/**"
+      - ".gitattributes"
+      - ".github/workflows/linear-equation-verification-path-preview.yml"
+      - "docs/demos/linear-equation-verification-path-preview-acceptance.md"
+      - "docs/demos/artifacts/linear-equation-verification-path-preview/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verification-path-preview:
+    name: Verification path preview (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test Linear Equation Verification Path Preview
+        run: node --test plugins/math/linear-equation-verification-path-preview/tests/*.test.ts
