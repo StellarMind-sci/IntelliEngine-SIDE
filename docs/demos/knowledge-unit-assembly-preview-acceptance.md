@@ -79,13 +79,13 @@ foreach ($caseId in @('needs-evidence', 'empty', 'invalid')) {
   $png = Join-Path $artifact "$caseId.png"
   $uri = "file:///" + (Join-Path $artifact "$caseId.html").Replace('\', '/')
   New-Item -ItemType Directory -Path $profile | Out-Null
-  $arguments = "--headless --disable-gpu --no-first-run --user-data-dir=`"$profile`" --window-size=1440,1200 --screenshot=`"$png`" `"$uri`""
+  $arguments = "--headless --disable-gpu --no-first-run --user-data-dir=`"$profile`" --window-size=1440,1800 --screenshot=`"$png`" `"$uri`""
   $process = Start-Process -FilePath $chrome -ArgumentList $arguments -Wait -PassThru
   [PSCustomObject]@{ case = $caseId; exit_code = $process.ExitCode; png = $png; bytes = (Get-Item -LiteralPath $png).Length }
 }
 ```
 
-本轮三个 Chrome 进程均返回退出码 `0`；生成文件大小分别为 needs_evidence `98912` bytes、empty `50859` bytes、invalid `52814` bytes。HTML 由 CLI stdout 逐字节核验，PNG 则是同一份静态 HTML 的离线可视化截图。
+本轮三个 Chrome 进程均返回退出码 `0`；生成文件大小分别为 needs_evidence `113862` bytes、empty `54826` bytes、invalid `56804` bytes。needs_evidence PNG 的实际尺寸为 `1440×1800`，可见“此状态不表示用户已掌握，不表示验证已完成，也不是 ready。”三项非结论警示。HTML 由 CLI stdout 逐字节核验，PNG 则是同一份静态 HTML 的离线可视化截图。
 
 ## 已知限制与回滚
 
