@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KnowledgeUnit 工程知识图谱预览：valid</title>
+<style>
+:root { color-scheme: light; font-family: "Microsoft YaHei", system-ui, sans-serif; background: #f5f8fc; color: #17253d; } body { margin: 0; } main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 58px; } h1 { font-size: 30px; margin: 0 0 8px; } h2 { font-size: 19px; margin: 0 0 12px; } h3 { margin: 0; font-size: 17px; } h4 { color: #53667e; font-size: 13px; margin: 14px 0 5px; } .card { background: #fff; border: 1px solid #d7e0ec; border-radius: 14px; padding: 20px; margin-top: 17px; box-shadow: 0 4px 18px #16233d0b; } .notice { border-left: 5px solid #285ea8; background: #edf5ff; font-size: 17px; line-height: 1.7; } .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 13px; } .badge { background: #e7eef8; color: #174276; border-radius: 999px; padding: 4px 10px; font: 600 13px ui-monospace, monospace; } .units { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px; } .unit { border: 1px solid #d8e1ed; border-radius: 11px; padding: 16px; } .unit.ready { border-left: 5px solid #25735a; } .unit.needs_evidence { border-left: 5px solid #b77216; background: #fffaf1; } .unit.blocked { border-left: 5px solid #b54151; background: #fff5f6; } .ref, small { color: #53667e; font: 12px ui-monospace, monospace; overflow-wrap: anywhere; } .status { border-radius: 8px; padding: 3px 7px; background: #e7eef8; font: 600 13px ui-monospace, monospace; } ul { margin: 0; padding-left: 20px; } .edges, .impact { margin: 0; padding-left: 25px; } .edges li, .impact li { margin: 8px 0; } .edges small, .impact small { display: block; margin-top: 3px; } .external { border: 2px dashed #b54151; background: #fff5f6; border-radius: 11px; padding: 14px; } .external p { margin: 8px 0 0; } .boundary { color: #6c3140; background: #fff2f3; border-color: #f0c8cf; } .none { color: #53667e; margin: 0; } .foot { color: #53667e; font-size: 14px; line-height: 1.65; }
+</style>
+</head>
+<body>
+<main>
+  <h1>KnowledgeUnit 工程知识图谱预览</h1>
+  <p>固定线性方程工程案例的只读、离线、可审查投影。</p>
+  <section class="card notice"><strong>工程图显示内部先修、缺失证据，以及所选 CognitiveNode 到受影响 KnowledgeUnit 的反向影响。</strong><div class="badges"><span class="badge">preview</span><span class="badge">forbidden</span><span class="badge">not_persisted</span><span class="badge">valid</span></div></section>
+  <section class="card"><h2>KnowledgeUnit 状态卡</h2><div class="units"><article class="unit ready">
+    <h3>等式变形</h3><p class="ref">10000000-0000-4000-8000-000000000001 @ r1</p>
+    <p><span class="status">ready（投影就绪）</span></p>
+    <h4>缺失证据</h4><p class="none">无</p>
+    <h4>缺失先修</h4><p class="none">无</p>
+  </article><article class="unit needs_evidence">
+    <h3>一元一次方程求解</h3><p class="ref">10000000-0000-4000-8000-000000000002 @ r1</p>
+    <p><span class="status">needs_evidence（缺少证据）</span></p>
+    <h4>缺失证据</h4><ul><li>20000000-0000-4000-8000-000000000004 @ r1</li></ul>
+    <h4>缺失先修</h4><p class="none">无</p>
+  </article></div></section>
+  <section class="card"><h2>内部先修边</h2><ol class="edges"><li><span>等式变形</span><b aria-hidden="true"> → </b><span>一元一次方程求解</span><small>10000000-0000-4000-8000-000000000001 @ r1 → 10000000-0000-4000-8000-000000000002 @ r1</small></li></ol></section>
+  <section class="card"><h2>外部先修（阻断）</h2><p class="none">无未加载的外部先修。</p></section>
+  <section class="card"><h2>CognitiveNode → KnowledgeUnit 反向影响</h2><p><strong>已选：</strong>CognitiveNode 20000000-0000-4000-8000-000000000004 @ r1</p><ol class="impact"><li><span>CognitiveNode 20000000-0000-4000-8000-000000000004 @ r1</span><b aria-hidden="true"> → </b><span>一元一次方程求解</span><small>20000000-0000-4000-8000-000000000004 @ r1 → 10000000-0000-4000-8000-000000000002 @ r1</small></li></ol></section>
+  <section class="card"><h2>投影诊断</h2><p>固定线性方程工程图谱已投影；状态来自 KnowledgeUnit 投影，不表示个人掌握或工程完成。</p></section>
+  <section class="card boundary"><h2>严格边界</h2><p>这是 <code>preview</code>，副作用为 <code>forbidden</code>，结果为 <code>not_persisted</code>。页面不保存 KnowledgeUnit、Thoughtflow、证据或 ChangeSet；不执行代码、模型或 Agent，不写入数据，也不表示个人掌握、验证完成或工程完成。</p></section>
+  <p class="foot">页面由限定 CLI 调用实际 KnowledgeUnit 投影图谱生成；不接受路径输入、不访问网络。</p>
+</main>
+</body>
+</html>
