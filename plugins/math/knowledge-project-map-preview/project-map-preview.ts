@@ -18,6 +18,7 @@ export type KnowledgeProjectMapPreview = {
   state: "valid" | "empty" | "invalid_input";
   units: ProjectedUnit[];
   prerequisite_edges: PrerequisiteEdge[];
+  external_prerequisite_refs: KnowledgeUnitRef[];
   selected_node_ref: KnowledgeUnitRef | null;
   affected_unit_refs: KnowledgeUnitRef[];
   diagnostic: string;
@@ -78,8 +79,19 @@ function copyRef(value: KnowledgeUnitRef): KnowledgeUnitRef {
   return { id: value.id, revision: value.revision };
 }
 
+function plainArray(value: unknown): value is unknown[] {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return false;
+  const keys = Reflect.ownKeys(value);
+  return keys.length === value.length + 1
+    && keys.every((key) => key === "length" || (typeof key === "string" && /^(0|[1-9][0-9]*)$/.test(key)))
+    && Array.from({ length: value.length }, (_, index) => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      return descriptor !== undefined && descriptor.enumerable && "value" in descriptor;
+    }).every(Boolean);
+}
+
 function refs(value: unknown): KnowledgeUnitRef[] | null {
-  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) return null;
+  if (!plainArray(value)) return null;
   const copied = value.map(ref);
   if (copied.some((item) => item === null)) return null;
   const concrete = copied as KnowledgeUnitRef[];
@@ -120,27 +132,58 @@ function demo(caseId: "normal" | "blocked" | "empty"): DemoCase | null {
   }
 }
 
-function validProjection(value: unknown): value is {
-  object_result: "valid"; operation_outcome: "succeeded"; issues: []; units: ProjectedUnit[];
+type Projection = {
+  object_result: "valid";
+  operation_outcome: "succeeded";
+  issues: [];
+  units: ProjectedUnit[];
   node_dependents: Array<{ node_ref: KnowledgeUnitRef; unit_refs: KnowledgeUnitRef[] }>;
   unit_dependents: Array<{ unit_ref: KnowledgeUnitRef; dependent_unit_refs: KnowledgeUnitRef[] }>;
-} {
+};
+
+function validProjection(value: unknown): value is Projection {
   if (!exactKeys(value, ["object_result", "operation_outcome", "issues", "units", "node_dependents", "unit_dependents"])
     || ownData(value, "object_result") !== "valid" || ownData(value, "operation_outcome") !== "succeeded") return false;
   const issues = ownData(value, "issues");
-  const units = ownData(value, "units");
+  const units = projectedUnits(ownData(value, "units"));
   const nodeDependents = ownData(value, "node_dependents");
   const unitDependents = ownData(value, "unit_dependents");
-  if (!Array.isArray(issues) || issues.length !== 0 || !Array.isArray(units) || !Array.isArray(nodeDependents) || !Array.isArray(unitDependents)) return false;
-  return true;
-}
+  if (!plainArray(issues) || issues.length !== 0 || units === null || !plainArray(nodeDependents) || !plainArray(unitDependents)) return false;
 
+  const unitKeys = units.map((unit) => refKey(unit.ref));
+  const unitSet = new Set(unitKeys);
+  if (units.some((unit) => unit.missing_prerequisite_refs.some((candidate) => unitSet.has(refKey(candidate))))) return false;
+
+  const nodeKeys: string[] = [];
+  for (const item of nodeDependents) {
+    if (!exactKeys(item, ["node_ref", "unit_refs"])) return false;
+    const node = ref(ownData(item, "node_ref"));
+    const users = refs(ownData(item, "unit_refs"));
+    if (node === null || users === null || users.length === 0 || users.some((user) => !unitSet.has(refKey(user)))) return false;
+    nodeKeys.push(refKey(node));
+  }
+  const sortedNodes = [...nodeKeys].sort(compareBytes);
+  if (new Set(nodeKeys).size !== nodeKeys.length || !nodeKeys.every((key, index) => key === sortedNodes[index])) return false;
+
+  const dependentKeys: string[] = [];
+  for (const item of unitDependents) {
+    if (!exactKeys(item, ["unit_ref", "dependent_unit_refs"])) return false;
+    const unit = ref(ownData(item, "unit_ref"));
+    const dependents = refs(ownData(item, "dependent_unit_refs"));
+    if (unit === null || dependents === null || !unitSet.has(refKey(unit))
+      || dependents.some((dependent) => !unitSet.has(refKey(dependent))) || dependents.some((dependent) => refKey(dependent) === refKey(unit))) return false;
+    dependentKeys.push(refKey(unit));
+  }
+  return dependentKeys.length === unitKeys.length
+    && new Set(dependentKeys).size === dependentKeys.length
+    && dependentKeys.every((key, index) => key === unitKeys[index]);
+}
 export function validProjectionForDemo(caseId: "normal" | "blocked" | "empty", candidate: unknown): boolean {
   try {
     const selected = demo(caseId);
     if (selected === null) return false;
     const actual = projectKnowledge(selected.units, selected.available_node_refs, selected.evidence_node_refs, CONTRACT_ROOT);
-    return validProjection(actual) && JSON.stringify(actual) === JSON.stringify(candidate);
+    return validProjection(actual) && validProjection(candidate) && plainDataEqual(actual, candidate);
   } catch {
     return false;
   }
@@ -148,7 +191,7 @@ export function validProjectionForDemo(caseId: "normal" | "blocked" | "empty", c
 
 function invalidResult(): KnowledgeProjectMapPreview {
   return {
-    mode: "preview", side_effects: "forbidden", state: "invalid_input", units: [], prerequisite_edges: [],
+    mode: "preview", side_effects: "forbidden", state: "invalid_input", units: [], prerequisite_edges: [], external_prerequisite_refs: [],
     selected_node_ref: null, affected_unit_refs: [], diagnostic: "请求必须是固定案例与可选的现有 CognitiveNode plain data。",
   };
 }
@@ -165,22 +208,28 @@ function request(value: unknown): { caseId: "normal" | "blocked" | "empty" | "in
   return { caseId, selected };
 }
 
-function prerequisiteEdges(units: JsonObject[]): PrerequisiteEdge[] | null {
-  const identities = units.map((unit) => ref({ id: ownData(unit, "id"), revision: ownData(unit, "revision") }));
-  if (identities.some((item) => item === null)) return null;
-  const concrete = identities as KnowledgeUnitRef[];
-  const known = new Set(concrete.map(refKey));
+function prerequisiteEdges(projection: Projection): PrerequisiteEdge[] | null {
+  const descendants = new Map(projection.unit_dependents.map((item) => [refKey(item.unit_ref), new Set(item.dependent_unit_refs.map(refKey))]));
+  if (descendants.size !== projection.units.length) return null;
   const edges: PrerequisiteEdge[] = [];
-  for (let index = 0; index < units.length; index += 1) {
-    const prerequisites = refs(ownData(units[index], "prerequisite_unit_refs"));
-    if (prerequisites === null) return null;
-    for (const prerequisite of prerequisites) {
-      if (known.has(refKey(prerequisite))) edges.push({ prerequisite_unit_ref: copyRef(prerequisite), dependent_unit_ref: copyRef(concrete[index]) });
+  for (const source of projection.unit_dependents) {
+    const sourceKey = refKey(source.unit_ref);
+    const sourceDescendants = descendants.get(sourceKey);
+    if (sourceDescendants === undefined) return null;
+    for (const target of source.dependent_unit_refs) {
+      const targetKey = refKey(target);
+      const indirect = [...sourceDescendants].some((intermediateKey) => intermediateKey !== targetKey && (descendants.get(intermediateKey)?.has(targetKey) ?? false));
+      if (!indirect) edges.push({ prerequisite_unit_ref: copyRef(source.unit_ref), dependent_unit_ref: copyRef(target) });
     }
   }
   return edges.sort((left, right) => compareBytes(`${refKey(left.prerequisite_unit_ref)}\u0000${refKey(left.dependent_unit_ref)}`, `${refKey(right.prerequisite_unit_ref)}\u0000${refKey(right.dependent_unit_ref)}`));
 }
 
+function externalPrerequisiteRefs(units: ProjectedUnit[]): KnowledgeUnitRef[] {
+  const byKey = new Map<string, KnowledgeUnitRef>();
+  for (const unit of units) for (const prerequisite of unit.missing_prerequisite_refs) byKey.set(refKey(prerequisite), copyRef(prerequisite));
+  return [...byKey.entries()].sort(([left], [right]) => compareBytes(left, right)).map(([, prerequisite]) => prerequisite);
+}
 function projectedUnits(value: unknown): ProjectedUnit[] | null {
   if (!Array.isArray(value)) return null;
   const result: ProjectedUnit[] = [];
@@ -231,12 +280,12 @@ export function createKnowledgeProjectMapPreview(input: unknown): KnowledgeProje
     const projection = projectKnowledge(selectedDemo.units, selectedDemo.available_node_refs, selectedDemo.evidence_node_refs, CONTRACT_ROOT);
     if (!validProjectionForDemo(parsed.caseId, projection) || !validProjection(projection)) return invalidResult();
     const units = projectedUnits(projection.units);
-    const edges = prerequisiteEdges(selectedDemo.units);
+    const edges = prerequisiteEdges(projection);
     const affected = affectedUnits(projection, selected);
     if (units === null || edges === null || affected === null) return invalidResult();
     const state = affected.length === 0 ? "empty" : "valid";
     return {
-      mode: "preview", side_effects: "forbidden", state, units, prerequisite_edges: edges,
+      mode: "preview", side_effects: "forbidden", state, units, prerequisite_edges: edges, external_prerequisite_refs: externalPrerequisiteRefs(units),
       selected_node_ref: copyRef(selected), affected_unit_refs: affected, diagnostic: diagnostic(parsed.caseId, state === "empty"),
     };
   } catch {
