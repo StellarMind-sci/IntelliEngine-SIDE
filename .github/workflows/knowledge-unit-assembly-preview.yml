@@ -1,0 +1,52 @@
+name: KnowledgeUnit Assembly Preview
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/knowledge-unit-assembly-preview/**"
+      - "plugins/math/linear-equation-intake-preview/**"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/cognitive-ir/src/cognitive-node/runtime.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - "packages/cognitive-ir/contracts/cognitive-node/1.0.0/**"
+      - ".github/workflows/knowledge-unit-assembly-preview.yml"
+      - "docs/demos/knowledge-unit-assembly-preview-acceptance.md"
+      - "docs/demos/artifacts/knowledge-unit-assembly-preview/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/knowledge-unit-assembly-preview/**"
+      - "plugins/math/linear-equation-intake-preview/**"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/cognitive-ir/src/cognitive-node/runtime.ts"
+      - "packages/cognitive-ir/src/conformance-ts/strict-json.ts"
+      - "packages/cognitive-ir/src/conformance-ts/machine-schema.ts"
+      - "packages/cognitive-ir/contracts/cognitive-node/1.0.0/**"
+      - ".github/workflows/knowledge-unit-assembly-preview.yml"
+      - "docs/demos/knowledge-unit-assembly-preview-acceptance.md"
+      - "docs/demos/artifacts/knowledge-unit-assembly-preview/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge-unit-assembly-preview:
+    name: KnowledgeUnit assembly preview (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test KnowledgeUnit Assembly Preview
+        run: node --test plugins/math/knowledge-unit-assembly-preview/tests/*.test.ts
