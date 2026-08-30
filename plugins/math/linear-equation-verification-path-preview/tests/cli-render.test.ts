@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import test from "node:test";
 
-import { renderVerificationPathPreviewHtml } from "../render.ts";
+import { renderImpactedStepIds, renderVerificationPathPreviewHtml } from "../render.ts";
 import { createLinearEquationVerificationPathPreview } from "../verification-path-preview.ts";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -85,11 +85,19 @@ test("escapes dynamic source, reference, and diagnostic values before rendering"
     source_ref: "<script>alert(1)</script>",
     knowledge_unit_ref: { id: "<img src=x onerror=alert(1)>", revision: 1 },
     diagnostic: "<iframe src=bad>",
+    impacted_steps: [{ step_id: "<img src=x onerror=alert(1)>", reasons: [] }],
   };
   const html = renderVerificationPathPreviewHtml(hostile);
   assert.doesNotMatch(html, /<script>alert/i);
   assert.doesNotMatch(html, /<iframe src=bad/i);
   assert.doesNotMatch(html, /<img src=x onerror=/i);
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.match(html, /&lt;iframe src=bad&gt;/);
+});
+test("renders impacted step ids with a dedicated HTML escape boundary", () => {
+  assert.equal(
+    renderImpactedStepIds([{ step_id: "<img src=x onerror=alert(1)>" }]),
+    "&lt;img src=x onerror=alert(1)&gt;",
+  );
 });

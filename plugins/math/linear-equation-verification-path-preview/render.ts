@@ -19,6 +19,10 @@ function list(items: readonly { id: string; revision: number }[]): string {
   return `<ul>${items.map((item) => `<li>${ref(item)}</li>`).join("")}</ul>`;
 }
 
+export function renderImpactedStepIds(steps: readonly { step_id: string }[]): string {
+  return steps.map((step) => escapeHtml(step.step_id)).join("、");
+}
+
 function message(preview: LinearEquationVerificationPathPreview): string {
   if (preview.state === "needs_evidence") {
     return "已形成未持久化 KnowledgeUnit 草案，并仅在关联的 verification 预览上下文中提示补充缺失证据。";
@@ -37,7 +41,7 @@ export function renderVerificationPathPreviewHtml(preview: LinearEquationVerific
       ? "not_persisted；无关联步骤"
       : "not_persisted；仅关联 verification-linear-equation";
   const navigation = preview.navigation === null ? "无" : preview.navigation;
-  const impacts = preview.impacted_steps.length === 0 ? "无" : preview.impacted_steps.map((step) => step.step_id).join("、");
+  const impacts = preview.impacted_steps.length === 0 ? "无" : renderImpactedStepIds(preview.impacted_steps);
   const evidence = list(preview.missing_evidence_node_refs);
   const diagnostic = preview.diagnostic === null ? "无" : preview.diagnostic;
   const title = `线性方程验证路径预览：${preview.state}`;
@@ -70,7 +74,7 @@ ul { margin: 0; padding-left: 22px; } .boundary { color: #6c3140; background: #f
     <dt>KnowledgeUnit 引用</dt><dd>${ref(preview.knowledge_unit_ref)}</dd>
     ${item("Thoughtflow 预览上下文", context)}
     ${item("导航提示", navigation)}
-    ${item("受影响步骤", impacts)}
+    <dt>受影响步骤</dt><dd>${impacts}</dd>
     ${item("诊断", diagnostic)}
   </dl></section>
   <section class="card"><h2>缺失证据节点</h2>${evidence}</section>
