@@ -96,3 +96,12 @@ test("escapes dynamic graph values before rendering", () => {
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
 });
+test("workflow watches the CognitiveNode conformance helpers used by the projection runtime", () => {
+  const workflow = readFileSync(resolve(root, "../../../.github/workflows/knowledge-project-map-preview.yml"), "utf8");
+  for (const path of [
+    "packages/cognitive-ir/src/conformance-ts/strict-json.ts",
+    "packages/cognitive-ir/src/conformance-ts/machine-schema.ts",
+  ]) {
+    assert.equal(workflow.split(path).length - 1, 2, path);
+  }
+});
