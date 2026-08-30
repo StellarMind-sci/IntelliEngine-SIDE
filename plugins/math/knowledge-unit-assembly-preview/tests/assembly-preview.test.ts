@@ -117,3 +117,42 @@ test("fails closed for malformed, stale, or tampered upstream previews without e
     assert.deepEqual(value, before);
   }
 });
+
+
+test("rejects an inherited unexpected field on the strict request wrapper", () => {
+  const input = Object.create({ unexpected: true }) as { intake_preview: ReturnType<typeof readyIntake> };
+  input.intake_preview = readyIntake();
+
+  const result = createLinearEquationKnowledgeUnitAssemblyPreview(input);
+
+  assert.equal(result.state, "invalid_input");
+  assert.deepEqual(result.candidate_nodes, []);
+});
+
+test("contains a throwing intake_preview getter as invalid input", () => {
+  const input = {} as { intake_preview?: unknown };
+  Object.defineProperty(input, "intake_preview", {
+    enumerable: true,
+    get() {
+      throw new Error("getter must not escape");
+    },
+  });
+
+  const result = createLinearEquationKnowledgeUnitAssemblyPreview(input);
+
+  assert.equal(result.state, "invalid_input");
+  assert.deepEqual(result.candidate_nodes, []);
+});
+
+test("contains an ownKeys proxy trap as invalid input", () => {
+  const input = new Proxy({ intake_preview: readyIntake() }, {
+    ownKeys() {
+      throw new Error("ownKeys must not escape");
+    },
+  });
+
+  const result = createLinearEquationKnowledgeUnitAssemblyPreview(input);
+
+  assert.equal(result.state, "invalid_input");
+  assert.deepEqual(result.candidate_nodes, []);
+});

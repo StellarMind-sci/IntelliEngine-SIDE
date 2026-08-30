@@ -84,10 +84,41 @@ function isRecord(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function plainObject(value: unknown): value is JsonObject {
+  return isRecord(value) && Object.getPrototypeOf(value) === Object.prototype;
+}
+
+function ownData(value: JsonObject, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+}
+
 function exactKeys(value: unknown, keys: readonly string[]) {
-  return isRecord(value)
-    && Object.keys(value).length === keys.length
-    && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+  if (!plainObject(value)) return false;
+  const actual = Reflect.ownKeys(value);
+  if (actual.length !== keys.length || actual.some((key) => typeof key !== "string" || !keys.includes(key))) return false;
+  return keys.every((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor !== undefined && descriptor.enumerable && "value" in descriptor;
+  });
+}
+
+function matchesPlainData(expected: unknown, actual: unknown): boolean {
+  if (expected === null || typeof expected !== "object") return Object.is(expected, actual);
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual) || Object.getPrototypeOf(actual) !== Array.prototype) return false;
+    const keys = Reflect.ownKeys(actual);
+    const expectedKeys = new Set<PropertyKey>(["length", ...expected.map((_, index) => String(index))]);
+    if (keys.length !== expectedKeys.size || keys.some((key) => !expectedKeys.has(key))) return false;
+    return expected.every((entry, index) => {
+      const descriptor = Object.getOwnPropertyDescriptor(actual, String(index));
+      return descriptor !== undefined && "value" in descriptor && matchesPlainData(entry, descriptor.value);
+    });
+  }
+  if (!plainObject(actual) || !isRecord(expected)) return false;
+  const expectedKeys = Object.keys(expected);
+  if (!exactKeys(actual, expectedKeys)) return false;
+  return expectedKeys.every((key) => matchesPlainData(expected[key], ownData(actual, key)));
 }
 
 function compareBytes(left: string, right: string) {
@@ -148,24 +179,21 @@ function result(
   };
 }
 
-function sourceRefOf(value: unknown): string | null {
-  if (!isRecord(value) || !isRecord(value.intake_preview) || !isRecord(value.intake_preview.source)) return null;
-  return typeof value.intake_preview.source.source_ref === "string" ? value.intake_preview.source.source_ref : null;
-}
-
 function strictPreview(value: unknown): LinearEquationIntakePreview | null {
-  if (!exactKeys(value, ["intake_preview"])) return null;
-  const preview = value.intake_preview;
-  if (!exactKeys(preview, [
+  if (!isRecord(value) || !exactKeys(value, ["intake_preview"])) return null;
+  const preview = ownData(value, "intake_preview");
+  if (!isRecord(preview) || !exactKeys(preview, [
     "mode", "side_effects", "state", "source", "normalized_equation", "variable", "candidate_node", "validation", "diagnostic",
   ])) return null;
-  if (!isRecord(preview.source)
-    || !exactKeys(preview.source, ["text", "source_ref"])
-    || typeof preview.source.text !== "string"
-    || typeof preview.source.source_ref !== "string") return null;
+  const source = ownData(preview, "source");
+  if (!isRecord(source)
+    || !exactKeys(source, ["text", "source_ref"])) return null;
+  const text = ownData(source, "text");
+  const sourceRef = ownData(source, "source_ref");
+  if (typeof text !== "string" || typeof sourceRef !== "string") return null;
 
-  const rebuilt = createLinearEquationIntakePreview({ text: preview.source.text, source_ref: preview.source.source_ref });
-  if (!isDeepStrictEqual(preview, rebuilt)) return null;
+  const rebuilt = createLinearEquationIntakePreview({ text, source_ref: sourceRef });
+  if (!matchesPlainData(rebuilt, preview)) return null;
   return rebuilt;
 }
 
@@ -275,17 +303,16 @@ function buildKnowledgeUnit(candidates: CandidateNode[], preview: LinearEquation
   };
 }
 
-export function createLinearEquationKnowledgeUnitAssemblyPreview(input: unknown): LinearEquationKnowledgeUnitAssemblyPreview {
-  const sourceRef = sourceRefOf(input);
+function assembleLinearEquationKnowledgeUnitPreview(input: unknown): LinearEquationKnowledgeUnitAssemblyPreview {
   const preview = strictPreview(input);
   if (preview === null || preview.state === "invalid_input") {
-    return result("invalid_input", sourceRef, "上游方程预览不完整、已失效或未通过复核。");
+    return result("invalid_input", null, "上游方程预览不完整、已失效或未通过复核。");
   }
   if (preview.state === "empty") {
     return result("empty", preview.source.source_ref, "上游没有可组装的方程候选。");
   }
   if (preview.state !== "ready" || preview.candidate_node === null || preview.source.source_ref === null) {
-    return result("invalid_input", sourceRef, "上游方程预览不完整、已失效或未通过复核。");
+    return result("invalid_input", null, "上游方程预览不完整、已失效或未通过复核。");
   }
 
   const candidateNodes = buildCandidates(preview);
@@ -323,5 +350,13 @@ export function createLinearEquationKnowledgeUnitAssemblyPreview(input: unknown)
     };
   } catch {
     return result("invalid_input", preview.source.source_ref, "KnowledgeUnit 草案未通过固定合同校验。");
+  }
+}
+
+export function createLinearEquationKnowledgeUnitAssemblyPreview(input: unknown): LinearEquationKnowledgeUnitAssemblyPreview {
+  try {
+    return assembleLinearEquationKnowledgeUnitPreview(input);
+  } catch {
+    return result("invalid_input", null, "上游方程预览不完整、已失效或未通过复核。");
   }
 }
