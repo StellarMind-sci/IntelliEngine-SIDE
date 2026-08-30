@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "case_id": "needs-evidence",
+      "input": {
+        "text": "2x + 3 = 11",
+        "source_ref": "prov:source:algebra-example-1"
+      }
+    },
+    {
+      "case_id": "empty",
+      "input": {
+        "text": "  \t",
+        "source_ref": "prov:source:algebra-example-1"
+      }
+    },
+    {
+      "case_id": "invalid",
+      "input": {
+        "text": "x^2 = 4",
+        "source_ref": "prov:source:algebra-example-1"
+      }
+    }
+  ]
+}
