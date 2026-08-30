@@ -1,0 +1,18 @@
+{
+  "verification": {
+    "source": { "text": "2x + 3 = 11", "source_ref": "prov:source:algebra-example-1" },
+    "flow_context": "verification"
+  },
+  "unmapped": {
+    "source": { "text": "2x + 3 = 11", "source_ref": "prov:source:algebra-example-1" },
+    "flow_context": "none"
+  },
+  "empty": {
+    "source": { "text": "  \t", "source_ref": "prov:source:algebra-example-1" },
+    "flow_context": "verification"
+  },
+  "invalid": {
+    "source": { "text": "x^2 = 4", "source_ref": "prov:source:algebra-example-1" },
+    "flow_context": "verification"
+  }
+}
