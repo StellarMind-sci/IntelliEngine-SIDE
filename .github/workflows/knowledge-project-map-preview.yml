@@ -1,0 +1,46 @@
+name: Knowledge Project Map Preview
+
+on:
+  pull_request:
+    paths:
+      - "plugins/math/knowledge-project-map-preview/**"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/knowledge-units/tests/fixtures/project-projection-cases.json"
+      - ".gitattributes"
+      - ".github/workflows/knowledge-project-map-preview.yml"
+      - "docs/demos/knowledge-project-map-preview-acceptance.md"
+      - "docs/demos/artifacts/knowledge-project-map-preview/**"
+  push:
+    branches: [main]
+    paths:
+      - "plugins/math/knowledge-project-map-preview/**"
+      - "packages/knowledge-units/src/knowledge-unit/runtime.ts"
+      - "packages/knowledge-units/src/knowledge-unit/project.ts"
+      - "packages/knowledge-units/contracts/knowledge-unit/1.0.0/**"
+      - "packages/knowledge-units/tests/fixtures/project-projection-cases.json"
+      - ".gitattributes"
+      - ".github/workflows/knowledge-project-map-preview.yml"
+      - "docs/demos/knowledge-project-map-preview-acceptance.md"
+      - "docs/demos/artifacts/knowledge-project-map-preview/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  knowledge-project-map-preview:
+    name: Knowledge project map preview (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Test Knowledge Project Map Preview
+        run: node --test plugins/math/knowledge-project-map-preview/tests/*.test.ts
